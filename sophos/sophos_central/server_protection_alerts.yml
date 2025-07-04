@@ -1,0 +1,30 @@
+- id: 1003
+  dataTypes:
+    - sophos-central
+  name: Server Protection Alerts
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Server Security
+  technique: T1505 - Server Software Component
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/Servers/index.html
+    - https://attack.mitre.org/techniques/T1505/
+  description: Detects critical security alerts on servers protected by Sophos Central, including unauthorized access attempts, service tampering, and malware targeting server infrastructure
+  where: (safe(log.endpointType, "") == "server" && safe(log.severity, "") in ["high", "critical"]) || safe(log.type, "") in ["Event::Server::Threat::Detected", "Event::Server::Protection::Disabled", "Event::Server::Exploit::Prevented"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+        - field: log.endpointType.keyword
+          operator: filter_term
+          value: 'server'
+      within: now-30m
+      count: 2
+  deduplicateBy:
+    - log.endpointId
+    - log.type

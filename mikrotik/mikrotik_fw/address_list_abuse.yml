@@ -1,0 +1,41 @@
+- id: 1024
+  dataTypes:
+    - mikrotik_fw
+  name: MikroTik Address List Abuse
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Security Policy Bypass
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/250708066/Firewall
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects suspicious activities related to MikroTik address lists including unauthorized modifications, excessive additions, or attempts to manipulate whitelist/blacklist entries which could indicate privilege escalation or security bypass attempts.
+  where: |
+    (safe(log.topics, "") contains "firewall" && 
+     safe(raw, "") contains_any(["address-list add", "address-list remove", "address-list set", "src-address-list", "dst-address-list"]) &&
+     (safe(log.action, "") in ["add", "remove", "set"] ||
+      safe(raw, "") contains_any(["whitelist", "blacklist", "trusted", "allowed", "banned"]))) ||
+    (safe(log.chain, "") in ["input", "forward"] && 
+     safe(raw, "") contains "address-list" &&
+     safe(log.action, "") == "accept" &&
+     safe(origin.ip, "") != "" &&
+     !safe(origin.ip, "").startsWith("192.168.") &&
+     !safe(origin.ip, "").startsWith("10.") &&
+     !safe(origin.ip, "").startsWith("172."))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.topics.keyword
+          operator: filter_term
+          value: 'firewall'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - raw

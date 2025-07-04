@@ -1,0 +1,33 @@
+- id: 1001
+  dataTypes:
+    - firewall-sonicwall
+  name: SonicWall Gateway Anti-Virus Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Malware
+  technique: Ingress Tool Transfer
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/techdocs/pdf/sonicos-6-5-4-log-events-reference-guide.pdf
+    - https://attack.mitre.org/techniques/T1105/
+  description: Detects when SonicWall Gateway Anti-Virus (GAV) identifies and blocks malicious content. This indicates potential malware attempting to enter the network through web traffic, email attachments, or file downloads.
+  where: |
+    (safe(log.gcat, "").contains("Gateway Anti-Virus") || 
+     safe(log.msg, "").contains("virus") || 
+     safe(log.msg, "").contains("malware") ||
+     safe(log.eventName, "").contains("Anti-Virus") ||
+     safe(log.category, "").contains("Anti-Virus")) &&
+    safe(action, "") == "blocked"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.msg

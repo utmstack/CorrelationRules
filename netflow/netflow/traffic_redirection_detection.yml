@@ -1,0 +1,56 @@
+- id: 1014
+  dataTypes:
+    - netflow
+  name: Traffic Redirection and Hijacking Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Network Manipulation
+  technique: Man-in-the-Middle
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1557/
+    - https://documentation.meraki.com/MX/Monitoring_and_Reporting/NetFlow_Overview
+  description: Detects potential traffic redirection, BGP hijacking, or man-in-the-middle attacks by identifying unusual routing patterns, unexpected next-hop changes, or traffic flowing through suspicious intermediate nodes
+  where: |
+    (
+      safe(log.next_hop_changed, "false") == "true" &&
+      safe(log.flow_count, 0) > 100
+    ) ||
+    (
+      safe(log.bgp_next_hop, "") != safe(log.expected_next_hop, "") &&
+      safe(log.bytes, 0) > 10485760
+    ) ||
+    (
+      safe(log.ttl_variance, 0) > 5 &&
+      safe(origin.ip, "") == safe(log.previous_origin_ip, "")
+    ) ||
+    (
+      safe(target.port, 0) == 179 && 
+      safe(log.bgp_updates, 0) > 50
+    ) ||
+    (
+      safe(log.route_changed, "false") == "true" &&
+      safe(log.sensitive_traffic, "false") == "true"
+    ) ||
+    (
+      safe(origin.geolocation.country, "") != safe(log.expected_country, "") &&
+      safe(log.critical_infrastructure, "false") == "true"
+    ) ||
+    (
+      safe(log.asymmetric_routing, "false") == "true" &&
+      safe(log.bytes, 0) > 52428800
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-2h
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - target.ip
+    - log.next_hop

@@ -1,0 +1,32 @@
+- id: 1007
+  dataTypes:
+    - firewall-mikrotik
+  name: MikroTik Web Interface Brute Force Attack
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Credential Access
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/328094/Log
+    - https://attack.mitre.org/techniques/T1110/001/
+  description: Multiple failed web interface login attempts detected on MikroTik device, indicating potential brute force attack against WebFig or management interface
+  where: |
+    safe(log.topics, "") =~ ".*system.*error.*" && 
+    safe(log.message, "") =~ ".*login failure.*web.*" &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.message
+          operator: filter_wildcard
+          value: '*login failure*web*'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - origin.ip

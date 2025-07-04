@@ -1,0 +1,33 @@
+- id: 1008
+  dataTypes:
+    - netflow
+  name: C2 Beaconing Behavior Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Command and Control
+  technique: Application Layer Protocol
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1071/
+    - https://www.cisco.com/en/US/technologies/tk648/tk362/technologies_white_paper09186a00800a3db9.html
+  description: Detects potential command and control beaconing behavior based on periodic connections with consistent intervals and small data transfers
+  where: safe(origin.ip, "") != "" && safe(target.ip, "") != "" && safe(log.bytes, 0) > 0 && safe(log.bytes, 0) < 10000 && safe(log.packets, 0) < 50 && (safe(target.port, 0) == 443 || safe(target.port, 0) == 80 || safe(target.port, 0) == 8080 || safe(target.port, 0) == 8443)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+        - field: dataType.keyword
+          operator: filter_term
+          value: netflow
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - target.ip

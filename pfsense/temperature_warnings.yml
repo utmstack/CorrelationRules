@@ -1,0 +1,26 @@
+- id: 1023
+  dataTypes:
+    - firewall-pfsense
+  name: pfSense Temperature Warning
+  impact:
+    confidentiality: 0
+    integrity: 1
+    availability: 4
+  category: System Health
+  technique: Hardware Overheating
+  adversary: system
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/hardware/index.html
+    - https://attack.mitre.org/techniques/T1495/
+  description: Detects temperature warnings and thermal events in pfSense systems. High temperatures can cause system instability, hardware damage, and unexpected shutdowns. This may indicate cooling system failures, environmental issues, or hardware problems.
+  where: (safe(log.eventType, "") == "kernel" || safe(log.eventType, "") == "system") && (safe(raw, "").contains("temperature") || safe(raw, "").contains("thermal") || safe(raw, "").contains("overheat") || safe(raw, "").contains("ACPI") && safe(raw, "").contains("temp") || safe(raw, "").contains("fan speed") || safe(raw, "").contains("cooling"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - log.syslogHost

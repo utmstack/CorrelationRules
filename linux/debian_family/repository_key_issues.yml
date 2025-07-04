@@ -1,0 +1,35 @@
+- id: 1018
+  dataTypes:
+    - debian_family
+  name: Repository Key Issues Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Authentication and Authorization
+  technique: Supply Chain Compromise
+  adversary: origin
+  references:
+    - https://wiki.debian.org/SecureApt
+    - https://attack.mitre.org/techniques/T1195/
+  description: Detects issues with APT repository keys that could indicate attempts to inject malicious packages or compromise the software supply chain
+  where: |
+    (safe(log.process, "") == "apt" || safe(log.process, "") == "apt-key" || safe(log.process, "") == "gpg") &&
+    (
+      safe(log.message, "") =~ ".*(NO_PUBKEY|GPG error|key is not certified|KEYEXPIRED).*" ||
+      safe(log.message, "") =~ ".*(public key is not available|signatures couldn't be verified).*" ||
+      safe(log.message, "") =~ ".*(WARNING: apt does not have a stable CLI interface).*" ||
+      safe(log.message, "") =~ ".*(repository.*not signed|Release file.*not valid yet).*" ||
+      safe(log.message, "") =~ ".*(apt-key is deprecated|untrusted packages).*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.hostname
+    - log.message

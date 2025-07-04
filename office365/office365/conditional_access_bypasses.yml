@@ -1,0 +1,38 @@
+- id: 1020
+  dataTypes:
+    - o365
+  name: Conditional Access Bypass Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 2
+  category: Defense Evasion
+  technique: Use Alternate Authentication Material
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/active-directory/conditional-access/overview
+    - https://attack.mitre.org/techniques/T1550/
+  description: Detects attempts to bypass conditional access policies through various methods including legacy authentication, trusted location manipulation, or session token abuse
+  where: |
+    (safe(action, "") in ["UserLoggedIn", "UserLoginFailed"] &&
+     ((safe(log.ConditionalAccessStatus, "") in ["failure", "notApplied"] && safe(actionResult, "") == "Succeeded") ||
+      (safe(log.AuthenticationMethod, "") in ["Legacy Authentication", "Basic Authentication"]) ||
+      (safe(log.ClientAppUsed, "") in ["Exchange ActiveSync", "IMAP4", "POP3", "SMTP Auth"]) ||
+      (safe(log.DeviceDetail, "") == "{}" && safe(log.Location, "") contains "trusted") ||
+      (safe(log.IsInteractive, "") == "false" && safe(log.appAccessContextClientAppId, "") == ""))) &&
+    safe(origin.user, "") != "" &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.ip

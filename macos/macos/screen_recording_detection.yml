@@ -1,0 +1,35 @@
+- id: 1019
+  dataTypes:
+    - macos
+  name: Unauthorized Screen Recording Activity
+  impact:
+    confidentiality: 5
+    integrity: 1
+    availability: 1
+  category: Collection
+  technique: Screen Capture
+  adversary: origin
+  references:
+    - https://macpaw.tech/research/is-mac-screen-captured/
+    - https://attack.mitre.org/techniques/T1113/
+  description: Detects potential unauthorized screen recording or screen capture activities that may be used for data exfiltration or surveillance
+  where: |
+    (safe(log.subsystem, "") == "com.apple.screencapture" && safe(log.category, "") == "recording") ||
+    (safe(log.process, "") == "screencapture" && safe(log.eventMessage, "") contains "Capturing video") ||
+    (safe(log.process, "") == "screencaptureui" && safe(log.eventMessage, "") contains "video screenshot pressed") ||
+    (safe(log.eventMessage, "") contains "CGSIsScreenWatcherPresent") ||
+    (safe(log.eventMessage, "") contains "Setup recording filename" && safe(log.eventMessage, "") contains ".mov") ||
+    (safe(log.subsystem, "") == "com.apple.TCC" && safe(log.eventMessage, "") contains "kTCCServiceScreenCapture") ||
+    (safe(log.process, "") not in ["screencapture", "screencaptureui", "QuickTime Player", "Screenshot", "Zoom"] && 
+     safe(log.eventMessage, "") contains "screen recording")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.process
+    - origin.user

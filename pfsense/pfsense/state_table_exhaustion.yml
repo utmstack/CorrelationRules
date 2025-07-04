@@ -1,0 +1,26 @@
+- id: 1014
+  dataTypes:
+    - firewall-pfsense
+  name: State Table Exhaustion Attack
+  impact:
+    confidentiality: 1
+    integrity: 1
+    availability: 5
+  category: Denial of Service
+  technique: Network Denial of Service
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/firewall/troubleshooting-blocked-log-entries.html
+    - https://attack.mitre.org/techniques/T1498/
+  description: Detects potential state table exhaustion attacks on pfSense firewall by monitoring for rapid connection attempts, state table overflow warnings, or abnormal connection patterns that could lead to denial of service
+  where: (safe(log.eventType, "").contains("pf") || safe(log.eventType, "").contains("kernel")) && (safe(log.reason, "").contains("state") && (safe(log.reason, "").contains("full") || safe(log.reason, "").contains("exhausted") || safe(log.reason, "").contains("limit")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 100
+  deduplicateBy:
+    - origin.ip

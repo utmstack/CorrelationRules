@@ -1,0 +1,30 @@
+- id: 1024
+  dataTypes:
+    - o365
+  name: Office 365 Anti-Phishing Policy Bypass Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 1
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/defender-office-365/anti-phishing-policies-about
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects potential bypasses or modifications to anti-phishing policies including changes to safe sender lists, domain exclusions, or policy disabling that could allow phishing emails to reach users.
+  where: (safe(action, "").contains("AntiPhish") || safe(action, "") == "Set-AntiPhishPolicy" || safe(action, "") == "Remove-AntiPhishPolicy" || safe(action, "") == "New-AntiPhishPolicy" || safe(action, "") == "Disable-AntiPhishRule" || safe(action, "").contains("SafeSender") || safe(action, "").contains("BypassedSender")) && safe(actionResult, "") == "Success"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: wildcard
+          value: '*AntiPhish*'
+      within: now-4h
+      count: 2
+  deduplicateBy:
+    - origin.user
+    - log.ObjectId

@@ -1,0 +1,32 @@
+- id: 1014
+  dataTypes:
+    - sophos-central
+  name: Sophos Central Machine Learning Threat Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Malware Detection
+  technique: Machine Learning Model Evasion
+  adversary: origin
+  references:
+    - https://developer.sophos.com/siem-api-schemas
+    - https://attack.mitre.org/techniques/T1027/
+  description: Detects threats identified by Sophos machine learning models, including zero-day malware and previously unknown threats. These detections indicate sophisticated threats that evaded signature-based detection.
+  where: |
+    safe(log.type, "") == "Event::Endpoint::Threat::MachineLearningDetection" ||
+    safe(log.type, "") == "Event::Endpoint::MLDetection" ||
+    (safe(log.detectionMethod, "") == "ML" || safe(log.detectionMethod, "") == "MachineLearning") ||
+    (safe(log.name, "") contains "Machine Learning" && safe(log.severity, "") in ["high", "critical"]) ||
+    (safe(log.description, "") contains "ML detected" || safe(log.description, "") contains "machine learning")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.endpointId
+    - log.sha256

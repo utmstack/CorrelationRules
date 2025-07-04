@@ -1,0 +1,40 @@
+- id: 1008
+  dataTypes:
+    - macos
+  name: Apple Script Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Execution
+  technique: T1059.002 - Command and Scripting Interpreter: AppleScript
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1059/002/
+    - https://developer.apple.com/documentation/os/logging
+    - https://www.crowdstrike.com/en-us/blog/how-to-leverage-apple-unified-log-for-incident-response/
+  description: Detects suspicious AppleScript execution that could indicate malicious activity, including osascript command-line usage, automation attempts, and script-based attacks on macOS systems.
+  where: |
+    (safe(log.process, "") in ["osascript", "Script Editor", "AppleScript", "Automator"] ||
+     safe(log.eventMessage, "") contains "osascript" ||
+     safe(log.eventMessage, "") contains "AppleScript" ||
+     safe(log.subsystem, "") == "com.apple.applescript") &&
+    (safe(log.eventMessage, "") contains "tell application" ||
+     safe(log.eventMessage, "") contains "do shell script" ||
+     safe(log.eventMessage, "") contains "keystroke" ||
+     safe(log.eventMessage, "") contains "System Events" ||
+     safe(log.eventMessage, "") contains "admin privileges" ||
+     safe(log.eventMessage, "") contains "sudo" ||
+     safe(log.eventMessage, "") contains "password") &&
+    safe(log.eventType, "") in ["logEvent", "traceEvent"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.pid

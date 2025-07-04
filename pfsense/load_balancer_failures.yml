@@ -1,0 +1,26 @@
+- id: 1009
+  dataTypes:
+    - firewall-pfsense
+  name: Load Balancer Pool Member Failures
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Impact
+  technique: Service Stop
+  adversary: system
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/loadbalancing/index.html
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects multiple load balancer pool member failures which could indicate service outages, misconfiguration, or targeted attacks against backend servers
+  where: safe(log.eventType, "") == "relayd" && safe(log.csvMsg, "").matches(".*(host|pool|down|failed|unreachable).*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: 'relayd'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - log.csvMsg

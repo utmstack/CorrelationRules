@@ -1,0 +1,34 @@
+- id: 1016
+  dataTypes:
+    - mikrotik_fw
+  name: DNS Cache Poisoning Attempt
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Network Attack
+  technique: DNS Spoofing
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/37748767/DNS
+    - https://attack.mitre.org/techniques/T1584/002/
+  description: Detects potential DNS cache poisoning attempts where multiple DNS responses are received from different sources for the same domain in a short time window, which could indicate an attacker trying to inject malicious DNS records
+  where: |
+    safe(log.topics, "") == "dns" && 
+    safe(target.port, 0) == 53 && 
+    safe(origin.ip, "") != "" &&
+    safe(log.chain, "").contains("response")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+        - field: log.topics.keyword
+          operator: filter_term
+          value: 'dns'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - target.ip
+    - origin.ip

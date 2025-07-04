@@ -1,0 +1,27 @@
+- id: 1012
+  dataTypes:
+    - firewall-pfsense
+  name: Certificate Management Security Issue
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Identity and Access Management
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/certificates/certificate.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects certificate management issues in pfSense including expired certificates, failed certificate generation, or unauthorized certificate access attempts that could compromise secure communications
+  where: safe(log.eventType, "").contains("cert") && (safe(log.reason, "").contains("expired") || safe(log.reason, "").contains("invalid") || safe(log.reason, "").contains("failed") || safe(log.action, "") == "denied")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.certificate_cn
+    - log.syslogHost

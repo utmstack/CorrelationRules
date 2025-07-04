@@ -1,0 +1,45 @@
+- id: 1014
+  dataTypes:
+    - macos
+  name: Safari Extension Abuse
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Persistence
+  technique: Browser Extensions
+  adversary: origin
+  references:
+    - https://developer.apple.com/documentation/safariservices/safari_app_extensions
+    - https://attack.mitre.org/techniques/T1176/
+  description: Detects suspicious Safari extension installations or modifications that could be used for credential theft, session hijacking, or data exfiltration
+  where: |
+    (safe(log.subsystem, "") == "com.apple.Safari" && 
+     safe(log.category, "") == "Extensions" &&
+     (safe(log.eventMessage, "") contains "install" || 
+      safe(log.eventMessage, "") contains "load" || 
+      safe(log.eventMessage, "") contains "enable")) ||
+    (safe(log.process, "") == "Safari" && 
+     (safe(log.eventMessage, "") contains "extension" &&
+      (safe(log.eventMessage, "") contains "unsigned" ||
+       safe(log.eventMessage, "") contains "untrusted" ||
+       safe(log.eventMessage, "") contains "modified" ||
+       safe(log.eventMessage, "") contains "injected"))) ||
+    (safe(log.eventMessage, "") contains "Safari/Extensions" && 
+     (safe(log.eventMessage, "") contains "unauthorized" ||
+      safe(log.eventMessage, "") contains "suspicious" ||
+      safe(log.eventMessage, "") contains "malicious")) ||
+    (safe(log.subsystem, "") == "com.apple.WebKit" && 
+     safe(log.eventMessage, "") contains "extension" &&
+     safe(log.messageType, "") == "error")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - origin.user
+    - log.eventMessage

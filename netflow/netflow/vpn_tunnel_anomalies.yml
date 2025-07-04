@@ -1,0 +1,46 @@
+- id: 1011
+  dataTypes:
+    - netflow
+  name: VPN Tunnel Anomalies Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Network Security
+  technique: Protocol Tunneling
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1572/
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/special/netflow/asa_netflow.html
+  description: Detects anomalies in VPN tunnel traffic patterns including unusual data volumes, connection patterns, or protocol violations that may indicate compromised VPN credentials or tunnel exploitation
+  where: |
+    (
+      (safe(origin.port, 0) == 500 || safe(origin.port, 0) == 4500 || 
+       safe(target.port, 0) == 500 || safe(target.port, 0) == 4500 ||
+       safe(origin.port, 0) == 1194 || safe(target.port, 0) == 1194 ||
+       safe(origin.port, 0) == 1723 || safe(target.port, 0) == 1723) &&
+      (
+        safe(log.bytes, 0) > 104857600 ||
+        safe(log.packets, 0) > 100000 ||
+        safe(log.duration, 0) < 5
+      )
+    ) ||
+    (
+      safe(protocol, "") == "50" && 
+      safe(log.bytes, 0) > 52428800
+    ) ||
+    (
+      safe(protocol, "") == "47" &&
+      safe(log.flow_count, 0) > 50
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - target.ip

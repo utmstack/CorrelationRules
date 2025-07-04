@@ -1,0 +1,27 @@
+- id: 1010
+  dataTypes:
+    - firewall-sonicwall
+  name: SonicWall DPI-SSL Inspection Security Alert
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: SSL/TLS Security
+  technique: T1573 - Encrypted Channel
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/support/knowledge-base/what-is-dpi-ssl/170505320011726
+    - https://attack.mitre.org/techniques/T1573/
+  description: Detects security issues identified during Deep Packet Inspection of SSL/TLS encrypted traffic. This includes certificate validation failures, suspicious encrypted payloads, malware in HTTPS traffic, or attempts to bypass SSL inspection.
+  where: (safe(log.category, "") == "DPI-SSL" || safe(log.msg, "").contains("DPI-SSL") || safe(log.msg, "").contains("SSL inspection") || safe(log.msg, "").contains("certificate") || safe(log.msg, "").contains("HTTPS") || safe(log.dpi, "") != "" || safe(protocol, "") == "https" || safe(log.app, "") == "ssl") && (safe(log.msg, "").contains("blocked") || safe(log.msg, "").contains("invalid") || safe(log.msg, "").contains("expired") || safe(log.msg, "").contains("untrusted") || safe(log.msg, "").contains("malicious") || safe(action, "") == "blocked" || safe(log.result, "") == "failed")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-2h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - target.host

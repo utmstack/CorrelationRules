@@ -1,0 +1,33 @@
+- id: 1002
+  dataTypes:
+    - firewall-sonicwall
+  name: SonicWall Intrusion Prevention System Alert
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 4
+  category: Network Attack
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/techdocs/pdf/sonicos-6-5-4-log-events-reference-guide.pdf
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects when SonicWall IPS identifies and blocks intrusion attempts, including buffer overflows, SQL injection, cross-site scripting, and other network-based attacks targeting vulnerabilities.
+  where: |
+    (safe(log.ipscat, "") != "" || 
+     safe(log.msg, "").contains("IPS") ||
+     safe(log.eventName, "").contains("Intrusion") ||
+     safe(log.category, "").contains("Intrusion Prevention") ||
+     (safe(log.ipspri, "") != "" && safe(log.ipspri, "0") != "0")) &&
+    (safe(action, "") == "blocked" || safe(log.fw_action, "") == "drop")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.ipscat

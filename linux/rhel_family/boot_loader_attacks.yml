@@ -1,0 +1,35 @@
+- id: 1022
+  dataTypes:
+    - rhel_family
+  name: RHEL Boot Loader Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 4
+  category: Boot Security
+  technique: T1542.003 - Pre-OS Boot: Bootkit
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1542/003/
+    - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/security_hardening/protecting-systems-against-intrusive-usb-devices_security-hardening
+  description: Detects attempts to modify or tamper with the boot loader configuration, including unauthorized changes to GRUB files, boot parameters, or kernel modules that could indicate bootkit installation attempts
+  where: |
+    (safe(log.file_path, "") contains "/boot/grub2/" && safe(log.action, "") in ["modify", "write", "delete"]) ||
+    (safe(log.file_path, "") == "/etc/default/grub" && safe(log.action, "") in ["modify", "write"]) ||
+    (safe(log.command, "") contains "grub2-mkconfig") ||
+    (safe(log.command, "") contains "grub2-install") ||
+    (safe(log.file_path, "") contains "/boot/vmlinuz" && safe(log.action, "") in ["modify", "replace"]) ||
+    (safe(log.file_path, "") contains "/boot/initramfs" && safe(log.action, "") in ["modify", "replace"]) ||
+    (safe(log.event_type, "") == "boot_loader_modification") ||
+    (safe(log.module_name, "") != "" && safe(log.action, "") == "kernel_module_load" && safe(log.module_path, "") contains "/boot/")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.file_path

@@ -1,0 +1,29 @@
+- id: 1020
+  dataTypes:
+    - netflow
+  name: Network Reconnaissance Activity Detection
+  impact:
+    confidentiality: 3
+    integrity: 1
+    availability: 1
+  category: Reconnaissance
+  technique: Active Scanning
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1595/
+    - https://attack.mitre.org/techniques/T1046/
+  description: Detects potential network reconnaissance activities by identifying sources connecting to multiple unique destination IPs on various ports within a short time frame
+  where: safe(origin.ip, "") != "" && safe(target.ip, "") != "" && safe(log.packets, 0) < 5
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 50
+      unique:
+        - target.ip
+        - target.port
+  deduplicateBy:
+    - origin.ip

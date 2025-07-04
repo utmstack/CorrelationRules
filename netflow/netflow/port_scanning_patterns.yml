@@ -1,0 +1,36 @@
+- id: 1005
+  dataTypes:
+    - netflow
+  name: Port Scanning Activity Detection
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 1
+  category: Discovery
+  technique: Network Service Scanning
+  adversary: origin
+  references:
+    - https://www.cisco.com/en/US/technologies/tk648/tk362/technologies_white_paper09186a00800a3db9.html
+    - https://attack.mitre.org/techniques/T1046/
+  description: Detects port scanning activities based on patterns of connections to multiple ports with minimal data transfer. This could indicate reconnaissance activities or vulnerability scanning attempts.
+  where: |
+    safe(origin.ip, "") != "" &&
+    safe(target.ip, "") != "" &&
+    safe(log.packets, 0) <= 10 &&
+    safe(log.bytes, 0) < 1000 &&
+    safe(target.port, 0) > 0 &&
+    safe(protocol, "") == "TCP"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-2m
+      count: 15
+  deduplicateBy:
+    - origin.ip
+    - target.ip

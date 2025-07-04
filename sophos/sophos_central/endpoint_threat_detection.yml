@@ -1,0 +1,27 @@
+- id: 1002
+  dataTypes:
+    - sophos-central
+  name: Endpoint Threat Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Malware Detection
+  technique: T1055 - Process Injection
+  adversary: origin
+  references:
+    - https://developer.sophos.com/docs/endpoint-v1/1/routes/events/get
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects threats identified on endpoints by Sophos Central, including malware, PUAs, and suspicious behavior
+  where: safe(log.type, "") in ["Event::Endpoint::Threat::Detected", "Event::Endpoint::Threat::HIPSDetected", "Event::Endpoint::Threat::PuaDetected"] || (safe(log.severity, "") in ["high", "critical"] && safe(log.category, "") == "threat")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - log.endpointId
+    - log.threatName

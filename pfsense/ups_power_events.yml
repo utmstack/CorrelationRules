@@ -1,0 +1,18 @@
+- id: 1022
+  dataTypes:
+    - firewall-pfsense
+  name: pfSense UPS Power Event
+  impact:
+    confidentiality: 0
+    integrity: 2
+    availability: 5
+  category: System Health
+  technique: Power Disruption
+  adversary: system
+  references:
+    - https://blog.victormendonca.com/2020/10/28/how-to-setup-ups-on-pfsense/
+    - https://attack.mitre.org/techniques/T1495/
+  description: Detects UPS power events in pfSense including power failures, battery switches, low battery warnings, and power restoration. These events are critical for maintaining system availability and preventing data loss during power disruptions.
+  where: safe(log.eventType, "") == "apcupsd" && (safe(raw, "").contains("power failure") || safe(raw, "").contains("running on UPS batteries") || safe(raw, "").contains("battery power") || safe(raw, "").contains("low battery") || safe(raw, "").contains("power restored") || safe(raw, "").contains("mains returned") || safe(raw, "").contains("shutdown") || safe(raw, "").contains("battery exhausted"))
+  deduplicateBy:
+    - log.syslogHost

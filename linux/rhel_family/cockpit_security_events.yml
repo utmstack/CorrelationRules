@@ -1,0 +1,41 @@
+- id: 1012
+  dataTypes:
+    - rhel_family
+  name: Cockpit Web Console Security Events
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Web Console Security
+  technique: Remote Service Session Hijacking
+  adversary: origin
+  references:
+    - https://cockpit-project.org/guide/latest/privileges
+    - https://attack.mitre.org/techniques/T1563/
+  description: Detects security events related to the Cockpit web console including authentication failures, session hijacking attempts, unauthorized access to system management functions, and suspicious API calls
+  where: |
+    (safe(log.service, "") == "cockpit" || safe(log.program, "") == "cockpit-ws" || safe(log.process_name, "") contains "cockpit") &&
+    (
+      safe(log.message, "") contains "authentication failed" ||
+      safe(log.message, "") contains "invalid session" ||
+      safe(log.message, "") contains "unauthorized request" ||
+      safe(log.message, "") contains "permission denied" ||
+      safe(log.message, "") contains "session hijack" ||
+      safe(log.event_type, "") == "login_failed" ||
+      (safe(log.http_status, 0) >= 400 && safe(log.http_status, 0) < 500) ||
+      safe(log.action, "") in ["sudo_command", "system_config_change", "service_control"] && safe(log.result, "") == "failed"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.service.keyword
+          operator: filter_term
+          value: 'cockpit'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - target.user

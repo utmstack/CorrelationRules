@@ -1,0 +1,33 @@
+- id: 1026
+  dataTypes:
+    - macos
+  name: Application Firewall Configuration Modified
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: system
+  references:
+    - https://attack.mitre.org/techniques/T1562/004/
+    - https://support.apple.com/guide/security/firewall-protection-secf6b7ccbd5/web
+  description: Detects modifications to the macOS Application Layer Firewall (ALF) configuration, which could indicate an attempt to disable security controls or allow malicious network connections
+  where: |
+    (safe(log.process, "") == "socketfilterfw" || safe(log.subsystem, "") == "com.apple.alf") &&
+    (safe(log.eventMessage, "") contains "setglobalstate" ||
+     safe(log.eventMessage, "") contains "setloggingmode" ||
+     safe(log.eventMessage, "") contains "allowsigned" ||
+     safe(log.eventMessage, "") contains "firewall configuration changed" ||
+     safe(log.eventMessage, "") contains "ALF settings modified")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: system.hostname.keyword
+          operator: filter_term
+          value: '{{system.hostname}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - system.hostname
+    - log.process

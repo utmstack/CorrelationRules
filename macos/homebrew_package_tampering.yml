@@ -1,0 +1,33 @@
+- id: 1025
+  dataTypes:
+    - macos
+  name: Homebrew Package Tampering Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Initial Access
+  technique: T1195.001 - Supply Chain Compromise: Compromise Software Dependencies and Development Tools
+  adversary: origin
+  references:
+    - https://www.securityweek.com/homebrew-macos-users-targeted-with-information-stealer-malware/
+    - https://attack.mitre.org/techniques/T1195/001/
+  description: Detects potential Homebrew package tampering, malicious formula modifications, or suspicious package installation activities that could indicate supply chain attacks
+  where: |
+    (safe(log.process, "") == "brew" && (safe(log.eventMessage, "") contains "formula" && safe(log.eventMessage, "") contains "modified")) ||
+    (safe(log.eventMessage, "") contains "homebrew" && (safe(log.eventMessage, "") contains "curl" || safe(log.eventMessage, "") contains "wget")) ||
+    (safe(log.eventMessage, "") contains "/usr/local/Homebrew" && safe(log.eventMessage, "") contains "permission") ||
+    (safe(log.eventMessage, "") contains "brew" && safe(log.eventMessage, "") contains "checksum") ||
+    (safe(log.eventMessage, "") contains "Cellar" && (safe(log.eventMessage, "") contains "tamper" || safe(log.eventMessage, "") contains "integrity")) ||
+    (safe(log.process, "") contains "Terminal" && safe(log.eventMessage, "") contains "HOMEBREW_NO_INSECURE_REDIRECT")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-24h
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - log.eventMessage

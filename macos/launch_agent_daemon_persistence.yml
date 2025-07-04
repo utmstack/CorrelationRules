@@ -1,0 +1,36 @@
+- id: 1006
+  dataTypes:
+    - macos
+  name: Launch Agent/Daemon Persistence Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Persistence
+  technique: T1543.001 - Create or Modify System Process
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1543/001/
+    - https://developer.apple.com/documentation/os/logging
+    - https://www.crowdstrike.com/en-us/blog/how-to-leverage-apple-unified-log-for-incident-response/
+  description: Detects suspicious creation or modification of Launch Agents and Launch Daemons which are commonly used for persistence on macOS systems. Monitors for new plist files being created in LaunchAgents or LaunchDaemons directories.
+  where: |
+    (safe(log.subsystem, "") == "com.apple.launchd" || safe(log.process, "") == "launchd") &&
+    (safe(log.eventMessage, "") contains "LaunchAgent" || safe(log.eventMessage, "") contains "LaunchDaemon") &&
+    (safe(log.eventMessage, "") contains "loaded" || safe(log.eventMessage, "") contains "started" || safe(log.eventMessage, "") contains "created") &&
+    (safe(log.eventMessage, "") contains "/Library/LaunchAgents" || 
+     safe(log.eventMessage, "") contains "/Library/LaunchDaemons" ||
+     safe(log.eventMessage, "") contains "/System/Library/LaunchAgents" ||
+     safe(log.eventMessage, "") contains "/System/Library/LaunchDaemons" ||
+     safe(log.eventMessage, "") contains "~/Library/LaunchAgents")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.process

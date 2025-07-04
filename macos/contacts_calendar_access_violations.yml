@@ -1,0 +1,32 @@
+- id: 1022
+  dataTypes:
+    - macos
+  name: Contacts and Calendar Access Violations
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Privacy Violation
+  technique: T1005 - Data from Local System
+  adversary: origin
+  references:
+    - https://www.rainforestqa.com/blog/macos-tcc-db-deep-dive
+    - https://attack.mitre.org/techniques/T1005/
+  description: Detects unauthorized or suspicious access attempts to contacts and calendar data, including repeated permission requests that may indicate data harvesting attempts
+  where: |
+    (safe(log.subsystem, "") == "com.apple.TCC" && (safe(log.eventMessage, "") contains "AddressBook" || safe(log.eventMessage, "") contains "Calendar")) ||
+    (safe(log.process, "") == "tccd" && (safe(log.eventMessage, "") contains "kTCCServiceAddressBook" || safe(log.eventMessage, "") contains "kTCCServiceCalendar")) ||
+    (safe(log.eventMessage, "") contains "ContactsAgent" && safe(log.eventMessage, "") contains "denied") ||
+    (safe(log.eventMessage, "") contains "CalendarAgent" && safe(log.eventMessage, "") contains "unauthorized") ||
+    (safe(log.eventMessage, "") contains "privacy" && (safe(log.eventMessage, "") contains "contacts" || safe(log.eventMessage, "") contains "calendar"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - log.process

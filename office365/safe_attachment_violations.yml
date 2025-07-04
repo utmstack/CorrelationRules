@@ -1,0 +1,27 @@
+- id: 1025
+  dataTypes:
+    - o365
+  name: Office 365 Safe Attachment Policy Violation
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Initial Access
+  technique: Phishing
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/defender-office-365/safe-attachments-about
+    - https://attack.mitre.org/techniques/T1566/001/
+  description: Detects violations of Safe Attachment policies including malicious files blocked during detonation, policy modifications that reduce protection, or attempts to bypass attachment scanning that could lead to malware delivery.
+  where: (safe(action, "").contains("SafeAttachment") || safe(action, "") == "Set-SafeAttachmentPolicy" || safe(action, "") == "Remove-SafeAttachmentPolicy" || safe(action, "") == "Disable-SafeAttachmentRule" || safe(action, "").contains("MalwareDetected") || safe(action, "").contains("AttachmentBlocked") || safe(action, "").contains("DetonationBlock")) && safe(actionResult, "") == "Success"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.FileName

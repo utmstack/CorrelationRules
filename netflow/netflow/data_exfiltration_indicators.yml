@@ -1,0 +1,30 @@
+- id: 1007
+  dataTypes:
+    - netflow
+  name: Data Exfiltration Detection
+  impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 1
+  category: Data Theft
+  technique: Exfiltration Over C2 Channel
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1041/
+    - https://www.cisco.com/en/US/technologies/tk648/tk362/technologies_white_paper09186a00800a3db9.html
+  description: Detects potential data exfiltration based on unusually large outbound data transfers to external IP addresses
+  where: safe(origin.ip, "") != "" && safe(target.ip, "") != "" && safe(log.bytes, 0) > 10000000 && safe(origin.geolocation.country, "") != safe(target.geolocation.country, "") && safe(origin.port, 0) > 1024
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: dataType.keyword
+          operator: filter_term
+          value: netflow
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - target.ip

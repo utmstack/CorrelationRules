@@ -1,0 +1,40 @@
+- id: 1022
+  dataTypes:
+    - linux
+  name: Boot Loader Tampering
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Boot Security
+  technique: T1542.003 - Bootkit
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1542/003/
+    - https://www.debian.org/doc/manuals/securing-debian-manual/ch3.en.html
+  description: Detects attempts to modify boot loader configuration files, kernel parameters, or boot scripts that could be used to establish persistence or bypass security controls
+  where: |
+    (safe(log.file_path, "") contains "/boot/grub/" && 
+     safe(log.event_type, "") == "file_modify") ||
+    (safe(log.file_path, "") == "/etc/default/grub" && 
+     safe(log.event_type, "") == "file_modify") ||
+    (safe(log.process_name, "") == "grub-install" || 
+     safe(log.process_name, "") == "grub-mkconfig" || 
+     safe(log.process_name, "") == "update-grub") ||
+    (safe(log.file_path, "") contains "/boot/vmlinuz" && 
+     safe(log.event_type, "") == "file_modify") ||
+    (safe(log.file_path, "") contains "/boot/initrd" && 
+     safe(log.event_type, "") == "file_modify") ||
+    (safe(log.command_line, "") contains "grub-editenv" && 
+     safe(log.command_line, "") contains "set")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.file_path

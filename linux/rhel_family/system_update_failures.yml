@@ -1,0 +1,32 @@
+- id: 1017
+  dataTypes:
+    - rhel_family
+  name: System Update Failures in RHEL
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: System Administration
+  technique: System Service Disruption
+  adversary: origin
+  references:
+    - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/8/html/configuring_basic_system_settings/
+    - https://attack.mitre.org/techniques/T1495/
+  description: Detects failed system updates in RHEL systems including yum/dnf transaction failures, dependency conflicts, and update interruptions. These failures could indicate system issues, malicious interference, or compromised repositories.
+  where: |
+    safe(log.program, "") in ["yum", "dnf", "rpm", "systemd"] &&
+    (safe(log.message, "") =~ "update.*failed|upgrade.*failed|transaction.*failed|dependency.*error|conflict|broken packages" ||
+     safe(log.exit_code, 0) != 0 ||
+     safe(log.status, "") in ["failed", "error", "aborted"] ||
+     safe(log.message, "") =~ "Error downloading packages|Cannot download|Failed to download|Transaction check error")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: host.name.keyword
+          operator: filter_term
+          value: '{{host.name}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - host.name
+    - log.transaction_id

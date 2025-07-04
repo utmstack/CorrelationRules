@@ -1,0 +1,62 @@
+- id: 1004
+  dataTypes:
+    - macos
+  name: TCC Database Manipulation Detected
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 2
+  category: Privilege Escalation
+  technique: Abuse Elevation Control Mechanism
+  adversary: origin
+  references:
+    - https://interpressecurity.com/resources/report/return-of-the-macos-transparency-consent-and-control-tcc-database-manipulation/
+    - https://www.sentinelone.com/labs/bypassing-macos-tcc-user-privacy-protections-by-accident-and-design/
+    - https://attack.mitre.org/techniques/T1548/
+  description: Detects unauthorized attempts to manipulate the Transparency, Consent, and Control (TCC) database to bypass privacy protections and gain access to protected resources
+  where: |
+    (
+      safe(log.process, "") == "tccd" &&
+      (
+        safe(log.eventMessage, "") =~ ".*unauthorized.*access.*" ||
+        safe(log.eventMessage, "") =~ ".*bypass.*" ||
+        safe(log.eventMessage, "") =~ ".*CVE-2020-9934.*"
+      )
+    ) ||
+    (
+      safe(log.processImagePath, "") =~ ".*/Library/Application Support/com\\.apple\\.TCC/TCC\\.db.*" &&
+      safe(log.eventMessage, "") =~ ".*(write|modify|INSERT|UPDATE|DELETE).*" &&
+      safe(log.process, "") != "tccd"
+    ) ||
+    (
+      safe(log.eventMessage, "") =~ ".*TCC\\.db.*" &&
+      (
+        safe(log.eventMessage, "") =~ ".*(sqlite3|INSERT INTO|UPDATE|DELETE FROM).*" ||
+        safe(log.eventMessage, "") =~ ".*(kTCCServiceDeveloperTool|kTCCServiceScreenCapture|kTCCServiceAccessibility).*"
+      )
+    ) ||
+    (
+      safe(log.subsystem, "") == "com.apple.TCC" &&
+      (
+        safe(log.eventMessage, "") =~ ".*Full Disk Access.*" ||
+        safe(log.eventMessage, "") =~ ".*Screen Recording.*" ||
+        safe(log.eventMessage, "") =~ ".*Accessibility.*"
+      ) &&
+      safe(log.eventMessage, "") =~ ".*(grant|bypass|override).*"
+    ) ||
+    (
+      safe(log.process, "") =~ ".*" &&
+      safe(log.eventMessage, "") =~ ".*com\\.apple\\.private\\.tcc\\.manager.*" &&
+      safe(log.process, "") != "tccd"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.process

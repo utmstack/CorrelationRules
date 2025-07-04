@@ -1,0 +1,66 @@
+- id: 1005
+  dataTypes:
+    - macos
+  name: Suspicious Kernel Extension Loading Detected
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Persistence
+  technique: Boot or Logon Autostart Execution
+  adversary: origin
+  references:
+    - https://www.microsoft.com/en-us/security/blog/2025/01/13/analyzing-cve-2024-44243-a-macos-system-integrity-protection-bypass-through-kernel-extensions/
+    - https://attack.mitre.org/techniques/T1547/006/
+  description: Detects suspicious or unauthorized kernel extension (kext) loading attempts that could indicate rootkit installation or system compromise
+  where: |
+    (
+      safe(log.process, "") =~ ".*(kextload|kextutil|kextcache).*" &&
+      (
+        safe(log.eventMessage, "") =~ ".*load.*" ||
+        safe(log.eventMessage, "") =~ ".*install.*"
+      ) &&
+      (
+        safe(log.processImagePath, "") !~ ".*/System/Library/.*" ||
+        safe(log.eventMessage, "") =~ ".*unsigned.*" ||
+        safe(log.eventMessage, "") =~ ".*invalid.*signature.*"
+      )
+    ) ||
+    (
+      safe(log.subsystem, "") == "com.apple.kernel" &&
+      safe(log.eventMessage, "") =~ ".*kext.*" &&
+      (
+        safe(log.eventMessage, "") =~ ".*load.*failed.*" ||
+        safe(log.eventMessage, "") =~ ".*authentication.*error.*" ||
+        safe(log.eventMessage, "") =~ ".*rootless.*"
+      )
+    ) ||
+    (
+      safe(log.process, "") == "kernel" &&
+      safe(log.eventMessage, "") =~ ".*kext.*" &&
+      (
+        safe(log.eventMessage, "") =~ ".*third.*party.*" ||
+        safe(log.eventMessage, "") =~ ".*unsigned.*" ||
+        safe(log.eventMessage, "") =~ ".*developer.*mode.*"
+      )
+    ) ||
+    (
+      safe(log.eventMessage, "") =~ ".*/System/Library/Extensions.*" &&
+      safe(log.eventMessage, "") =~ ".*(modify|write|create).*" &&
+      safe(log.process, "") != "kextcache"
+    ) ||
+    (
+      safe(log.process, "") == "eslogger" &&
+      safe(log.eventMessage, "") =~ ".*kext.*bypass.*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-20m
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.processImagePath

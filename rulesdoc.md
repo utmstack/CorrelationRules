@@ -89,7 +89,7 @@ Additional events to search for, containing:
 - **count**: The number of events to match (Max 50)
 
 ### deduplicateBy
-Fields used for deduplication of alerts.
+Fields used for deduplication of alerts. COuld also be understood as grouping. This way multiple alerts that can be grouped together based on this field if they are similar.
 
 ## Rule Evaluation
 

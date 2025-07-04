@@ -1,0 +1,32 @@
+- id: 1021
+  dataTypes:
+    - rhel_family
+  name: RHEL Service Modifications Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: System Tampering
+  technique: T1543.003 - Create or Modify System Process
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1543/003/
+    - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_and_managing_security/auditing-the-system_configuring-and-managing-security
+  description: Detects unauthorized modifications to systemd services, including creation of new services, modification of existing service files, or changes to service configurations in RHEL systems
+  where: |
+    (safe(log.process, "") == "systemctl" && safe(log.action, "") in ["enable", "disable", "mask", "unmask"]) ||
+    (safe(log.file_path, "") contains "/etc/systemd/system/" && safe(log.action, "") in ["create", "modify", "write"]) ||
+    (safe(log.file_path, "") contains "/usr/lib/systemd/system/" && safe(log.action, "") in ["create", "modify", "write"]) ||
+    (safe(log.command, "") contains "systemctl daemon-reload") ||
+    (safe(log.event_type, "") == "service_modification" && safe(log.service_name, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.service_name

@@ -1,0 +1,27 @@
+- id: 1012
+  dataTypes:
+    - firewall-sonicwall
+  name: SonicWall High Availability Failover Detection
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 5
+  category: System Availability
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/techdocs/pdf/sonicos-6-5-4-log-events-reference-guide.pdf
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects high availability failover events and cluster state changes in SonicWall firewalls which could indicate system issues, attacks on availability, or legitimate maintenance activities
+  where: safe(log.category, "").contains("High Availability") || safe(log.eventName, "").contains("HA") || safe(log.msg, "").contains("failover") || safe(log.msg, "").contains("standby") || safe(log.msg, "").contains("primary") || safe(log.msg, "").contains("cluster") || safe(log.msg, "").contains("heartbeat") || safe(log.usestandbysa, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - log.syslogHost
+    - log.msg

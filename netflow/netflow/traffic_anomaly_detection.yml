@@ -1,0 +1,29 @@
+- id: 1001
+  dataTypes:
+    - netflow
+  name: Unusual Traffic Volume Anomaly Detection
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 4
+  category: Network Activity
+  technique: Data Exfiltration
+  adversary: origin
+  references:
+    - https://www.cisco.com/en/US/technologies/tk648/tk362/technologies_white_paper09186a00800a3db9.html
+    - https://attack.mitre.org/techniques/T1048/
+  description: Detects unusual traffic volumes that could indicate data exfiltration, DDoS attacks, or other anomalous network behavior. This rule triggers when a single source IP generates traffic exceeding normal thresholds.
+  where: |
+    safe(origin.ip, "") != "" && 
+    safe(log.bytes, 0) > 10000000 &&
+    safe(log.packets, 0) > 10000
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip

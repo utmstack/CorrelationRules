@@ -1,0 +1,27 @@
+- id: 1010
+  dataTypes:
+    - sophos-central
+  name: Peripheral Control Security Event
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Peripheral Control
+  technique: Collection
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/EndpointProtection/ConfigureDeviceControl/index.html
+    - https://attack.mitre.org/techniques/T1025/
+  description: Detects peripheral control events including blocked or monitored access to USB devices, optical drives, network devices, and other peripherals. This may indicate unauthorized device usage or potential data theft attempts.
+  where: safe(log.type, "") == "Event::Endpoint::Peripheral::Blocked" || safe(log.category, "") == "Peripherals Controlled" || (safe(log.peripheralType, "") != "" && safe(log.action, "") == "blocked")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+      within: now-4h
+      count: 10
+  deduplicateBy:
+    - log.endpointId
+    - log.peripheralType

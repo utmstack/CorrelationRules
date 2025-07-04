@@ -1,0 +1,32 @@
+- id: 1015
+  dataTypes:
+    - sophos-central
+  name: Sophos Central Behavioral Analysis Alert
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Suspicious Behavior
+  technique: Behavioral Analysis Evasion
+  adversary: origin
+  references:
+    - https://developer.sophos.com/siem-api-schemas
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects suspicious behavior patterns identified by Sophos behavioral analysis engine, including process injection attempts, privilege escalation, and other anomalous activities that indicate potential compromise.
+  where: |
+    safe(log.type, "") == "Event::Endpoint::Threat::BehavioralDetection" ||
+    safe(log.type, "") == "Event::Endpoint::BehaviorDetected" ||
+    (safe(log.detectionMethod, "") == "Behavioral" || safe(log.detectionMethod, "") == "HIPS") ||
+    (safe(log.name, "") contains "Behavioral" && safe(log.severity, "") in ["medium", "high", "critical"]) ||
+    (safe(log.description, "") contains "suspicious behavior" || safe(log.description, "") contains "behavioral detection" || safe(log.description, "") contains "process injection")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+      within: now-2h
+      count: 5
+  deduplicateBy:
+    - log.endpointId
+    - log.processPath

@@ -1,0 +1,57 @@
+- id: 1019
+  dataTypes:
+    - pa_firewall
+  name: Kubernetes Security Events
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 4
+  category: Kubernetes Security
+  technique: Deploy Container
+  adversary: origin
+  references:
+    - https://www.paloaltonetworks.com/prisma/environments/kubernetes
+    - https://attack.mitre.org/techniques/T1610/
+  description: Detects critical security events in Kubernetes environments including unauthorized API access, pod security policy violations, and suspicious cluster operations
+  where: |
+    (
+      safe(log.app, "").contains("kubernetes") ||
+      safe(log.app, "").contains("k8s") ||
+      safe(log.category, "").contains("kubernetes") ||
+      safe(log.rule, "").contains("k8s") ||
+      safe(target.port, 0) == 6443 ||
+      safe(target.port, 0) == 10250 ||
+      safe(target.port, 0) == 10255
+    ) &&
+    (
+      (
+        safe(log.act, "") == "deny" ||
+        safe(log.act, "") == "block" ||
+        safe(action, "") == "deny" ||
+        safe(action, "") == "block"
+      ) ||
+      (
+        safe(log.category, "").contains("api") &&
+        (
+          safe(log.category, "").contains("unauthorized") ||
+          safe(log.category, "").contains("forbidden")
+        )
+      ) ||
+      (
+        safe(log.rule, "").contains("pod-security") ||
+        safe(log.rule, "").contains("rbac") ||
+        safe(log.rule, "").contains("namespace")
+      )
+    ) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.sessionid

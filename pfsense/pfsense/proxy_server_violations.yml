@@ -1,0 +1,27 @@
+- id: 1017
+  dataTypes:
+    - firewall-pfsense
+  name: pfSense Proxy Server Violations
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Policy Violation
+  technique: Proxy Bypass
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/packages/cache-proxy/index.html
+    - https://attack.mitre.org/techniques/T1090/
+  description: Detects violations of proxy server policies in pfSense Squid proxy, including attempts to bypass proxy restrictions, access blocked sites, or use unauthorized protocols. These violations could indicate policy evasion or malicious activity.
+  where: safe(log.eventType, "") == "squid" && (safe(action, "") == "TCP_DENIED" || safe(action, "") == "TCP_MISS_ABORTED" || safe(action, "") == "TCP_TUNNEL" && safe(log.reason, "").contains("CONNECT") || safe(log.reason, "").contains("403") || safe(log.reason, "").contains("407") || safe(log.reason, "").contains("blocked"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - target.ip

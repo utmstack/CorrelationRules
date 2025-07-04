@@ -1,0 +1,35 @@
+- id: 1019
+  dataTypes:
+    - mikrotik_fw
+  name: Bridge Security Issue Detected
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Network Security
+  technique: Network Bridging Attack
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/328353/Securing+your+router
+    - https://attack.mitre.org/techniques/T1599/
+  description: Detects potential bridge security issues including MAC flooding, STP manipulation, or unauthorized bridge port activity that could indicate network segmentation bypass attempts
+  where: |
+    safe(log.topics, "") == "bridge" && 
+    (safe(log.chain, "").contains("loop") ||
+     safe(log.chain, "").contains("flood") ||
+     safe(log.action, "") == "drop" ||
+     safe(protocol, "").contains("stp"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.mac.keyword
+          operator: filter_term
+          value: '{{origin.mac}}'
+        - field: log.topics.keyword
+          operator: filter_term
+          value: 'bridge'
+      within: now-5m
+      count: 15
+  deduplicateBy:
+    - origin.mac
+    - log.chain

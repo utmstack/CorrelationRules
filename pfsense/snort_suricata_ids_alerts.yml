@@ -1,0 +1,45 @@
+- id: 1005
+  dataTypes:
+    - firewall-pfsense
+  name: pfSense Snort/Suricata IDS Alerts
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Intrusion Detection
+  technique: Execution
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/packages/snort/alerts.html
+    - https://docs.netgate.com/pfsense/en/latest/packages/snort/index.html
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects high-priority IDS alerts from Snort or Suricata indicating malicious activity, exploits, or known attack patterns
+  where: |
+    (safe(log.eventType, "") ~= "(?i)(snort|suricata)" && 
+     safe(raw, "") ~= "(?i)(priority\\s*:\\s*1|classification\\s*:\\s*(trojan|exploit|malware|backdoor|shellcode|rootkit)|\\[\\*\\*\\]|alert\\s+tcp|alert\\s+udp|alert\\s+icmp)") ||
+    (safe(log.eventType, "") ~= "(?i)(snort|suricata)" && 
+     safe(raw, "") ~= "(?i)(attempted|successful|suspicious|malicious|attack|intrusion|compromise|scan)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.eventType.keyword
+          operator: filter_wildcard
+          value: '*snort*'
+      within: now-1h
+      count: 5
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.eventType.keyword
+          operator: filter_wildcard
+          value: '*suricata*'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - raw

@@ -1,0 +1,38 @@
+- id: 1012
+  dataTypes:
+    - o365
+  name: Abnormal Guest User Invitation Activity
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Identity and Access Management
+  technique: Account Creation
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/purview/audit-log-activities
+    - https://attack.mitre.org/techniques/T1136/
+  description: Detects unusual spikes in guest user invitations which could indicate an attempt to establish persistence through external accounts or potential data exfiltration preparation by adding unauthorized external collaborators
+  where: |
+    safe(log.Workload, "") == "AzureActiveDirectory" && 
+    (
+      safe(action, "") == "Invite external user" ||
+      safe(action, "") == "InviteGuest" ||
+      safe(action, "") == "Add guest to group" ||
+      safe(action, "") == "Guest user invite redeemed"
+    ) &&
+    safe(actionResult, "") == "Success"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'Invite external user'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - log.deviceTime

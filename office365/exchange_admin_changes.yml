@@ -1,0 +1,29 @@
+- id: 1006
+  dataTypes:
+    - o365
+  name: Exchange Admin Configuration Changes
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Configuration Changes
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://docs.microsoft.com/en-us/exchange/security-and-compliance/exchange-auditing-reports/view-administrator-audit-log
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects changes to Exchange administrative configuration that could impact security settings, user permissions, or mail flow policies
+  where: |
+    safe(action, "") in ["Set-AdminAuditLogConfig", "Set-TransportRule", "Set-MalwareFilterPolicy", "Set-HostedContentFilterPolicy", "Set-DkimSigningConfig", "Set-OrganizationConfig", "Set-RoleGroup", "Add-RoleGroupMember", "Remove-RoleGroupMember", "New-ManagementRoleAssignment", "Remove-ManagementRoleAssignment"] && 
+    safe(actionResult, "") == "Success"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - action

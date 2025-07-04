@@ -1,0 +1,26 @@
+- id: 1025
+  dataTypes:
+    - netflow
+  name: NetFlow Template Tampering Detection
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1565/
+    - https://www.cisco.com/en/US/technologies/tk648/tk362/technologies_white_paper09186a00800a3db9.html
+  description: Detects potential NetFlow template tampering by identifying flows with invalid or suspicious field combinations, abnormal timestamps, or flows that appear to be crafted to evade detection
+  where: (safe(log.FirstSwitched, "") != "" && safe(log.LastSwitched, "") != "" && safe(log.FirstSwitched, "") > safe(log.LastSwitched, "")) || (safe(log.InputInterface, "") == safe(log.OutputInterface, "") && safe(log.InputInterface, "") != "" && safe(log.InputInterface, "") != "0") || (safe(origin.ip, "") == safe(target.ip, "") && safe(origin.ip, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip

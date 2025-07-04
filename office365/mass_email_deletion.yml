@@ -1,0 +1,29 @@
+- id: 1001
+  dataTypes:
+    - o365
+  name: Mass Email Deletion Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Data Loss
+  technique: Email Collection
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/purview/audit-mailboxes
+    - https://attack.mitre.org/techniques/T1114/
+  description: Detects when a user performs mass deletion of emails which could indicate data destruction, covering tracks, or malicious insider activity. Monitors for multiple HardDelete or SoftDelete operations within a short time window.
+  where: safe(action, "") in ["HardDelete", "SoftDelete"] && safe(origin.user, "") != "" && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_terms
+          value: ["HardDelete", "SoftDelete"]
+      within: now-15m
+      count: 50
+  deduplicateBy:
+    - origin.user

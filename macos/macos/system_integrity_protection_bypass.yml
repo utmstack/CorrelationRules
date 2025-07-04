@@ -1,0 +1,44 @@
+- id: 1001
+  dataTypes:
+    - macos
+  name: System Integrity Protection (SIP) Bypass Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Privilege Escalation
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://www.microsoft.com/en-us/security/blog/2025/01/13/analyzing-cve-2024-44243-a-macos-system-integrity-protection-bypass-through-kernel-extensions/
+    - https://attack.mitre.org/techniques/T1553/006/
+  description: Detects attempts to bypass System Integrity Protection (SIP) through unauthorized modifications to protected locations or suspicious kernel extension loading with rootless entitlements
+  where: |
+    (
+      safe(log.process, "") == "storagekitd" && 
+      safe(log.eventMessage, "") =~ ".*com\\.apple\\.rootless\\.install\\.heritable.*"
+    ) ||
+    (
+      safe(log.processImagePath, "") =~ ".*/System/Library/.*" && 
+      safe(log.eventMessage, "") =~ ".*(csrutil|disable|rootless).*" &&
+      safe(log.eventType, "") == "logEvent"
+    ) ||
+    (
+      safe(log.subsystem, "") == "com.apple.kernel" &&
+      safe(log.eventMessage, "") =~ ".*(SIP|rootless).*bypass.*"
+    ) ||
+    (
+      safe(log.process, "") =~ ".*kext.*" &&
+      safe(log.eventMessage, "") =~ ".*rootless.*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.process

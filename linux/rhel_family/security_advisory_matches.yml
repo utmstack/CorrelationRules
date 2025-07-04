@@ -1,0 +1,43 @@
+- id: 1015
+  dataTypes:
+    - rhel_family
+  name: Red Hat Security Advisory Matches
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Vulnerability Management
+  technique: Exploitation of Known Vulnerabilities
+  adversary: origin
+  references:
+    - https://access.redhat.com/security/security-updates/
+    - https://attack.mitre.org/techniques/T1203/
+  description: Detects when system activities match patterns associated with Red Hat Security Advisories (RHSA), indicating potential exploitation of known vulnerabilities or missing security patches
+  where: |
+    (safe(log.source, "") contains "rhel" || safe(log.os_family, "") == "rhel") &&
+    (
+      safe(log.message, "") contains "CVE-" ||
+      safe(log.message, "") contains "RHSA-" ||
+      safe(log.message, "") contains "security advisory" ||
+      safe(log.vulnerability_id, "") != "" ||
+      safe(log.event_type, "") == "vulnerability_exploit" ||
+      (safe(log.package_name, "") != "" && safe(log.package_version, "") != "" && safe(log.vulnerability_severity, "") in ["Critical", "Important"]) ||
+      safe(log.audit_type, "") == "CRYPTO_KEY_USER" ||
+      safe(log.audit_type, "") == "CRYPTO_SESSION" ||
+      (safe(log.service, "") == "yum" && safe(log.message, "") contains "security update available") ||
+      (safe(log.program, "") == "rpm" && safe(log.message, "") contains "signature verification failed")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+        - field: log.vulnerability_id.keyword
+          operator: filter_term
+          value: '{{log.vulnerability_id}}'
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - origin.hostname
+    - log.vulnerability_id

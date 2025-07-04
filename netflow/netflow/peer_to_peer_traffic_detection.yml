@@ -1,0 +1,29 @@
+- id: 1009
+  dataTypes:
+    - netflow
+  name: Peer-to-Peer Traffic Detection
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 3
+  category: Unauthorized Network Activity
+  technique: Protocol Tunneling
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1572/
+    - https://www.cisco.com/en/US/technologies/tk648/tk362/technologies_white_paper09186a00800a3db9.html
+  description: Detects potential peer-to-peer traffic based on high port numbers and bidirectional data flows characteristic of P2P applications
+  where: safe(origin.ip, "") != "" && safe(target.ip, "") != "" && safe(origin.port, 0) > 6000 && safe(target.port, 0) > 6000 && safe(log.bytes, 0) > 100000 && safe(protocol, "") == "6"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: dataType.keyword
+          operator: filter_term
+          value: netflow
+      within: now-30m
+      count: 15
+  deduplicateBy:
+    - origin.ip

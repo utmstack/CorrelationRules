@@ -1,0 +1,27 @@
+- id: 1020
+  dataTypes:
+    - firewall-pfsense
+  name: pfSense LDAP Integration Issues
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 4
+  category: Directory Service Failure
+  technique: Account Discovery
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/usermanager/ldap.html
+    - https://attack.mitre.org/techniques/T1087/
+  description: Detects LDAP integration issues in pfSense including connection failures, binding errors, query timeouts, or certificate problems. These issues can prevent proper authentication and may indicate configuration problems or potential LDAP injection attempts.
+  where: (safe(log.eventType, "") == "php-fpm" || safe(log.eventType, "") == "openvpn" || safe(log.eventType, "") == "webConfigurator") && (safe(log.reason, "").contains("LDAP") && (safe(log.reason, "").contains("bind failed") || safe(log.reason, "").contains("connect error") || safe(log.reason, "").contains("certificate verify failed") || safe(log.reason, "").contains("search failed") || safe(log.reason, "").contains("timeout") || safe(log.reason, "").contains("Can't contact LDAP server")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - log.syslogHost
+    - log.reason

@@ -1,0 +1,36 @@
+- id: 1003
+  dataTypes:
+    - firewall-sonicwall
+  name: SonicWall Application Control Policy Violation
+  impact:
+    confidentiality: 2
+    integrity: 2
+    availability: 1
+  category: Policy Violation
+  technique: Application Layer Protocol
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/techdocs/pdf/sonicos-6-5-4-log-events-reference-guide.pdf
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects when users attempt to access blocked applications or violate application control policies. This may indicate attempts to bypass security controls or use unauthorized software for data exfiltration or command and control.
+  where: |
+    (safe(log.appcat, "") != "" || 
+     safe(log.app, "") != "" ||
+     safe(log.appName, "") != "" ||
+     safe(log.msg, "").contains("App Control") ||
+     safe(log.eventName, "").contains("Application") ||
+     safe(log.category, "").contains("Application Control")) &&
+    (safe(action, "") == "blocked" || 
+     safe(log.fw_action, "") == "drop" ||
+     safe(log.result, "").contains("denied"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-2h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.app

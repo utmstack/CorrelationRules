@@ -1,0 +1,31 @@
+- id: 1012
+  dataTypes:
+    - firewall-mikrotik
+  name: MikroTik Firewall Rule Bypass Attempt
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://medium.com/tenable-techblog/mikrotik-firewall-nat-bypass-b8d46398bf24
+    - https://attack.mitre.org/techniques/T1562/004/
+  description: Detects attempts to bypass MikroTik firewall rules through various methods including Winbox port exploitation (CVE-2019-3924), unauthorized rule modifications, or suspicious connection patterns that indicate firewall evasion techniques.
+  where: |
+    (safe(target.port, 0) == 8291 && safe(origin.ip, "") != "" && safe(log.chain, "") contains "input") ||
+    (safe(log.topics, "") contains "firewall" && safe(log.restData, "") contains "rule" && 
+     (safe(log.restData, "") contains "removed" || safe(log.restData, "") contains "disabled")) ||
+    (safe(log.action, "") == "drop" && safe(target.port, 0) in [5678, 20561])
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - target.port

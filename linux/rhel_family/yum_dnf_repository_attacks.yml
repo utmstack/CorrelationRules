@@ -1,0 +1,46 @@
+- id: 1001
+  dataTypes:
+    - rhel_family
+  name: YUM/DNF Repository Manipulation Attack
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Package Management
+  technique: Supply Chain Compromise
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1195/001/
+    - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html-single/managing_software_with_the_dnf_tool/index
+  description: Detects potential attacks on YUM/DNF repositories including unauthorized repository additions, GPG key modifications, or suspicious package installations that could indicate supply chain compromise
+  where: |
+    (
+      safe(log.comm, "") in ["yum", "dnf", "rpm"] &&
+      safe(log.exe, "") in ["/usr/bin/yum", "/usr/bin/dnf", "/usr/bin/rpm"] &&
+      (
+        (safe(log.path, "") contains ".repo" && safe(log.syscall, "") in ["2", "257"]) ||
+        (safe(log.path, "") contains "gpgkey" && safe(log.operation, "") == "write") ||
+        (safe(log.args, "") contains "install" && safe(log.args, "") contains "--nogpgcheck") ||
+        (safe(log.message, "") contains "Repository" && safe(log.message, "") contains "added") ||
+        (safe(log.message, "") contains "GPG key" && safe(log.message, "") contains "imported")
+      )
+    ) ||
+    (
+      safe(log.eventType, "") == "PACKAGE_INSTALLED" &&
+      (
+        safe(log.package_source, "") == "unknown" ||
+        safe(log.gpg_verification, "") == "failed" ||
+        safe(log.repository, "") not in ["rhel-8-baseos-rpms", "rhel-8-appstream-rpms", "rhel-9-baseos-rpms", "rhel-9-appstream-rpms"]
+      )
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.comm

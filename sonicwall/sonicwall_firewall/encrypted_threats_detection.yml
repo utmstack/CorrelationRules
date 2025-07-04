@@ -1,0 +1,29 @@
+- id: 1024
+  dataTypes:
+    - sonicwall_firewall
+  name: SonicWall Encrypted Threats Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Encrypted Traffic Analysis
+  technique: Encrypted Channel
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/solutions/advanced-threats/encrypted-threats/
+    - https://attack.mitre.org/techniques/T1573/
+  description: Detects threats hidden in encrypted traffic identified by SonicWall DPI-SSL (Deep Packet Inspection of SSL/TLS) including malware, exploits, and data exfiltration attempts over encrypted channels
+  where: |
+    (safe(log.eventName, "").contains("SSL") || safe(log.eventName, "").contains("TLS") || safe(log.eventName, "").contains("encrypted") || safe(log.eventName, "").contains("DPI-SSL") || safe(log.msg, "").contains("SSL") || safe(log.msg, "").contains("TLS") || safe(log.msg, "").contains("encrypted") || safe(protocol, "").contains("SSL") || safe(protocol, "").contains("TLS")) &&
+    (safe(log.eventName, "").contains("threat") || safe(log.eventName, "").contains("malware") || safe(log.eventName, "").contains("blocked") || safe(log.eventName, "").contains("violation") || safe(log.msg, "").contains("threat") || safe(log.msg, "").contains("malware") || safe(log.msg, "").contains("blocked") || safe(log.result, "") == "blocked" || safe(action, "") == "blocked" || safe(log.ipscat, "") != "" || safe(log.spycat, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - target.ip

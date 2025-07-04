@@ -1,0 +1,50 @@
+- id: 1017
+  dataTypes:
+    - pa_firewall
+  name: Cortex XDR Integration Alerts
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Endpoint Detection
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://docs-cortex.paloaltonetworks.com/r/Cortex-XDR/Cortex-XDR-Documentation/Log-formats
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects high-priority alerts from Cortex XDR integration including endpoint threats, behavioral anomalies, and advanced persistent threats
+  where: |
+    (
+      safe(log.pa_type, "") == "CORRELATION" || 
+      safe(log.pa_type, "") == "THREAT" ||
+      safe(log.category, "").contains("cortex") ||
+      safe(log.app, "").contains("cortex-xdr")
+    ) &&
+    (
+      safe(log.severityLabel, "") == "critical" ||
+      safe(log.severityLabel, "") == "high" ||
+      safe(log.threatid, "") != ""
+    ) &&
+    (
+      safe(log.act, "") == "alert" ||
+      safe(log.act, "") == "block" ||
+      safe(action, "") == "alert" ||
+      safe(action, "") == "block" ||
+      safe(log.category, "").contains("malware") ||
+      safe(log.category, "").contains("exploit") ||
+      safe(log.category, "").contains("command-and-control")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.threatid.keyword
+          operator: filter_term
+          value: '{{log.threatid}}'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.threatid

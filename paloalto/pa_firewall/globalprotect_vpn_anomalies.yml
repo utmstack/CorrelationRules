@@ -1,0 +1,30 @@
+- id: 1014
+  dataTypes:
+    - pa_firewall
+  name: GlobalProtect VPN Anomalies
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Remote Access
+  technique: Valid Accounts
+  adversary: user
+  references:
+    - https://docs.paloaltonetworks.com/globalprotect/10-2/globalprotect-admin/monitoring/view-globalprotect-logs
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects anomalous GlobalProtect VPN connection patterns including failed authentications, unusual connection times, or suspicious source locations
+  where: safe(log.type, "") == "GLOBALPROTECT" && (safe(log.eventid, "") == "gateway-auth-fail" || safe(log.eventid, "") == "portal-auth-fail") && safe(user.name, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: user.name.keyword
+          operator: filter_term
+          value: '{{user.name}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'GLOBALPROTECT'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - user.name
+    - origin.ip

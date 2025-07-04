@@ -1,0 +1,36 @@
+- id: 1020
+  dataTypes:
+    - mikrotik_fw
+  name: VLAN Hopping Attempt Detected
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Network Segmentation Bypass
+  technique: VLAN Hopping
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/88014957/VLAN
+    - https://attack.mitre.org/techniques/T1599/001/
+  description: Detects potential VLAN hopping attempts where an attacker tries to bypass network segmentation by sending packets with multiple VLAN tags or manipulating VLAN configurations
+  where: |
+    (safe(log.topics, "") == "vlan" || 
+     safe(log.chain, "").contains("vlan")) && 
+    (safe(log.action, "") == "drop" ||
+     safe(log.chain, "").contains("invalid") ||
+     safe(log.vlan-id, "") != "" ||
+     safe(log.len, 0) > 1522)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: origin.mac.keyword
+          operator: filter_term
+          value: '{{origin.mac}}'
+      within: now-10m
+      count: 8
+  deduplicateBy:
+    - origin.ip
+    - origin.mac

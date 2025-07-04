@@ -1,0 +1,34 @@
+- id: 1017
+  dataTypes:
+    - sophos-central
+  name: Zero Trust Network Access Policy Violation
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Access Control
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.sophos.com/en-us/products/zero-trust-network-access
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects Zero Trust Network Access (ZTNA) policy violations where users or devices attempt to access resources they are not authorized for, potentially indicating compromised credentials or lateral movement attempts
+  where: |
+    safe(log.type, "") == "ztna" && 
+    safe(log.action, "") in ["blocked", "denied"] &&
+    safe(log.endpointType, "") != "" &&
+    (safe(log.reason, "") contains "policy" || safe(log.reason, "") contains "health_check_failed")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userId.keyword
+          operator: filter_term
+          value: '{{log.userId}}'
+        - field: log.action.keyword
+          operator: filter_terms
+          value: '["blocked", "denied"]'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - log.userId
+    - log.endpointId

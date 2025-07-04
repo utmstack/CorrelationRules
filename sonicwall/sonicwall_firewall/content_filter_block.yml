@@ -1,0 +1,36 @@
+- id: 1004
+  dataTypes:
+    - firewall-sonicwall
+  name: SonicWall Content Filter Block
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 1
+  category: Web Security
+  technique: Web Protocols
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/techdocs/pdf/sonicos-6-5-4-log-events-reference-guide.pdf
+    - https://attack.mitre.org/techniques/T1071/001/
+  description: Detects when SonicWall Content Filter Service (CFS) blocks access to prohibited websites or content categories. This may indicate attempts to access malicious sites, inappropriate content, or policy violations.
+  where: |
+    (safe(log.category, "").contains("Content Filter") ||
+     safe(log.msg, "").contains("CFS") ||
+     safe(log.msg, "").contains("Content Filter") ||
+     safe(log.eventName, "").contains("Content Filter") ||
+     safe(log.catid, "") != "" ||
+     safe(log.contentObject, "") != "") &&
+    (safe(action, "") == "blocked" || 
+     safe(log.fw_action, "") == "drop" ||
+     safe(log.result, "").contains("blocked"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - target.host

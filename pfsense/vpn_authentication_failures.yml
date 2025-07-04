@@ -1,0 +1,35 @@
+- id: 1003
+  dataTypes:
+    - firewall-pfsense
+  name: pfSense VPN Authentication Failures
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Authentication Failure
+  technique: Credential Access
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/monitoring/logs/openvpn.html
+    - https://docs.netgate.com/pfsense/en/latest/monitoring/logs/ipsec.html
+    - https://attack.mitre.org/techniques/T1110/
+  description: Detects multiple VPN authentication failures from the same source, indicating potential brute force attacks or credential stuffing attempts against VPN services
+  where: |
+    safe(log.eventType, "") ~= "(?i)(openvpn|ipsec|charon)" && 
+    (safe(raw, "") ~= "(?i)(authentication failed|auth fail|incorrect password|bad username|tls.*fail|eap.*fail|no trusted.*key|invalid.*certific)" ||
+     safe(log.csvMsg, "") ~= "(?i)(authentication failed|auth fail|incorrect password|bad username|tls.*fail|eap.*fail|no trusted.*key|invalid.*certific)") &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.eventType.keyword
+          operator: filter_wildcard
+          value: '*vpn*'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.eventType

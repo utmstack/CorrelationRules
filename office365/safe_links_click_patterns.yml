@@ -1,0 +1,30 @@
+- id: 1026
+  dataTypes:
+    - o365
+  name: Safe Links Click Pattern Anomaly
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: Defense Evasion
+  technique: User Execution - Malicious Link
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/defender-office-365/safe-links-about
+    - https://attack.mitre.org/techniques/T1204/001/
+  description: Detects unusual patterns in Safe Links click behavior that may indicate phishing attempts or malicious URL access. This rule monitors for multiple clicks on suspicious URLs from the same user within a short timeframe.
+  where: safe(action, "") == "ClickedSafeLink" && safe(actionResult, "") == "Blocked" && safe(origin.user, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'ClickedSafeLink'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.ip

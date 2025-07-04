@@ -1,0 +1,37 @@
+- id: 1004
+  dataTypes:
+    - netflow
+  name: Geographic Location Anomaly Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Initial Access
+  technique: External Remote Services
+  adversary: origin
+  references:
+    - https://www.cisco.com/en/US/technologies/tk648/tk362/technologies_white_paper09186a00800a3db9.html
+    - https://attack.mitre.org/techniques/T1133/
+  description: Detects network connections from unusual geographic locations or countries with known threat activity. This could indicate unauthorized access, VPN abuse, or connections from compromised systems in unexpected locations.
+  where: |
+    safe(origin.geolocation.country_iso_code, "") != "" &&
+    safe(origin.geolocation.country_iso_code, "") != "US" &&
+    safe(origin.geolocation.country_iso_code, "") != "CA" &&
+    safe(origin.geolocation.country_iso_code, "") != "GB" &&
+    safe(origin.geolocation.country_iso_code, "") != "AU" &&
+    (safe(target.port, 0) == 22 || 
+     safe(target.port, 0) == 3389 || 
+     safe(target.port, 0) == 445 ||
+     safe(target.port, 0) == 1433 ||
+     safe(target.port, 0) == 3306)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.geolocation.country_iso_code.keyword
+          operator: filter_term
+          value: '{{origin.geolocation.country_iso_code}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - origin.geolocation.country_iso_code

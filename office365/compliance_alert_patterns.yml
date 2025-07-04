@@ -1,0 +1,47 @@
+- id: 1015
+  dataTypes:
+    - o365
+  name: Suspicious Compliance Alert Activity
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Policy and Compliance
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/purview/audit-log-activities
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects suspicious patterns in compliance-related activities including alert suppression, policy modifications, or audit log tampering that could indicate attempts to evade security monitoring or hide malicious activities
+  where: |
+    safe(log.Workload, "") == "SecurityComplianceCenter" &&
+    (
+      safe(action, "") == "AlertTriggered" ||
+      safe(action, "") == "AlertEntityGenerated" ||
+      safe(action, "") == "AlertUpdated" ||
+      safe(action, "") == "ComplianceSettingChanged" ||
+      safe(action, "") == "Set-ComplianceSecurityFilter" ||
+      safe(action, "") == "New-ComplianceSecurityFilter" ||
+      safe(action, "") == "Remove-ComplianceSecurityFilter" ||
+      safe(action, "") == "Set-AdminAuditLogConfig" ||
+      safe(action, "") == "Set-OrganizationConfig" ||
+      safe(action, "").contains("CompliancePolicy") ||
+      safe(action, "").contains("ComplianceRule") ||
+      safe(action, "").contains("ComplianceTag")
+    ) &&
+    safe(actionResult, "") == "Success"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.Workload.keyword
+          operator: filter_term
+          value: 'SecurityComplianceCenter'
+      within: now-2h
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - action
+    - log.ObjectId

@@ -1,0 +1,30 @@
+- id: 1003
+  dataTypes:
+    - firewall-mikrotik
+  name: MikroTik API Unauthorized Access Attempts
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Unauthorized Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/2228226/API
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects unauthorized access attempts to MikroTik API service on ports 8728 (API) or 8729 (API-SSL). Multiple connection attempts from external sources may indicate reconnaissance or exploitation attempts against the API service.
+  where: (safe(target.port, 0) == 8728 || safe(target.port, 0) == 8729 || safe(origin.port, 0) == 8728 || safe(origin.port, 0) == 8729) && safe(origin.ip, "") != "" && safe(protocol, "") == "tcp" && (safe(log.chain, "") contains "input" || safe(log.action, "") contains "drop")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: target.port
+          operator: should_terms
+          value: '[8728, 8729]'
+      within: now-15m
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - target.port

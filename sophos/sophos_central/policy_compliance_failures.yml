@@ -1,0 +1,34 @@
+- id: 1020
+  dataTypes:
+    - sophos-central
+  name: Security Policy Compliance Failure
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Policy Violation
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/EndpointProtection/ThreatProtectionPolicy/index.html
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects security policy compliance failures indicating endpoints or users violating established security policies, which could expose the organization to risks or indicate attempts to bypass security controls
+  where: |
+    safe(log.type, "") in ["policy_violation", "compliance_check"] &&
+    safe(log.compliance_status, "") == "failed" &&
+    (safe(log.policy_type, "") in ["threat_protection", "device_control", "application_control", "web_control"] ||
+     safe(log.violation_type, "") in ["disabled_protection", "outdated_definitions", "unauthorized_app", "policy_tampering"])
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+        - field: log.compliance_status.keyword
+          operator: filter_term
+          value: 'failed'
+      within: now-24h
+      count: 5
+  deduplicateBy:
+    - log.endpointId
+    - log.policy_type

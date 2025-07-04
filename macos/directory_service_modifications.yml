@@ -1,0 +1,41 @@
+- id: 1009
+  dataTypes:
+    - macos
+  name: Directory Service Modifications Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Persistence
+  technique: T1136.001 - Create Account: Local Account
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1136/001/
+    - https://developer.apple.com/documentation/os/logging
+    - https://support.apple.com/guide/directory-utility/welcome/mac
+  description: Detects modifications to macOS Directory Services including user and group changes, authentication modifications, and potential privilege escalation through directory service manipulation.
+  where: |
+    (safe(log.process, "") in ["DirectoryService", "opendirectoryd", "dscl", "dseditgroup", "dsimport"] ||
+     safe(log.subsystem, "") == "com.apple.opendirectoryd" ||
+     safe(log.subsystem, "") == "com.apple.DirectoryServices") &&
+    (safe(log.eventMessage, "") contains "create" ||
+     safe(log.eventMessage, "") contains "modify" ||
+     safe(log.eventMessage, "") contains "delete" ||
+     safe(log.eventMessage, "") contains "passwd" ||
+     safe(log.eventMessage, "") contains "group" ||
+     safe(log.eventMessage, "") contains "admin" ||
+     safe(log.eventMessage, "") contains "sudoers" ||
+     safe(log.eventMessage, "") contains "AuthenticationAuthority" ||
+     safe(log.eventMessage, "") contains "GeneratedUID") &&
+    safe(log.messageType, "") != "debug"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.process

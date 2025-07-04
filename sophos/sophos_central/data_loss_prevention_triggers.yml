@@ -1,0 +1,30 @@
+- id: 1009
+  dataTypes:
+    - sophos-central
+  name: Data Loss Prevention Policy Triggered
+  impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 1
+  category: Data Protection
+  technique: Exfiltration
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/LogsReports/Logs/datalosspreventionevents/index.html
+    - https://attack.mitre.org/techniques/T1567/
+  description: Detects when data loss prevention (DLP) policies are triggered, indicating potential attempts to transfer sensitive data outside of authorized channels or violations of data handling policies.
+  where: safe(log.type, "") == "Event::Endpoint::DataLossPrevention" || safe(log.category, "") == "DLP" || (safe(log.action, "") == "blocked" && safe(log.ruleName, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+        - field: log.userId.keyword
+          operator: filter_term
+          value: '{{log.userId}}'
+      within: now-24h
+      count: 5
+  deduplicateBy:
+    - log.endpointId
+    - log.ruleName

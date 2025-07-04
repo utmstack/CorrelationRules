@@ -1,0 +1,46 @@
+- id: 1014
+  dataTypes:
+    - o365
+  name: Data Loss Prevention Policy Violation
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Data Loss Prevention
+  technique: Data from Information Repositories
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/purview/dlp-learn-about-dlp
+    - https://attack.mitre.org/techniques/T1213/
+  description: Detects violations of Data Loss Prevention (DLP) policies including attempts to share, access, or exfiltrate sensitive information such as credit card numbers, social security numbers, or confidential business data
+  where: |
+    (
+      safe(action, "") == "DLPRuleMatch" ||
+      safe(action, "") == "DlpPolicyMatch" ||
+      safe(action, "") == "DLPRuleUndo" ||
+      safe(log.PolicyDetails, "").contains("DLP") ||
+      safe(log.ExceptionInfo, "").contains("DLP")
+    ) &&
+    (
+      safe(log.Workload, "") == "Exchange" ||
+      safe(log.Workload, "") == "SharePoint" ||
+      safe(log.Workload, "") == "OneDrive" ||
+      safe(log.Workload, "") == "Teams" ||
+      safe(log.Workload, "") == "SecurityComplianceCenter"
+    ) &&
+    safe(actionResult, "") != "Failed"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'DLPRuleMatch'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.PolicyId
+    - log.SensitiveInfoTypeData

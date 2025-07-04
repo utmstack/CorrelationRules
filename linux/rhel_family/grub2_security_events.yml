@@ -1,0 +1,35 @@
+- id: 1023
+  dataTypes:
+    - rhel_family
+  name: GRUB2 Security Event Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Boot Security
+  technique: T1014 - Rootkit
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1014/
+    - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/system_design_guide/protecting-grub-with-a-password_system-design-guide
+  description: Detects security-related events in GRUB2 bootloader including password bypass attempts, configuration tampering, unauthorized menu entry modifications, and attempts to disable security features
+  where: |
+    (safe(log.process, "") == "grub2-setpassword" && safe(log.action, "") in ["execute", "modify"]) ||
+    (safe(log.file_path, "") == "/boot/grub2/user.cfg" && safe(log.action, "") in ["modify", "delete"]) ||
+    (safe(log.file_path, "") == "/boot/grub2/grub.cfg" && safe(log.action, "") in ["modify", "write"] && safe(log.content, "") contains "password") ||
+    (safe(log.command, "") contains "grub2-mkpasswd-pbkdf2") ||
+    (safe(log.event_type, "") == "grub_authentication_failure") ||
+    (safe(log.message, "") contains "GRUB" && safe(log.message, "") contains ["bypass", "unauthorized", "security"]) ||
+    (safe(log.file_path, "") contains "/boot/efi/EFI/redhat/" && safe(log.action, "") in ["modify", "delete"]) ||
+    (safe(log.kernel_cmdline, "") contains ["init=/bin/bash", "single", "rd.break", "systemd.debug_shell"])
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.event_type

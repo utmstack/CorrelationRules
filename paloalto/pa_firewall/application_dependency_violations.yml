@@ -1,0 +1,32 @@
+- id: 1006
+  dataTypes:
+    - pa_firewall
+  name: Application Dependency Violations
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 2
+  category: Policy Violation
+  technique: Application Layer Protocol
+  adversary: origin
+  references:
+    - https://docs.paloaltonetworks.com/pan-os/10-2/pan-os-admin/app-id/application-dependencies
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects when applications violate defined dependency rules, which could indicate policy bypass attempts or misconfigured applications. This may occur when an application attempts to run without its required dependencies being satisfied.
+  where: |
+    safe(log.panOSAction, "") == "deny" &&
+    safe(log.panOSApplicationCategory, "") != "" &&
+    (safe(log.panOSDescription, "").contains("dependency") ||
+     safe(log.panOSThreatCategory, "").contains("dependency") ||
+     safe(log.msg, "").contains("application-dependency"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.panOSApplicationCategory

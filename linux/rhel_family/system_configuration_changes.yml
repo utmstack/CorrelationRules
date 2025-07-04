@@ -1,0 +1,41 @@
+- id: 1020
+  dataTypes:
+    - rhel_family
+  name: Critical System Configuration Changes in RHEL
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Configuration Management
+  technique: System Configuration Modification
+  adversary: origin
+  references:
+    - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/8/html/security_hardening/
+    - https://attack.mitre.org/techniques/T1543/
+  description: Detects critical system configuration changes in RHEL including modifications to system services, SELinux settings, firewall rules, and other security-relevant configurations that could indicate unauthorized access or system compromise.
+  where: |
+    (safe(log.type, "") in ["CONFIG_CHANGE", "SYSCALL", "PATH"] &&
+     (safe(log.path, "") =~ "/etc/selinux|/etc/systemd|/etc/security|/etc/pam\\.d|/etc/sudoers|/etc/ssh" ||
+      safe(log.name, "") =~ "/etc/selinux|/etc/systemd|/etc/security|/etc/pam\\.d|/etc/sudoers|/etc/ssh")) ||
+    (safe(log.program, "") in ["systemctl", "semanage", "setsebool", "firewall-cmd", "authconfig"] &&
+     safe(log.message, "") =~ "changed|modified|updated|disabled|enabled") ||
+    (safe(log.message, "") =~ "SELinux.*disabled|SELinux.*permissive|firewall.*stopped|service.*masked" &&
+     safe(log.severity, "") in ["warning", "error", "critical"]) ||
+    (safe(log.audit_type, "") == "CONFIG_CHANGE" &&
+     safe(log.success, "") == "yes" &&
+     safe(log.exe, "") !~ "/usr/bin/yum|/usr/bin/dnf|/usr/bin/rpm")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: host.name.keyword
+          operator: filter_term
+          value: '{{host.name}}'
+        - field: user.name.keyword
+          operator: filter_term
+          value: '{{user.name}}'
+      within: now-2h
+      count: 10
+  deduplicateBy:
+    - host.name
+    - log.path
+    - user.name

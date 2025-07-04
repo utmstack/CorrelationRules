@@ -1,0 +1,35 @@
+- id: 1002
+  dataTypes:
+    - firewall-pfsense
+  name: pfSense NAT Traversal Attempts
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Network Attack
+  technique: Initial Access
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/nat/index.html
+    - https://attack.mitre.org/techniques/T1133/
+  description: Detects suspicious patterns indicating attempts to traverse NAT rules or exploit NAT configurations, potentially for unauthorized access or data exfiltration
+  where: |
+    safe(log.direction, "") == "in" && 
+    safe(action, "") == "pass" && 
+    safe(origin.port, 0) > 1024 && 
+    (safe(target.port, 0) == 22 || safe(target.port, 0) == 3389 || safe(target.port, 0) == 445 || safe(target.port, 0) == 1433 || safe(target.port, 0) == 3306) &&
+    safe(log.realInterface, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.direction.keyword
+          operator: filter_term
+          value: 'in'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - target.port

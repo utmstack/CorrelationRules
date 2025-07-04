@@ -1,0 +1,30 @@
+- id: 1021
+  dataTypes:
+    - pa_firewall
+  name: SaaS Security Alert Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Cloud Security
+  technique: Cloud Service Discovery
+  adversary: origin
+  references:
+    - https://docs.paloaltonetworks.com/saas-security/saas-security-admin
+    - https://attack.mitre.org/techniques/T1526/
+  description: Detects security alerts from Palo Alto SaaS Security platform including data exposure, unauthorized access, and policy violations in cloud applications
+  where: safe(log.is_saas_of_app, "") == "yes" && (safe(log.category, "").contains("security") || safe(log.category, "").contains("threat") || safe(log.severity, "") == "high" || safe(log.panOSSeverity, "") == "high")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.app.keyword
+          operator: filter_term
+          value: '{{log.app}}'
+        - field: log.srcuser.keyword
+          operator: filter_term
+          value: '{{log.srcuser}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - log.app
+    - log.srcuser

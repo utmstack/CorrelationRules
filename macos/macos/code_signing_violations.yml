@@ -1,0 +1,48 @@
+- id: 1015
+  dataTypes:
+    - macos
+  name: Code Signing Violations
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Execution
+  technique: Subvert Trust Controls
+  adversary: origin
+  references:
+    - https://developer.apple.com/documentation/security/code_signing_services
+    - https://attack.mitre.org/techniques/T1553/001/
+  description: Detects code signing violations indicating unsigned, modified, or improperly signed executables that may bypass Gatekeeper or other security controls
+  where: |
+    (safe(log.subsystem, "") == "com.apple.securityd" && 
+     (safe(log.eventMessage, "") contains "code signature" &&
+      (safe(log.eventMessage, "") contains "invalid" || 
+       safe(log.eventMessage, "") contains "fail" || 
+       safe(log.eventMessage, "") contains "reject" ||
+       safe(log.eventMessage, "") contains "violation"))) ||
+    (safe(log.process, "") == "codesign" && 
+     safe(log.messageType, "") == "error") ||
+    (safe(log.eventMessage, "") contains "Gatekeeper" && 
+     (safe(log.eventMessage, "") contains "blocked" ||
+      safe(log.eventMessage, "") contains "unsigned" ||
+      safe(log.eventMessage, "") contains "notarization"||
+      safe(log.eventMessage, "") contains "quarantine")) ||
+    (safe(log.subsystem, "") == "com.apple.Security" && 
+     safe(log.category, "") == "SecAssessment" &&
+     (safe(log.eventMessage, "") contains "deny" ||
+      safe(log.eventMessage, "") contains "blocked")) ||
+    (safe(log.eventMessage, "") contains "spctl" && 
+     (safe(log.eventMessage, "") contains "rejected" ||
+      safe(log.eventMessage, "") contains "assessment" ||
+      safe(log.eventMessage, "") contains "disabled"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-2h
+      count: 3
+  deduplicateBy:
+    - origin.hostname
+    - log.eventMessage

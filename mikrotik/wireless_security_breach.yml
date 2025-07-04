@@ -1,0 +1,34 @@
+- id: 1018
+  dataTypes:
+    - mikrotik_fw
+  name: Wireless Security Breach Detected
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Wireless Attack
+  technique: Wireless Exploitation
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/224559120/WiFi
+    - https://attack.mitre.org/techniques/T1580/
+  description: Detects potential wireless security breaches including deauthentication attacks, unauthorized access point connections, or suspicious wireless client behavior
+  where: |
+    safe(log.topics, "") == "wireless" && 
+    (safe(log.chain, "").contains("deauth") ||
+     safe(log.chain, "").contains("disassoc") ||
+     safe(log.action, "") == "drop" ||
+     safe(log.chain, "").contains("reject"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.mac.keyword
+          operator: filter_term
+          value: '{{origin.mac}}'
+        - field: log.topics.keyword
+          operator: filter_term
+          value: 'wireless'
+      within: now-15m
+      count: 20
+  deduplicateBy:
+    - origin.mac

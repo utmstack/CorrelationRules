@@ -1,0 +1,46 @@
+- id: 1013
+  dataTypes:
+    - o365
+  name: Suspicious External Sharing Activity
+  impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 1
+  category: Data Loss Prevention
+  technique: Exfiltration Over Web Service
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/purview/audit-log-activities
+    - https://attack.mitre.org/techniques/T1567/
+  description: Detects unauthorized or suspicious external sharing activities in SharePoint and OneDrive that could indicate data exfiltration attempts or policy violations when sharing sensitive content with external parties
+  where: |
+    (safe(log.Workload, "") == "SharePoint" || safe(log.Workload, "") == "OneDrive") &&
+    (
+      safe(action, "") == "SharingInvitationCreated" ||
+      safe(action, "") == "AnonymousLinkCreated" ||
+      safe(action, "") == "AnonymousLinkUsed" ||
+      safe(action, "") == "SecureLinkCreated" ||
+      safe(action, "") == "SharingSet" ||
+      safe(action, "") == "CompanyLinkCreated" ||
+      safe(action, "") == "AddedToSecureLink"
+    ) &&
+    safe(actionResult, "") == "Success" &&
+    (
+      safe(log.TargetUserOrGroupType, "") == "Guest" ||
+      safe(log.SiteUrl, "").contains("external") ||
+      safe(log.EventData, "").contains("AllowExternalSharing")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.Workload.keyword
+          operator: filter_term
+          value: 'SharePoint'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - log.ObjectId

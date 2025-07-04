@@ -1,0 +1,31 @@
+- id: 1010
+  dataTypes:
+    - netflow
+  name: Tor Network Usage Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Anonymization Services
+  technique: Proxy
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1090/
+    - https://www.cisco.com/en/US/technologies/tk648/tk362/technologies_white_paper09186a00800a3db9.html
+    - https://www.torproject.org/
+  description: Detects potential Tor network usage based on connections to known Tor entry node ports (9001, 9030) and traffic patterns consistent with Tor usage
+  where: safe(origin.ip, "") != "" && safe(target.ip, "") != "" && (safe(target.port, 0) == 9001 || safe(target.port, 0) == 9030 || safe(target.port, 0) == 9050 || safe(target.port, 0) == 9051) && safe(protocol, "") == "6" && safe(log.bytes, 0) > 512
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: dataType.keyword
+          operator: filter_term
+          value: netflow
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - target.ip

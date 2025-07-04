@@ -1,0 +1,33 @@
+- id: 1005
+  dataTypes:
+    - o365
+  name: OneDrive Mass File Access Detected
+  impact:
+    confidentiality: 4
+    integrity: 1
+    availability: 2
+  category: Data Reconnaissance
+  technique: Data from Cloud Storage
+  adversary: origin
+  references:
+    - https://o365reports.com/2024/01/30/audit-file-access-in-sharepoint-online-using-powershell/
+    - https://attack.mitre.org/techniques/T1530/
+  description: Detects when a user accesses an abnormally high number of files in OneDrive within a short time period, which could indicate automated data collection, reconnaissance, or preparation for data exfiltration.
+  where: safe(action, "") in ["FileAccessed", "FileAccessedExtended", "FilePreviewed"] && safe(origin.user, "") != "" && safe(log.Workload, "") == "OneDrive"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_terms
+          value: ["FileAccessed", "FileAccessedExtended", "FilePreviewed"]
+        - field: log.Workload.keyword
+          operator: filter_term
+          value: 'OneDrive'
+      within: now-30m
+      count: 200
+  deduplicateBy:
+    - origin.user
+    - origin.ip

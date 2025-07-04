@@ -1,0 +1,26 @@
+- id: 1001
+  dataTypes:
+    - sophos-central
+  name: Synchronized Security Heartbeat Failures
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: System Health
+  technique: T1562.001 - Impair Defenses: Disable or Modify Tools
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/Heartbeat/index.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects when Sophos synchronized security heartbeat fails, indicating potential endpoint protection issues or communication problems between Sophos components
+  where: safe(log.type, "") == "Event::Endpoint::SyncSecurity::HeartbeatFailure" || (safe(log.name, "") == "Heartbeat failure" && safe(log.severity, "") in ["high", "critical"])
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.endpointId

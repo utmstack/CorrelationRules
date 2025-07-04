@@ -1,0 +1,33 @@
+- id: 1016
+  dataTypes:
+    - macos
+  name: Notarization Bypass Attempt Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Defense Evasion
+  technique: Gatekeeper Bypass
+  adversary: origin
+  references:
+    - https://redcanary.com/threat-detection-report/techniques/gatekeeper-bypass/
+    - https://attack.mitre.org/techniques/T1553/001/
+  description: Detects attempts to bypass macOS notarization checks through various methods including quarantine attribute manipulation, AppleDouble file format abuse, or ZIP archive exploitation
+  where: |
+    (safe(log.process, "") == "spctl" && safe(log.eventMessage, "") contains "assessment") ||
+    (safe(log.subsystem, "") == "com.apple.xprotect" && safe(log.eventMessage, "") contains "failed on rPathCmd") ||
+    (safe(log.eventMessage, "") contains "com.apple.quarantine" && safe(log.eventMessage, "") contains "remove") ||
+    (safe(log.process, "") == "xattr" && safe(log.eventMessage, "") contains "-d com.apple.quarantine") ||
+    (safe(log.eventMessage, "") contains "LSFileQuarantineEnabled" && safe(log.eventMessage, "") contains "false") ||
+    (safe(log.eventMessage, "") contains "ACL" && safe(log.eventMessage, "") contains "quarantine")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.process

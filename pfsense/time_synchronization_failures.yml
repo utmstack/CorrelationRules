@@ -1,0 +1,26 @@
+- id: 1021
+  dataTypes:
+    - firewall-pfsense
+  name: pfSense Time Synchronization Failure
+  impact:
+    confidentiality: 0
+    integrity: 3
+    availability: 2
+  category: System Health
+  technique: Inhibit System Recovery
+  adversary: system
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/troubleshooting/time-synchronization.html
+    - https://attack.mitre.org/techniques/T1490/
+  description: Detects time synchronization failures in pfSense which could indicate NTP service issues, network connectivity problems, or potential time-based attack attempts. Accurate time is critical for log correlation, certificate validation, and security event analysis.
+  where: safe(log.eventType, "") == "ntpd" && (safe(raw, "").contains("no reply") || safe(raw, "").contains("timeout") || safe(raw, "").contains("unreachable") || safe(raw, "").contains("synchronization lost") || safe(raw, "").contains("clock_step") || safe(raw, "").contains("frequency error"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - log.syslogHost

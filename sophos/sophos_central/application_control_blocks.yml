@@ -1,0 +1,30 @@
+- id: 1007
+  dataTypes:
+    - sophos-central
+  name: Application Control Block Event
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 2
+  category: Application Control
+  technique: Execution
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/EndpointProtection/ApplicationControl/index.html
+    - https://attack.mitre.org/techniques/T1204/
+  description: Detects when Sophos Central blocks an application from running based on application control policies. This may indicate attempted execution of unauthorized or potentially malicious applications.
+  where: safe(log.type, "") == "Event::Endpoint::Application::Blocked" || (safe(log.type, "") == "Event::Endpoint::Application::AlertedOnly" && safe(log.action, "") == "blocked")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'Event::Endpoint::Application::Blocked'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - log.endpointId
+    - log.application

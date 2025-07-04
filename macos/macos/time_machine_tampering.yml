@@ -1,0 +1,42 @@
+- id: 1012
+  dataTypes:
+    - macos
+  name: Time Machine Tampering
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 4
+  category: Data Protection
+  technique: Inhibit System Recovery
+  adversary: origin
+  references:
+    - https://support.apple.com/guide/mac-help/back-up-your-mac-with-time-machine-mh35860/mac
+    - https://attack.mitre.org/techniques/T1490/
+  description: Detects attempts to tamper with Time Machine backups, which could indicate an attacker trying to prevent system recovery or destroy backup data
+  where: |
+    (safe(log.subsystem, "") == "com.apple.TimeMachine" && 
+     (safe(log.eventMessage, "") contains "delete" || 
+      safe(log.eventMessage, "") contains "corrupt" || 
+      safe(log.eventMessage, "") contains "failed" ||
+      safe(log.eventMessage, "") contains "error" ||
+      safe(log.eventMessage, "") contains "exclude")) ||
+    (safe(log.process, "") == "tmutil" && 
+     (safe(log.eventMessage, "") contains "disable" ||
+      safe(log.eventMessage, "") contains "delete" ||
+      safe(log.eventMessage, "") contains "removedestination")) ||
+    (safe(log.eventMessage, "") contains "Time Machine" && 
+     (safe(log.eventMessage, "") contains "tampering" ||
+      safe(log.eventMessage, "") contains "modification" ||
+      safe(log.eventMessage, "") contains "unauthorized" ||
+      safe(log.eventMessage, "") contains "backup deletion"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.hostname
+    - log.process

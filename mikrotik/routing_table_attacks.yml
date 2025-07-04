@@ -1,0 +1,33 @@
+- id: 1014
+  dataTypes:
+    - firewall-mikrotik
+  name: MikroTik Routing Table Attack
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 5
+  category: Network Manipulation
+  technique: Rogue Infrastructure
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/328094/Log
+    - https://attack.mitre.org/techniques/T1584/
+  description: Detects potential routing table manipulation attacks including unauthorized route additions, deletions, or modifications that could redirect traffic through malicious paths or cause network disruption.
+  where: |
+    safe(log.topics, "") contains "system" && 
+    (safe(log.restData, "") contains "route" || safe(log.restData, "") contains "routing") &&
+    (safe(log.restData, "") contains "added" || 
+     safe(log.restData, "") contains "changed" || 
+     safe(log.restData, "") contains "removed" ||
+     safe(log.restData, "") contains "table")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-20m
+      count: 4
+  deduplicateBy:
+    - origin.ip
+    - log.deviceTime

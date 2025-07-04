@@ -1,0 +1,32 @@
+- id: 1023
+  dataTypes:
+    - macos
+  name: Full Disk Access Abuse Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Privilege Escalation
+  technique: T1548.004 - Abuse Elevation Control Mechanism: Elevated Execution with Prompt
+  adversary: origin
+  references:
+    - https://www.huntress.com/blog/full-transparency-controlling-apples-tcc
+    - https://attack.mitre.org/techniques/T1548/004/
+  description: Detects suspicious Full Disk Access (FDA) usage, including unexpected processes gaining FDA permissions or potential TCC database manipulation attempts
+  where: |
+    (safe(log.subsystem, "") == "com.apple.TCC" && safe(log.eventMessage, "") contains "kTCCServiceSystemPolicyAllFiles") ||
+    (safe(log.process, "") == "tccd" && safe(log.eventMessage, "") contains "SystemPolicyAllFiles") ||
+    (safe(log.eventMessage, "") contains "Full Disk Access" && (safe(log.eventMessage, "") contains "granted" || safe(log.eventMessage, "") contains "allowed")) ||
+    (safe(log.eventMessage, "") contains "TCC.db" && (safe(log.eventMessage, "") contains "modified" || safe(log.eventMessage, "") contains "accessed")) ||
+    (safe(log.eventMessage, "") contains "com.apple.TCC" && safe(log.eventMessage, "") contains "write")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.process.keyword
+          operator: filter_term
+          value: '{{log.process}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.process
+    - origin.user

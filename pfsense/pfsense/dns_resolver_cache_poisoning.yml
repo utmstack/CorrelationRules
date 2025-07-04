@@ -1,0 +1,27 @@
+- id: 1011
+  dataTypes:
+    - firewall-pfsense
+  name: DNS Resolver Cache Poisoning Attempt
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Network Security
+  technique: DNS Cache Poisoning
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/services/dns/resolver.html
+    - https://attack.mitre.org/techniques/T1584/002/
+  description: Detects potential DNS cache poisoning attempts on pfSense DNS resolver (Unbound) by monitoring for suspicious DNS responses with mismatched query IDs or unexpected responses from non-authoritative servers
+  where: safe(log.eventType, "") == "unbound" && safe(log.reason, "").contains("reply") && (safe(log.rcode, "") != "NOERROR" || safe(log.flags, "").contains("FORGED"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.query_name

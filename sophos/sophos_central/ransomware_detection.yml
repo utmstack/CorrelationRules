@@ -1,0 +1,32 @@
+- id: 1013
+  dataTypes:
+    - sophos-central
+  name: Sophos Central Ransomware Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Ransomware Activity
+  technique: Data Encrypted for Impact
+  adversary: origin
+  references:
+    - https://developer.sophos.com/siem-api-schemas
+    - https://attack.mitre.org/techniques/T1486/
+  description: Detects ransomware activity including CryptoGuard alerts, master boot record attacks, and file system encryption attempts. This is a critical security event requiring immediate response.
+  where: |
+    safe(log.type, "") == "Event::Endpoint::Threat::RansomwareDetected" ||
+    safe(log.type, "") == "Event::Endpoint::CryptoGuard::FileEncryption" ||
+    (safe(log.name, "") == "CryptoGuard" && safe(log.action, "") == "blocked") ||
+    (safe(log.description, "") contains "ransomware" || safe(log.description, "") contains "CryptoGuard" || safe(log.description, "") contains "master boot record") ||
+    (safe(log.name, "") == "Ransomware detected" && safe(log.severity, "") == "critical")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+      within: now-5m
+      count: 1
+  deduplicateBy:
+    - log.endpointId
+    - log.name

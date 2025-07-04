@@ -1,0 +1,54 @@
+- id: 1013
+  dataTypes:
+    - netflow
+  name: Application Layer Attack Detection
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 5
+  category: Application Attack
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1190/
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/special/netflow/asa_netflow.html
+  description: Detects potential application layer attacks including HTTP/HTTPS floods, slow attacks, and abnormal application protocol behavior that may indicate exploitation attempts or DDoS attacks
+  where: |
+    (
+      (safe(target.port, 0) == 80 || safe(target.port, 0) == 443 || 
+       safe(target.port, 0) == 8080 || safe(target.port, 0) == 8443) &&
+      (
+        safe(log.packets, 0) > 10000 && safe(log.bytes, 0) < 1048576 ||
+        safe(log.tcp_flags, "") == "SYN" && safe(log.flow_count, 0) > 1000 ||
+        safe(log.duration, 0) > 300 && safe(log.bytes, 0) < 10240
+      )
+    ) ||
+    (
+      safe(target.port, 0) == 21 && safe(log.commands, 0) > 100
+    ) ||
+    (
+      safe(target.port, 0) == 22 && safe(log.failed_attempts, 0) > 10
+    ) ||
+    (
+      (safe(target.port, 0) == 3306 || safe(target.port, 0) == 5432 || 
+       safe(target.port, 0) == 1433 || safe(target.port, 0) == 1521) &&
+      safe(log.bytes, 0) > 104857600
+    ) ||
+    (
+      safe(log.http_requests_per_second, 0) > 1000 ||
+      safe(log.connection_rate, 0) > 500
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: target.port
+          operator: filter_term
+          value: '{{target.port}}'
+      within: now-30m
+      count: 50
+  deduplicateBy:
+    - origin.ip
+    - target.port

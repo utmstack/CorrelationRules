@@ -1,0 +1,34 @@
+- id: 1008
+  dataTypes:
+    - firewall-mikrotik
+  name: MikroTik Configuration Export Activity
+  impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 1
+  category: Collection
+  technique: Data from Configuration Repository
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/328094/Log
+    - https://attack.mitre.org/techniques/T1602/
+  description: Configuration export activity detected on MikroTik device, which could indicate unauthorized attempts to steal device configuration
+  where: |
+    safe(log.topics, "") =~ ".*system.*info.*" && 
+    (safe(log.message, "") =~ ".*export.*config.*" ||
+     safe(log.message, "") =~ ".*configuration.*export.*" ||
+     safe(log.message, "") =~ ".*/export.*") &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.message
+          operator: filter_wildcard
+          value: '*export*'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip

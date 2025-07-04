@@ -1,0 +1,30 @@
+- id: 1010
+  dataTypes:
+    - rhel_family
+  name: SystemD Unit File Attack Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Persistence
+  technique: Create or Modify System Process
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1543/002/
+    - https://www.linuxjournal.com/content/systemd-service-strengthening
+  description: Detects malicious SystemD unit file creation or modification attempts, including privilege escalation through invalid usernames, suspicious service directives, or attempts to create persistent backdoors through systemd generators or malicious service configurations.
+  where: (safe(log.process, "") == "systemd" || safe(log.process, "") == "systemctl") && (safe(log.message, "") contains "Failed to parse user" && safe(log.message, "") =~ "[0-9].*" || safe(log.message, "") contains "unit file" && (safe(log.message, "") contains "ExecStart" || safe(log.message, "") contains "ExecStartPre" || safe(log.message, "") contains "ExecStartPost") && (safe(log.message, "") contains "/tmp/" || safe(log.message, "") contains "/dev/shm/" || safe(log.message, "") contains "bash -c" || safe(log.message, "") contains "sh -c") || safe(log.message, "") contains "User=" && safe(log.message, "") =~ "User=[0-9].*" || safe(log.message, "") contains "systemd-generator" && (safe(log.message, "") contains "created" || safe(log.message, "") contains "modified") || safe(log.message, "") contains "NoNewPrivileges=false" || safe(log.message, "") contains "ProtectSystem=false")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.process.keyword
+          operator: filter_term
+          value: 'systemd'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - log.file

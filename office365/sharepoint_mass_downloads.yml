@@ -1,0 +1,30 @@
+- id: 1003
+  dataTypes:
+    - o365
+  name: SharePoint Mass File Download Detected
+  impact:
+    confidentiality: 5
+    integrity: 1
+    availability: 2
+  category: Data Exfiltration
+  technique: Data from Information Repositories
+  adversary: origin
+  references:
+    - https://www.sharepointdiary.com/2020/10/how-to-track-document-downloads-using-audit-log-in-sharepoint-online.html
+    - https://attack.mitre.org/techniques/T1213/
+  description: Detects when a user downloads an unusually large number of files from SharePoint or OneDrive within a short time period, which could indicate data exfiltration or insider threat activity.
+  where: safe(action, "") == "FileDownloaded" && safe(origin.user, "") != "" && safe(log.Workload, "") in ["SharePoint", "OneDrive"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'FileDownloaded'
+      within: now-30m
+      count: 100
+  deduplicateBy:
+    - origin.user
+    - origin.ip

@@ -1,0 +1,36 @@
+- id: 1019
+  dataTypes:
+    - sophos-central
+  name: Active Threat Investigation Case
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Incident Response
+  technique: Lateral Movement
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/ThreatAnalysisCenter/Detections/index.html
+    - https://attack.mitre.org/tactics/TA0008/
+  description: Detects when threat cases are opened for investigation indicating potential security incidents requiring analysis, particularly focusing on cases with multiple related detections or high-risk indicators
+  where: |
+    safe(log.type, "") == "threat_case" &&
+    safe(log.case_status, "") in ["open", "investigating"] &&
+    (safe(log.related_detections, 0) >= 3 || 
+     safe(log.mitre_tactics, "") contains "persistence" ||
+     safe(log.mitre_tactics, "") contains "lateral_movement" ||
+     safe(log.threat_score, 0) >= 70)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.customerId.keyword
+          operator: filter_term
+          value: '{{log.customerId}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'threat_case'
+      within: now-7d
+      count: 5
+  deduplicateBy:
+    - log.case_id
+    - log.endpointId

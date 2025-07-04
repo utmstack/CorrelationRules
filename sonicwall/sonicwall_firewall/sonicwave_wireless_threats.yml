@@ -1,0 +1,29 @@
+- id: 1021
+  dataTypes:
+    - sonicwall_firewall
+  name: SonicWave Wireless Security Threat Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 3
+  category: Wireless Security
+  technique: Wireless Attack
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/support/knowledge-base/how-to-configure-rogue-access-point-detection-in-wireless-intrusion-detection-settings-ids/170505975277527/
+    - https://attack.mitre.org/techniques/T1465/
+  description: Detects wireless security threats including rogue access points, association floods, and suspicious wireless activity detected by SonicWave access points
+  where: |
+    (safe(log.category, "") == "WLAN IDS" || safe(log.eventName, "").contains("wireless") || safe(log.eventName, "").contains("rogue") || safe(log.msg, "").contains("rogue")) &&
+    (safe(log.eventName, "").contains("attack") || safe(log.eventName, "").contains("flood") || safe(log.eventName, "").contains("unauthorized") || safe(log.msg, "").contains("attack") || safe(log.msg, "").contains("flood") || safe(log.msg, "").contains("unauthorized") || safe(log.result, "") == "blocked" || safe(action, "") == "blocked")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.mac
+    - log.station

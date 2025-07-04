@@ -1,0 +1,34 @@
+- id: 1017
+  dataTypes:
+    - macos
+  name: Privacy Preferences (TCC) Database Tampering
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 1
+  category: Privilege Escalation
+  technique: Abuse Elevation Control Mechanism
+  adversary: origin
+  references:
+    - https://www.huntress.com/blog/full-transparency-controlling-apples-tcc
+    - https://attack.mitre.org/techniques/T1548/
+  description: Detects unauthorized modifications to the macOS TCC (Transparency, Consent, and Control) database which controls application privacy permissions
+  where: |
+    (safe(log.eventMessage, "") contains "Update Access Record:" && safe(log.subsystem, "") == "com.apple.TCC") ||
+    (safe(log.process, "") == "sqlite3" && safe(log.eventMessage, "") contains "TCC.db") ||
+    (safe(log.process, "") == "tccutil" && safe(log.eventMessage, "") contains "reset") ||
+    (safe(log.eventMessage, "") contains "TCC" && safe(log.eventMessage, "") contains "INSERT") ||
+    (safe(log.eventMessage, "") contains "TCC" && safe(log.eventMessage, "") contains "UPDATE") ||
+    (safe(log.eventMessage, "") contains "TCC" && safe(log.eventMessage, "") contains "DELETE") ||
+    (safe(log.subsystem, "") == "com.apple.TCC" && safe(log.category, "") == "access" && safe(log.eventMessage, "") contains "modification")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.process.keyword
+          operator: filter_term
+          value: '{{log.process}}'
+      within: now-10m
+      count: 2
+  deduplicateBy:
+    - origin.user
+    - log.service

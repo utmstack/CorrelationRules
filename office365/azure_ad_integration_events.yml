@@ -1,0 +1,38 @@
+- id: 1011
+  dataTypes:
+    - o365
+  name: Azure AD Integration Suspicious Activity
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Identity and Access Management
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/purview/audit-log-activities
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects suspicious Azure Active Directory integration events including multiple failed authentication attempts, unusual role assignments, or bulk user modifications that could indicate an attempted compromise of identity management systems
+  where: |
+    safe(log.Workload, "") == "AzureActiveDirectory" && 
+    (
+      (safe(action, "") == "UserLoginFailed" && safe(actionResult, "") == "Failed") ||
+      (safe(action, "") == "Add member to role" && safe(actionResult, "") == "Success") ||
+      (safe(action, "") == "Update user" && safe(actionResult, "") == "Success") ||
+      (safe(action, "") == "Delete user" && safe(actionResult, "") == "Success") ||
+      (safe(action, "") == "Add service principal" && safe(actionResult, "") == "Success")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.Workload.keyword
+          operator: filter_term
+          value: 'AzureActiveDirectory'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - origin.ip

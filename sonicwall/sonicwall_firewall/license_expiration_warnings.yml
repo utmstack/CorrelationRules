@@ -1,0 +1,29 @@
+- id: 1025
+  dataTypes:
+    - sonicwall_firewall
+  name: SonicWall License Expiration Warning
+  impact:
+    confidentiality: 1
+    integrity: 1
+    availability: 4
+  category: System Health
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://www.sonicguard.com/License-and-Subscription.asp
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects license expiration warnings for SonicWall services including security subscriptions, support licenses, and feature licenses that may impact security protection capabilities
+  where: |
+    (safe(log.eventName, "").contains("license") || safe(log.eventName, "").contains("subscription") || safe(log.eventName, "").contains("expir") || safe(log.msg, "").contains("license") || safe(log.msg, "").contains("subscription") || safe(log.msg, "").contains("expir") || safe(log.lic, "") != "") &&
+    (safe(log.eventName, "").contains("warning") || safe(log.eventName, "").contains("alert") || safe(log.eventName, "").contains("critical") || safe(log.eventName, "").contains("will expire") || safe(log.eventName, "").contains("has expired") || safe(log.msg, "").contains("warning") || safe(log.msg, "").contains("will expire") || safe(log.msg, "").contains("has expired") || safe(log.msg, "").contains("days remaining") || safe(log.severity, "") == "warning" || safe(log.severity, "") == "critical")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.sn.keyword
+          operator: filter_term
+          value: '{{log.sn}}'
+      within: now-24h
+      count: 1
+  deduplicateBy:
+    - log.sn
+    - log.lic

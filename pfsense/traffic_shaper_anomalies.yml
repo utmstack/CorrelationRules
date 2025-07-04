@@ -1,0 +1,26 @@
+- id: 1008
+  dataTypes:
+    - firewall-pfsense
+  name: Traffic Shaper Queue Overflow
+  impact:
+    confidentiality: 1
+    integrity: 1
+    availability: 4
+  category: Resource Development
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/trafficshaper/index.html
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects abnormal traffic patterns that exceed traffic shaper limits, potentially indicating bandwidth exhaustion attacks or misconfigured traffic policies affecting service availability
+  where: safe(log.eventType, "") == "kernel" && safe(log.csvMsg, "").matches(".*(queue|shaper|bandwidth|overflow|dropped).*") && safe(log.dataLength, "0").parseInt() > 1000
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: 'kernel'
+      within: now-5m
+      count: 20
+  deduplicateBy:
+    - log.realInterface

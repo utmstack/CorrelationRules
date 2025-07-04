@@ -1,0 +1,39 @@
+- id: 1008
+  dataTypes:
+    - pa_firewall
+  name: IOC Match from Threat Intelligence Feed
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Threat Intelligence
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://docs.paloaltonetworks.com/cortex/cortex-xsoar/threat-intelligence-management
+    - https://attack.mitre.org/techniques/T1027/
+  description: Detects when network traffic matches known Indicators of Compromise (IOCs) from threat intelligence feeds. This includes malicious IPs, domains, URLs, or file hashes associated with known threat actors or campaigns.
+  where: |
+    (safe(log.panOSThreatCategory, "").contains("malware") ||
+     safe(log.panOSThreatCategory, "").contains("command-and-control") ||
+     safe(log.panOSThreatCategory, "").contains("phishing") ||
+     safe(log.panOSThreatCategory, "").contains("botnet") ||
+     safe(log.panOSThreatID, "") != "0" ||
+     safe(log.msg, "").contains("threat-intel") ||
+     safe(log.msg, "").contains("ioc-match")) &&
+    safe(log.panOSAction, "").in(["block", "deny", "drop", "reset-both", "reset-client", "reset-server"])
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-24h
+      count: 1
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.panOSThreatID

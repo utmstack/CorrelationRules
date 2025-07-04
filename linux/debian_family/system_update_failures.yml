@@ -1,0 +1,34 @@
+- id: 1017
+  dataTypes:
+    - debian_family
+  name: System Update Failures Detection
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: System Maintenance
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://wiki.debian.org/AptCLI
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects system update failures that could indicate system compromise, network issues, or attempts to prevent security patches from being applied
+  where: |
+    (safe(log.process, "") == "apt" || safe(log.process, "") == "apt-get" || safe(log.process, "") == "dpkg") &&
+    (
+      safe(log.message, "") =~ ".*(failed|error|unable to fetch|404 Not Found|Hash Sum mismatch).*" ||
+      safe(log.message, "") =~ ".*(dpkg was interrupted|broken packages|unmet dependencies).*" ||
+      safe(log.message, "") =~ ".*(E: Failed to fetch|W: Failed to fetch|Err:).*" ||
+      safe(log.message, "") =~ ".*(Could not resolve|Temporary failure resolving).*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.hostname
+    - log.process

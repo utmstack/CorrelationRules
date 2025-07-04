@@ -1,0 +1,27 @@
+- id: 1006
+  dataTypes:
+    - rhel_family
+  name: RHEL Satellite Client Anomalies Detected
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: System Compromise
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://docs.redhat.com/en/documentation/red_hat_satellite/6.16/html/administering_red_hat_satellite/logging_and_reporting_problems_admin
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects anomalous behavior in RHEL Satellite client communications, including unexpected connection patterns, authentication failures, and suspicious command executions that may indicate compromised satellite clients or unauthorized management attempts.
+  where: safe(log.process, "") == "satellite-client" && (safe(log.message, "") contains "authentication failed" || safe(log.message, "") contains "unexpected disconnect" || safe(log.message, "") contains "command execution failed" || safe(log.message, "") contains "certificate validation failed" || safe(log.message, "") contains "unauthorized request")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - destination.host

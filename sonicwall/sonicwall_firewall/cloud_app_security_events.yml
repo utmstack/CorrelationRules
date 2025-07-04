@@ -1,0 +1,29 @@
+- id: 1022
+  dataTypes:
+    - sonicwall_firewall
+  name: SonicWall Cloud App Security Threat Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Cloud Security
+  technique: Cloud Service Discovery
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/products/cloud-security/cloud-app-security
+    - https://attack.mitre.org/techniques/T1526/
+  description: Detects security events from Cloud App Security including unauthorized cloud application access, suspicious OAuth activities, and cloud-based threats
+  where: |
+    (safe(log.app, "").contains("cloud") || safe(log.appName, "").contains("cloud") || safe(log.category, "").contains("cloud") || safe(log.eventName, "").contains("SaaS") || safe(log.eventName, "").contains("OAuth") || safe(log.msg, "").contains("cloud app")) &&
+    (safe(log.eventName, "").contains("threat") || safe(log.eventName, "").contains("unauthorized") || safe(log.eventName, "").contains("suspicious") || safe(log.eventName, "").contains("blocked") || safe(log.msg, "").contains("threat") || safe(log.msg, "").contains("unauthorized") || safe(log.result, "") == "blocked" || safe(action, "") == "blocked" || safe(log.severity, "") == "high")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{log.user}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - log.user
+    - log.app

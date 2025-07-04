@@ -1,0 +1,32 @@
+- id: 1005
+  dataTypes:
+    - firewall-mikrotik
+  name: Telnet Access Violation on MikroTik Device
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Insecure Protocol Usage
+  technique: Remote Services
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/328094/Log
+    - https://attack.mitre.org/techniques/T1021/
+  description: Detects Telnet access attempts to MikroTik devices. Telnet is an insecure protocol that transmits credentials in clear text. Multiple Telnet connections may indicate unauthorized access attempts or security policy violations.
+  where: safe(target.port, 0) == 23 && safe(protocol, "") == "tcp" && safe(origin.ip, "") != "" && (safe(log.chain, "") contains "input" || safe(log.action, "") contains "drop" || (safe(log.topics, "") contains "system" && safe(log.message, "") contains "telnet"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: target.port
+          operator: filter_term
+          value: '23'
+        - field: protocol.keyword
+          operator: filter_term
+          value: 'tcp'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip

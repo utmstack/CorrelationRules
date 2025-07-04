@@ -1,0 +1,25 @@
+- id: 1016
+  dataTypes:
+    - sonicwall_firewall
+  name: SonicWall Bandwidth Threshold Exceeded
+  impact:
+    confidentiality: 0
+    integrity: 0
+    availability: 4
+  category: Network
+  technique: Resource Consumption
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/techdocs/pdf/sonicos-6-5-4-log-events-reference-guide.pdf
+  description: Detects when bandwidth usage exceeds configured thresholds, which could indicate network abuse, data exfiltration, or denial of service attempts
+  where: (safe(log.category, "") == "Bandwidth" || safe(log.msg, "").contains("bandwidth") || safe(log.msg, "").contains("threshold exceeded")) && (safe(log.bytesRx, 0) > 1000000000 || safe(log.bytesTx, 0) > 1000000000)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.ip

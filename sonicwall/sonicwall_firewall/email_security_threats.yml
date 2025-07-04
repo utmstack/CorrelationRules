@@ -1,0 +1,27 @@
+- id: 1006
+  dataTypes:
+    - firewall-sonicwall
+  name: SonicWall Email Security Threat Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Email Security
+  technique: T1566 - Phishing
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/techdocs/pdf/sonicos-6-5-4-log-events-reference-guide.pdf
+    - https://attack.mitre.org/techniques/T1566/
+  description: Detects potential email security threats including malicious attachments, phishing attempts, or spam messages blocked by SonicWall email security features. This rule triggers when email-related security events are detected with suspicious content or blocked actions.
+  where: (safe(log.category, "") == "Email Security" || safe(log.app, "") == "smtp" || safe(log.app, "") == "pop3" || safe(log.app, "") == "imap") && (safe(action, "") == "blocked" || safe(action, "") == "dropped" || safe(log.msg, "").contains("malicious") || safe(log.msg, "").contains("phishing") || safe(log.msg, "").contains("spam") || safe(log.spycat, "") != "" || safe(log.spypri, "") == "high")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.mailFrom

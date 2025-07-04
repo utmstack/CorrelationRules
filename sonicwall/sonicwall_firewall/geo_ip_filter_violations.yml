@@ -1,0 +1,27 @@
+- id: 1009
+  dataTypes:
+    - firewall-sonicwall
+  name: SonicWall Geo-IP Filter Policy Violation
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 2
+  category: Policy Violation
+  technique: T1090 - Proxy
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/support/knowledge-base/how-can-i-configure-sonicwall-geo-ip-filter-using-firewall-access-rules/170505480197552
+    - https://attack.mitre.org/techniques/T1090/
+  description: Detects when traffic is blocked due to Geo-IP filtering policies. This could indicate attempts to access resources from restricted geographic locations or potential use of VPNs/proxies to bypass geographic restrictions.
+  where: (safe(log.category, "") == "Geo-IP" || safe(log.msg, "").contains("Geo-IP") || safe(log.msg, "").contains("geographic") || safe(log.msg, "").contains("country blocked") || safe(log.gcat, "") != "" || safe(log.af_service, "") == "geo-ip") && (safe(action, "") == "blocked" || safe(action, "") == "dropped" || safe(log.fw_action, "") == "drop") && (safe(origin.geolocation.country_iso_code, "") != "" || safe(target.geolocation.country_iso_code, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-4h
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - origin.geolocation.country_iso_code

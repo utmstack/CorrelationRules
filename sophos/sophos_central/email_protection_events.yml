@@ -1,0 +1,27 @@
+- id: 1005
+  dataTypes:
+    - sophos-central
+  name: Email Protection Events
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Email Security
+  technique: T1566 - Phishing
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/EmailSecurity/index.html
+    - https://attack.mitre.org/techniques/T1566/
+  description: Detects email-based threats identified by Sophos Central, including phishing attempts, malicious attachments, spam campaigns, and impersonation attacks
+  where: safe(log.type, "") in ["Event::Email::Threat::Detected", "Event::Email::Phishing::Detected", "Event::Email::Malware::Detected", "Event::Email::Impersonation::Detected", "Event::Email::Spam::Detected"] || (safe(log.category, "") == "email" && safe(log.severity, "") in ["medium", "high", "critical"])
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.senderAddress.keyword
+          operator: filter_term
+          value: '{{log.senderAddress}}'
+      within: now-2h
+      count: 5
+  deduplicateBy:
+    - log.messageId
+    - log.senderAddress

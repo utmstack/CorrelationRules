@@ -1,0 +1,40 @@
+- id: 1020
+  dataTypes:
+    - debian_family
+  name: Configuration File Changes Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: System Configuration
+  technique: Modify System Process
+  adversary: origin
+  references:
+    - https://www.debian.org/doc/debian-policy/ch-files.html
+    - https://attack.mitre.org/techniques/T1543/
+  description: Detects unauthorized or suspicious changes to system configuration files that could indicate system compromise or persistence mechanisms
+  where: |
+    (
+      (safe(log.process, "") == "dpkg" && safe(log.message, "") =~ ".*(conffile|configuration file).*") ||
+      (safe(log.process, "") == "apt" && safe(log.message, "") =~ ".*Setting up.*") ||
+      safe(log.message, "") =~ ".*(modified|changed|differ).*(/etc/|conf|config).*" ||
+      safe(log.message, "") =~ ".*Configuration file.*locally modified.*" ||
+      safe(log.message, "") =~ ".*(maintainer script|postinst|preinst|postrm|prerm).*" ||
+      safe(log.message, "") =~ ".*dpkg-divert.*" ||
+      (safe(log.facility, "") == "authpriv" && safe(log.message, "") =~ ".*/etc/(passwd|shadow|group|sudoers).*")
+    ) &&
+    safe(log.severity, "") != "info"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+        - field: log.process.keyword
+          operator: filter_term
+          value: '{{log.process}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.hostname
+    - log.message

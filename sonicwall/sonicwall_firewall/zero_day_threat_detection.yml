@@ -1,0 +1,29 @@
+- id: 1023
+  dataTypes:
+    - sonicwall_firewall
+  name: SonicWall Zero-Day Threat Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Advanced Threat Protection
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/support/knowledge-base/capture-advanced-threat-protection-feature-overview/170504863294345
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects zero-day threats and unknown malware identified by SonicWall Capture ATP service including sandbox detonations and RTDMI (Real-Time Deep Memory Inspection) alerts
+  where: |
+    (safe(log.eventName, "").contains("ATP") || safe(log.eventName, "").contains("zero-day") || safe(log.eventName, "").contains("unknown") || safe(log.eventName, "").contains("sandbox") || safe(log.eventName, "").contains("RTDMI") || safe(log.msg, "").contains("ATP") || safe(log.msg, "").contains("zero-day") || safe(log.msg, "").contains("unknown malware") || safe(log.msg, "").contains("sandbox")) &&
+    (safe(log.eventName, "").contains("detected") || safe(log.eventName, "").contains("blocked") || safe(log.msg, "").contains("detected") || safe(log.msg, "").contains("blocked") || safe(log.result, "") == "blocked" || safe(action, "") == "blocked" || safe(log.severity, "") == "critical" || safe(log.severity, "") == "high")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 1
+  deduplicateBy:
+    - origin.ip
+    - log.fileid

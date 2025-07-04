@@ -1,0 +1,30 @@
+- id: 1017
+  dataTypes:
+    - netflow
+  name: SNMP Reflection Attack Detection
+  impact:
+    confidentiality: 2
+    integrity: 0
+    availability: 5
+  category: DDoS Attack
+  technique: Network Denial of Service
+  adversary: origin
+  references:
+    - https://www.us-cert.gov/ncas/alerts/TA14-017A
+    - https://attack.mitre.org/techniques/T1498/
+  description: Detects potential SNMP reflection attacks by identifying suspicious SNMP traffic patterns on port 161 with high volume or packet counts
+  where: (safe(target.port, 0) == 161 || safe(origin.port, 0) == 161) && safe(protocol, "") == "17" && (safe(log.bytes, 0) > 5000 || safe(log.packets, 0) > 20)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: target.port
+          operator: filter_term
+          value: '161'
+      within: now-5m
+      count: 50
+  deduplicateBy:
+    - origin.ip
+    - target.ip

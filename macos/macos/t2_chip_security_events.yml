@@ -1,0 +1,42 @@
+- id: 1029
+  dataTypes:
+    - macos
+  name: T2 Security Chip Anomalous Activity
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Initial Access
+  technique: Hardware Additions
+  adversary: system
+  references:
+    - https://attack.mitre.org/techniques/T1200/
+    - https://support.apple.com/guide/security/secure-boot-secac71d5623/web
+  description: Detects suspicious activities related to the T2 security chip including potential bypass attempts, firmware modifications, or secure boot violations
+  where: |
+    (safe(log.subsystem, "") contains "com.apple.security" ||
+     safe(log.subsystem, "") contains "com.apple.sepos" ||
+     safe(log.process, "") contains "bridgeOS" ||
+     safe(log.process, "") contains "sepOS" ||
+     safe(log.eventMessage, "") contains "T2" ||
+     safe(log.eventMessage, "") contains "secure boot") &&
+    (safe(log.eventMessage, "") contains "verification failed" ||
+     safe(log.eventMessage, "") contains "signature invalid" ||
+     safe(log.eventMessage, "") contains "firmware" ||
+     safe(log.eventMessage, "") contains "checkm8" ||
+     safe(log.eventMessage, "") contains "checkra1n" ||
+     safe(log.eventMessage, "") contains "ECID" ||
+     safe(log.eventMessage, "") contains "activation lock bypass" ||
+     safe(log.eventMessage, "") contains "SMC payload" ||
+     safe(log.eventType, "") == "error" ||
+     safe(log.eventMessage, "") contains "security policy violation")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: system.hostname.keyword
+          operator: filter_term
+          value: '{{system.hostname}}'
+      within: now-5m
+      count: 1
+  deduplicateBy:
+    - system.hostname

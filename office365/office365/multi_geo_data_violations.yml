@@ -1,0 +1,37 @@
+- id: 1019
+  dataTypes:
+    - o365
+  name: Multi-Geo Data Violations
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+  category: Data Loss
+  technique: Data Transfer Size Limits
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/microsoft-365/enterprise/microsoft-365-multi-geo
+    - https://attack.mitre.org/techniques/T1030/
+  description: Detects violations of multi-geo data residency policies including unauthorized data movements between regions, cross-geo access violations, or attempts to bypass geo-restrictions
+  where: |
+    (safe(action, "") in ["SiteGeoMoveScheduled", "SiteGeoMoveCompleted", "SiteGeoMoveCancelled", "AllowedDataLocationAdded", "GeoQuotaAllocated", "MigrationJobCompleted"] ||
+    (safe(log.Workload, "") == "OneDrive" && safe(log.ItemName, "") contains "cross-geo") ||
+    (safe(log.SourceFileName, "") != "" && safe(log.DestinationFileName, "") != "" && safe(log.SourceRelativeUrl, "") contains "geo" && safe(log.DestinationRelativeUrl, "") contains "geo") ||
+    (safe(log.Parameters, "") contains "DataLocation" || safe(log.Parameters, "") contains "PreferredDataLocation")) &&
+    safe(origin.user, "") != "" &&
+    safe(actionResult, "") == "Succeeded" &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_terms
+          value: ["SiteGeoMoveScheduled", "AllowedDataLocationAdded", "FileDownloaded", "FileSyncDownloadedFull"]
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - origin.ip

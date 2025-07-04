@@ -1,0 +1,26 @@
+- id: 1015
+  dataTypes:
+    - firewall-pfsense
+  name: Interface Queue Drops - Performance Degradation
+  impact:
+    confidentiality: 0
+    integrity: 1
+    availability: 3
+  category: Network Performance
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/monitoring/status/interfaces.html
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects excessive packet drops on pfSense interfaces due to queue saturation, which could indicate network congestion, DDoS attacks, or misconfigured traffic shaping policies affecting service availability
+  where: (safe(log.eventType, "").contains("kernel") || safe(log.eventType, "").contains("pf")) && safe(log.realInterface, "") != "" && (safe(log.reason, "").contains("drop") || safe(log.reason, "").contains("queue") || safe(log.reason, "").contains("congestion"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.realInterface.keyword
+          operator: filter_term
+          value: '{{log.realInterface}}'
+      within: now-15m
+      count: 50
+  deduplicateBy:
+    - log.realInterface

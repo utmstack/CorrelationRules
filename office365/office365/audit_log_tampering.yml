@@ -1,0 +1,35 @@
+- id: 1017
+  dataTypes:
+    - o365
+  name: Audit Log Tampering Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/purview/audit-log-enable-disable
+    - https://attack.mitre.org/techniques/T1070/001/
+  description: Detects attempts to tamper with audit logs by disabling auditing, modifying audit configurations, or clearing audit data. This could indicate an attempt to hide malicious activities
+  where: |
+    (safe(action, "") in ["Set-AdminAuditLogConfig", "Remove-AdminAuditLogConfig", "Disable-OrganizationCustomization", "Set-OrganizationConfig"] ||
+    (safe(log.Workload, "") == "Exchange" && safe(log.ObjectId, "") contains "AdminAuditLog") ||
+    (safe(log.Parameters, "") contains "UnifiedAuditLogIngestionEnabled" && safe(log.Parameters, "") contains "false")) &&
+    safe(origin.user, "") != "" &&
+    safe(actionResult, "") == "Succeeded"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_terms
+          value: ["Set-AdminAuditLogConfig", "Remove-AdminAuditLogConfig"]
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - origin.user
+    - action

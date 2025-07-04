@@ -1,0 +1,44 @@
+- id: 1014
+  dataTypes:
+    - rhel_family
+  name: OpenShift Security Violations
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Kubernetes Security
+  technique: Kubernetes API Exploitation
+  adversary: origin
+  references:
+    - https://docs.openshift.com/container-platform/latest/security/index.html
+    - https://attack.mitre.org/techniques/T1552/007/
+  description: Detects security violations in OpenShift Container Platform including unauthorized API access, RBAC violations, security context constraint breaches, and malicious pod deployments
+  where: |
+    (safe(log.service, "") contains "openshift" || safe(log.program, "") contains "openshift" ||
+     safe(log.kubernetes_component, "") != "" || safe(log.namespace, "") contains "openshift") &&
+    (
+      safe(log.message, "") contains "RBAC violation" ||
+      safe(log.message, "") contains "SCC violation" ||
+      safe(log.message, "") contains "unauthorized API call" ||
+      safe(log.message, "") contains "forbidden" ||
+      safe(log.message, "") contains "admission webhook denied" ||
+      safe(log.message, "") contains "security policy violation" ||
+      safe(log.audit_verb, "") in ["create", "delete", "patch"] && safe(log.audit_response_code, 0) == 403 ||
+      safe(log.event_type, "") == "pod_security_violation" ||
+      safe(log.privileged, false) == true && safe(log.user, "") != "system:serviceaccount:openshift" ||
+      (safe(log.resource, "") in ["secrets", "configmaps", "serviceaccounts"] && safe(log.verb, "") == "get" && safe(log.response_code, 0) == 403)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.namespace.keyword
+          operator: filter_term
+          value: '{{log.namespace}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - log.namespace

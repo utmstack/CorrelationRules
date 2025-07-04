@@ -1,0 +1,30 @@
+- id: 1023
+  dataTypes:
+    - pa_firewall
+  name: Hardware Security Module Critical Events
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: System Security
+  technique: Hardware Additions
+  adversary: device
+  references:
+    - https://docs.paloaltonetworks.com/pan-os/10-2/pan-os-admin/certificate-management/hardware-security-module
+    - https://attack.mitre.org/techniques/T1200/
+  description: Detects critical hardware security module (HSM) events including key generation failures, cryptographic errors, and HSM connectivity issues that could indicate tampering or system compromise
+  where: (safe(log.msg, "").contains("HSM") || safe(log.msg, "").contains("hardware security module") || safe(log.category, "").contains("crypto") || safe(log.category, "").contains("hsm")) && (safe(log.severity, "") == "critical" || safe(log.severity, "") == "high" || safe(log.msg, "").contains("fail") || safe(log.msg, "").contains("error"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+        - field: log.category.keyword
+          operator: filter_term
+          value: 'hsm'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - log.syslogHost
+    - log.msg

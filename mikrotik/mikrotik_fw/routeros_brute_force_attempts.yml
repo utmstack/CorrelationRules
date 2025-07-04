@@ -1,0 +1,29 @@
+- id: 1001
+  dataTypes:
+    - firewall-mikrotik
+  name: RouterOS Multiple Authentication Failures
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Brute Force
+  technique: Password Attacks
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/328094/Log
+    - https://attack.mitre.org/techniques/T1110/001/
+  description: Detects multiple failed authentication attempts to RouterOS from the same source IP, which may indicate a brute force attack against the device. This rule monitors for login failures across all services.
+  where: safe(log.topics, "") contains "system" && safe(log.topics, "") contains "error" && safe(log.topics, "") contains "critical" && safe(log.message, "") contains "login failure" && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.message
+          operator: wildcard
+          value: '*login failure*'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip

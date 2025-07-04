@@ -1,0 +1,64 @@
+- id: 1004
+  dataTypes:
+    - rhel_family
+  name: Suspicious Firewalld Rule Modification
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 4
+  category: Network Security
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1562/004/
+    - https://firewalld.org/documentation/man-pages/firewall-cmd.html
+  description: Detects unauthorized or suspicious modifications to firewalld rules that could indicate attempts to bypass network security controls or establish persistence
+  where: |
+    (
+      safe(log.comm, "") in ["firewall-cmd", "firewalld"] &&
+      (
+        (safe(log.args, "") contains "--add-port" && 
+         (safe(log.args, "") contains "22/tcp" || 
+          safe(log.args, "") contains "3389/tcp" ||
+          safe(log.args, "") contains "4444/tcp" ||
+          safe(log.args, "") contains "5900/tcp")) ||
+        (safe(log.args, "") contains "--add-service" &&
+         safe(log.args, "") contains "ssh" &&
+         safe(log.args, "") contains "--permanent") ||
+        safe(log.args, "") contains "--add-rich-rule" ||
+        safe(log.args, "") contains "--add-forward-port" ||
+        safe(log.args, "") contains "--direct" ||
+        safe(log.args, "") contains "--set-log-denied=off" ||
+        (safe(log.args, "") contains "--zone=public" &&
+         safe(log.args, "") contains "--add-source")
+      )
+    ) ||
+    (
+      safe(log.path, "") contains "/etc/firewalld/" &&
+      safe(log.syscall, "") in ["2", "257", "82", "83"] &&
+      safe(log.comm, "") not in ["firewalld", "firewall-cmd", "systemd"]
+    ) ||
+    (
+      safe(log.message, "") contains "firewalld" &&
+      (
+        safe(log.message, "") contains "rule added" ||
+        safe(log.message, "") contains "rule removed" ||
+        safe(log.message, "") contains "zone changed" ||
+        safe(log.message, "") contains "panic mode"
+      ) &&
+      safe(log.uid, "") != "0"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.comm.keyword
+          operator: filter_term
+          value: 'firewall-cmd'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.args

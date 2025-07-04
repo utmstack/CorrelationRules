@@ -1,0 +1,30 @@
+- id: 1004
+  dataTypes:
+    - o365
+  name: Suspicious Teams Message Export Activity
+  impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 1
+  category: Data Exfiltration
+  technique: Email Collection
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/purview/audit-teams-audit-log-events
+    - https://attack.mitre.org/techniques/T1114/
+  description: Detects when Teams messages are exported or accessed in bulk through API calls, which could indicate an attempt to exfiltrate chat history and shared files from Microsoft Teams.
+  where: safe(action, "") in ["MessagesListed", "MessagesExported", "RecordingExported", "TranscriptsExported"] && safe(origin.user, "") != "" && safe(log.Workload, "") == "MicrosoftTeams"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.Workload.keyword
+          operator: filter_term
+          value: 'MicrosoftTeams'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.user
+    - log.appAccessContextClientAppId

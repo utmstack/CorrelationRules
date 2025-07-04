@@ -1,0 +1,30 @@
+- id: 1016
+  dataTypes:
+    - netflow
+  name: NTP Amplification Attack Detection
+  impact:
+    confidentiality: 1
+    integrity: 0
+    availability: 5
+  category: DDoS Attack
+  technique: Network Denial of Service
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/about/security-center/amplification-ddos.html
+    - https://attack.mitre.org/techniques/T1498/
+  description: Detects potential NTP amplification attacks by identifying unusual NTP traffic patterns with large response sizes or high packet counts to port 123
+  where: (safe(target.port, 0) == 123 || safe(origin.port, 0) == 123) && safe(protocol, "") == "17" && (safe(log.bytes, 0) > 1000 || safe(log.packets, 0) > 10)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: target.port
+          operator: filter_term
+          value: '123'
+      within: now-5m
+      count: 100
+  deduplicateBy:
+    - origin.ip
+    - target.ip

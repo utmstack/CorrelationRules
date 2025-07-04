@@ -1,0 +1,50 @@
+- id: 1018
+  dataTypes:
+    - pa_firewall
+  name: Container Security Violations
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Container Security
+  technique: Escape to Host
+  adversary: origin
+  references:
+    - https://www.paloaltonetworks.com/prisma/cloud/container-security
+    - https://attack.mitre.org/techniques/T1611/
+  description: Detects security violations in containerized environments including unauthorized container operations, privilege escalations, and runtime policy violations
+  where: |
+    (
+      safe(log.app, "").contains("docker") ||
+      safe(log.app, "").contains("kubernetes") ||
+      safe(log.app, "").contains("container") ||
+      safe(log.category, "").contains("container") ||
+      safe(log.rule, "").contains("container")
+    ) &&
+    (
+      safe(log.act, "") == "deny" ||
+      safe(log.act, "") == "block" ||
+      safe(action, "") == "deny" ||
+      safe(action, "") == "block" ||
+      safe(log.category, "").contains("violation") ||
+      safe(log.category, "").contains("breach")
+    ) &&
+    (
+      safe(log.severityLabel, "") != "" &&
+      (log.severityLabel == "high" || log.severityLabel == "critical" || log.severityLabel == "medium")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.app.keyword
+          operator: filter_term
+          value: '{{log.app}}'
+      within: now-2h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.app
+    - log.rule

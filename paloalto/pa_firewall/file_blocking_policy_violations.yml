@@ -1,0 +1,27 @@
+- id: 1011
+  dataTypes:
+    - pa_firewall
+  name: File Blocking Policy Violations
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 1
+  category: Policy Violation
+  technique: Ingress Tool Transfer
+  adversary: origin
+  references:
+    - https://docs.paloaltonetworks.com/pan-os/10-2/pan-os-admin/monitoring/use-syslog-for-monitoring/syslog-field-descriptions/threat-log-fields
+    - https://attack.mitre.org/techniques/T1105/
+  description: Detects when files are blocked by Palo Alto firewall file blocking policies, indicating potential attempts to transfer malicious or unauthorized files
+  where: safe(log.subtype, "") == "file" && safe(log.action, "") == "block-file" && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.filename

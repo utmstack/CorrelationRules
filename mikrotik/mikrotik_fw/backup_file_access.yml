@@ -1,0 +1,35 @@
+- id: 1009
+  dataTypes:
+    - firewall-mikrotik
+  name: MikroTik Backup File Access
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Collection
+  technique: Archive Collected Data
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/328094/Log
+    - https://attack.mitre.org/techniques/T1560/
+  description: Backup file access detected on MikroTik device, which could indicate unauthorized attempts to access or exfiltrate backup configurations
+  where: |
+    safe(log.topics, "") =~ ".*system.*" && 
+    (safe(log.message, "") =~ ".*backup.*create.*" ||
+     safe(log.message, "") =~ ".*backup.*download.*" ||
+     safe(log.message, "") =~ ".*backup.*restore.*" ||
+     safe(log.message, "") =~ ".*\\.backup.*") &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.message
+          operator: filter_wildcard
+          value: '*backup*'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip

@@ -1,0 +1,26 @@
+- id: 1010
+  dataTypes:
+    - firewall-pfsense
+  name: DHCP Pool Exhaustion Attack
+  impact:
+    confidentiality: 1
+    integrity: 1
+    availability: 5
+  category: Impact
+  technique: Endpoint Denial of Service
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/services/dhcp/index.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects rapid DHCP requests that could indicate DHCP starvation attacks attempting to exhaust the IP address pool and prevent legitimate clients from obtaining network access
+  where: safe(log.eventType, "") == "dhcpd" && (safe(log.csvMsg, "").contains("DHCPDISCOVER") || safe(log.csvMsg, "").contains("no free leases"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: 'dhcpd'
+      within: now-2m
+      count: 50
+  deduplicateBy:
+    - log.realInterface

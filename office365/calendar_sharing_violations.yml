@@ -1,0 +1,33 @@
+- id: 1008
+  dataTypes:
+    - o365
+  name: Unauthorized Calendar Sharing Modification
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Data Exposure
+  technique: Data from Information Repositories
+  adversary: origin
+  references:
+    - https://docs.microsoft.com/en-us/microsoft-365/compliance/audit-log-activities
+    - https://attack.mitre.org/techniques/T1213/
+  description: Detects modifications to calendar sharing permissions that could expose sensitive scheduling information to unauthorized users
+  where: |
+    safe(action, "") in ["UpdateCalendarDelegation", "AddFolderPermissions", "ModifyFolderPermissions", "RemoveFolderPermissions", "Set-MailboxFolderPermission", "Add-MailboxFolderPermission"] && 
+    safe(actionResult, "") == "Success" &&
+    safe(log.Item_FolderPath, "").contains("Calendar")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_terms
+          value: '["UpdateCalendarDelegation", "AddFolderPermissions", "ModifyFolderPermissions"]'
+      within: now-4h
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - log.Item_FolderPath

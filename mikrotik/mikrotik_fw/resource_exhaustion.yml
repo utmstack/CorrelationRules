@@ -1,0 +1,38 @@
+- id: 1029
+  dataTypes:
+    - firewall-mikrotik
+  name: MikroTik Resource Exhaustion Attack Detected
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Resource Exhaustion
+  technique: Endpoint Denial of Service
+  adversary: origin
+  references:
+    - https://wiki.mikrotik.com/wiki/Manual:System/Resource
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects potential resource exhaustion attacks or conditions on MikroTik devices including high CPU usage, memory exhaustion, connection table overflow, or disk space issues that could indicate DoS attacks or system compromise.
+  where: |
+    (safe(log.topics, "") == "system" || contains(safe(log.topics, ""), "resource") || contains(safe(log.topics, ""), "critical")) &&
+    (contains(lower(safe(log.message, "")), "cpu") && 
+     (contains(lower(safe(log.message, "")), "100%") || contains(lower(safe(log.message, "")), "high") || contains(lower(safe(log.message, "")), "overload"))) ||
+    (contains(lower(safe(log.message, "")), "memory") && 
+     (contains(lower(safe(log.message, "")), "exhausted") || contains(lower(safe(log.message, "")), "full") || contains(lower(safe(log.message, "")), "low"))) ||
+    (contains(lower(safe(log.message, "")), "connection") && 
+     (contains(lower(safe(log.message, "")), "limit") || contains(lower(safe(log.message, "")), "overflow") || contains(lower(safe(log.message, "")), "table full"))) ||
+    (contains(lower(safe(log.message, "")), "disk") && 
+     (contains(lower(safe(log.message, "")), "full") || contains(lower(safe(log.message, "")), "space"))) ||
+    contains(lower(safe(log.message, "")), "out of memory") ||
+    contains(lower(safe(log.message, "")), "resource limit")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.topics

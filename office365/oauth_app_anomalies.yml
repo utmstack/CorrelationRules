@@ -1,0 +1,30 @@
+- id: 1022
+  dataTypes:
+    - o365
+  name: Office 365 OAuth Application Anomalous Activity
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Credential Access
+  technique: Steal Application Access Token
+  adversary: origin
+  references:
+    - https://office365itpros.com/2023/12/15/oauth-apps-security/
+    - https://attack.mitre.org/techniques/T1528/
+  description: Detects anomalous OAuth application activities including suspicious consent patterns, high-privilege permission grants, or rapid consent events from a single user which may indicate compromised accounts or malicious OAuth apps.
+  where: safe(action, "") == "Consent to application" && safe(actionResult, "") == "Success" && (safe(log.Scope, "").contains("Mail.") || safe(log.Scope, "").contains("Files.") || safe(log.Scope, "").contains("User.ReadWrite") || safe(log.Scope, "").contains(".All"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'Consent to application'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.appAccessContextClientAppId

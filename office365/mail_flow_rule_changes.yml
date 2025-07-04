@@ -1,0 +1,30 @@
+- id: 1023
+  dataTypes:
+    - o365
+  name: Office 365 Mail Flow Rule Modified
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Defense Evasion
+  technique: Email Hiding Rules
+  adversary: origin
+  references:
+    - https://admindroid.com/how-to-audit-transport-rule-changes-report-in-microsoft-365
+    - https://attack.mitre.org/techniques/T1564/008/
+  description: Detects modifications to mail flow rules (transport rules) in Office 365. Attackers may create or modify mail flow rules to redirect, delete, or hide emails, bypassing security controls or exfiltrating data.
+  where: (safe(action, "").contains("TransportRule") || safe(action, "") == "New-TransportRule" || safe(action, "") == "Set-TransportRule" || safe(action, "") == "Remove-TransportRule" || safe(action, "") == "Enable-TransportRule" || safe(action, "") == "Disable-TransportRule") && safe(actionResult, "") == "Success"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: wildcard
+          value: '*TransportRule*'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - action

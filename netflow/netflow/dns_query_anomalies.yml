@@ -1,0 +1,64 @@
+- id: 1015
+  dataTypes:
+    - netflow
+  name: DNS Query Anomaly Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: DNS Security
+  technique: DNS Tunneling
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1071/004/
+    - https://www.cisco.com/c/en/us/td/docs/net_mgmt/netflow_collection_engine/3-6/user/guide/format.html
+  description: Detects anomalous DNS query patterns including DNS tunneling, DGA domains, excessive queries, cache poisoning attempts, and suspicious query types that may indicate malware communication or data exfiltration
+  where: |
+    (
+      (safe(target.port, 0) == 53 || safe(origin.port, 0) == 53) &&
+      (
+        safe(log.bytes, 0) > 512 && safe(protocol, "") == "17" ||
+        safe(log.query_count, 0) > 1000 ||
+        safe(log.unique_domains, 0) > 100 ||
+        safe(log.txt_queries, 0) > 10 ||
+        safe(log.failed_queries, 0) > 50
+      )
+    ) ||
+    (
+      safe(target.port, 0) == 53 &&
+      safe(log.query_length, 0) > 100
+    ) ||
+    (
+      safe(target.port, 0) == 53 &&
+      safe(log.subdomain_depth, 0) > 5
+    ) ||
+    (
+      (safe(target.port, 0) == 53 || safe(origin.port, 0) == 53) &&
+      safe(protocol, "") == "6"
+    ) ||
+    (
+      safe(target.port, 0) == 53 &&
+      safe(log.non_standard_query_type, "false") == "true"
+    ) ||
+    (
+      safe(target.port, 0) == 53 &&
+      safe(log.response_size, 0) > 4096
+    ) ||
+    (
+      safe(origin.port, 0) == 53 &&
+      safe(origin.ip, "") != safe(log.authorized_dns_server, "")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: target.port
+          operator: filter_term
+          value: '53'
+      within: now-15m
+      count: 100
+  deduplicateBy:
+    - origin.ip
+    - log.query_domain

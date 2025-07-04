@@ -1,0 +1,30 @@
+- id: 1002
+  dataTypes:
+    - o365
+  name: Suspicious Email Forwarding Rule Created
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Persistence
+  technique: Email Forwarding Rule
+  adversary: origin
+  references:
+    - https://redcanary.com/blog/threat-detection/email-forwarding-rules/
+    - https://attack.mitre.org/techniques/T1114/003/
+  description: Detects creation or modification of inbox rules that forward emails to external domains, which is a common technique used by attackers to exfiltrate emails and maintain persistence after compromising an account.
+  where: safe(action, "") in ["New-InboxRule", "Set-InboxRule"] && safe(origin.user, "") != "" && (safe(log.Parameters, "") contains "ForwardTo" || safe(log.Parameters, "") contains "RedirectTo" || safe(log.Parameters, "") contains "ForwardAsAttachmentTo")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_terms
+          value: ["New-InboxRule", "Set-InboxRule"]
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - origin.ip

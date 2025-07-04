@@ -1,0 +1,38 @@
+- id: 1028
+  dataTypes:
+    - macos
+  name: Endpoint Security Framework Bypass Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: system
+  references:
+    - https://attack.mitre.org/techniques/T1562/001/
+    - https://developer.apple.com/documentation/endpointsecurity
+  description: Detects attempts to bypass or tamper with the macOS Endpoint Security framework, which could indicate malicious activity trying to evade security monitoring
+  where: |
+    (safe(log.subsystem, "") == "com.apple.endpointsecurity" ||
+     safe(log.process, "") contains "EndpointSecurity" ||
+     safe(log.eventMessage, "") contains "ES_EVENT_TYPE") &&
+    (safe(log.eventMessage, "") contains "bypass" ||
+     safe(log.eventMessage, "") contains "failed authorization" ||
+     safe(log.eventMessage, "") contains "client disconnected" ||
+     safe(log.eventMessage, "") contains "authorization denied" ||
+     safe(log.eventMessage, "") contains "invalid client" ||
+     safe(log.eventMessage, "") contains "ES_RETURN_ERROR" ||
+     safe(log.eventType, "") == "error" ||
+     safe(log.eventMessage, "") contains "memory leak detected")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: system.hostname.keyword
+          operator: filter_term
+          value: '{{system.hostname}}'
+      within: now-15m
+      count: 2
+  deduplicateBy:
+    - system.hostname
+    - log.process

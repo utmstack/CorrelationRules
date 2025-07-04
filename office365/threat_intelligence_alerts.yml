@@ -1,0 +1,30 @@
+- id: 1027
+  dataTypes:
+    - o365
+  name: Threat Intelligence Alert Pattern
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Initial Access
+  technique: Phishing
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/microsoft-365/security/defender/threat-analytics
+    - https://attack.mitre.org/techniques/T1566/
+  description: Detects threat intelligence alerts from Office 365 security services indicating known malicious activities, threat actor patterns, or indicators of compromise matching threat intelligence feeds.
+  where: safe(action, "") == "ThreatIntelligenceAlertTriggered" || (safe(log.AlertType, "") == "ThreatIntelligence" && safe(actionResult, "") != "Success")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.AlertType.keyword
+          operator: filter_term
+          value: 'ThreatIntelligence'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.AlertId

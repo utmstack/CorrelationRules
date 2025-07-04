@@ -1,0 +1,42 @@
+- id: 1013
+  dataTypes:
+    - rhel_family
+  name: Container Platform Security Attacks
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Container Security
+  technique: Container Escape
+  adversary: origin
+  references:
+    - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/building_running_and_managing_containers/index
+    - https://attack.mitre.org/techniques/T1611/
+  description: Detects attacks against container platforms including Docker, Podman, and CRI-O such as container escape attempts, privilege escalation, unauthorized image pulls, and runtime manipulation
+  where: |
+    (safe(log.service, "") in ["docker", "podman", "crio", "containerd"] || 
+     safe(log.process_name, "") in ["dockerd", "podman", "crio", "containerd"]) &&
+    (
+      safe(log.message, "") contains "container escape" ||
+      safe(log.message, "") contains "privilege escalation" ||
+      safe(log.message, "") contains "unauthorized pull" ||
+      safe(log.message, "") contains "runtime manipulation" ||
+      safe(log.message, "") contains "seccomp violation" ||
+      safe(log.message, "") contains "AppArmor violation" ||
+      safe(log.message, "") contains "SELinux denial" ||
+      safe(log.action, "") == "exec" && safe(log.command, "") contains "/proc/self/exe" ||
+      safe(log.action, "") == "mount" && safe(log.path, "") contains "/sys" ||
+      safe(log.event_type, "") == "container_breakout" ||
+      (safe(log.syscall, "") in ["mount", "pivot_root", "chroot"] && safe(log.result, "") == "denied")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.container_id.keyword
+          operator: filter_term
+          value: '{{origin.container_id}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.container_id
+    - origin.ip

@@ -1,0 +1,45 @@
+- id: 1010
+  dataTypes:
+    - macos
+  name: MDM Profile Removal Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Defense Evasion
+  technique: T1562.001 - Impair Defenses: Disable or Modify Tools
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1562/001/
+    - https://support.addigy.com/hc/en-us/articles/13833098867219-Troubleshooting-MDM-Connectivity-for-macOS
+    - https://docs.omnissa.com/bundle/macOS-Device-ManagementVSaaS/page/ProfilesOverview.html
+  description: Detects unauthorized removal or modification of MDM (Mobile Device Management) profiles on macOS systems, which could indicate attempts to bypass corporate security controls or remove device management.
+  where: |
+    (safe(log.process, "") in ["mdmclient", "profiles", "System Preferences", "System Settings"] ||
+     safe(log.subsystem, "") == "com.apple.ManagedClient" ||
+     safe(log.subsystem, "") contains "MDM" ||
+     safe(log.eventMessage, "") contains "mdmclient") &&
+    (safe(log.eventMessage, "") contains "remove" ||
+     safe(log.eventMessage, "") contains "delete" ||
+     safe(log.eventMessage, "") contains "uninstall" ||
+     safe(log.eventMessage, "") contains "profile" ||
+     safe(log.eventMessage, "") contains "unenroll" ||
+     safe(log.eventMessage, "") contains "MDM_Connect: Unable" ||
+     safe(log.eventMessage, "") contains "enrollment" ||
+     safe(log.eventMessage, "") contains "configuration profile") &&
+    (safe(log.messageType, "") in ["error", "fault", "default"] ||
+     safe(log.eventMessage, "") contains "ERROR")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.subsystem.keyword
+          operator: filter_term
+          value: '{{log.subsystem}}'
+      within: now-2h
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.process

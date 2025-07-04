@@ -1,0 +1,30 @@
+- id: 1008
+  dataTypes:
+    - sophos-central
+  name: Device Control Policy Violation
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Device Control
+  technique: Collection
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/EndpointProtection/ConfigureDeviceControl/index.html
+    - https://attack.mitre.org/techniques/T1025/
+  description: Detects violations of device control policies when unauthorized devices attempt to connect or transfer data. This could indicate potential data exfiltration attempts or use of unauthorized devices.
+  where: safe(log.type, "") == "Event::Endpoint::Device::Blocked" || (safe(log.type, "") == "Event::Endpoint::Device::AlertedOnly" && safe(log.action, "") == "blocked")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+        - field: log.userId.keyword
+          operator: filter_term
+          value: '{{log.userId}}'
+      within: now-2h
+      count: 3
+  deduplicateBy:
+    - log.endpointId
+    - log.deviceType

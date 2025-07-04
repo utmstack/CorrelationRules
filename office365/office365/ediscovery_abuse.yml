@@ -1,0 +1,32 @@
+- id: 1016
+  dataTypes:
+    - o365
+  name: eDiscovery Abuse Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Data Exfiltration
+  technique: Data Staged
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/purview/ediscovery-search-for-activities-in-the-audit-log
+    - https://attack.mitre.org/techniques/T1074/
+  description: Detects potential abuse of eDiscovery features including excessive searches, exports, or unauthorized access to sensitive data through eDiscovery operations
+  where: |
+    safe(action, "") in ["SearchStarted", "SearchExported", "SearchCreated", "CaseAdded", "HoldCreated", "SearchExportDownloaded", "SearchPreviewed", "SearchResultsPurged", "RemoveSearchResultsSentToZoom", "RemoveSearchExported", "RemoveSearchPreviewed", "RemoveSearchResultsPurged", "SearchResultsSentToZoom", "ViewedSearchExported", "ViewedSearchPreviewed"] &&
+    safe(origin.user, "") != "" &&
+    safe(actionResult, "") == "Succeeded"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_terms
+          value: ["SearchStarted", "SearchExported", "SearchCreated", "CaseAdded", "HoldCreated", "SearchExportDownloaded"]
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.user

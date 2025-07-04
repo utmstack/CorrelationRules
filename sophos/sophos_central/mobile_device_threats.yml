@@ -1,0 +1,30 @@
+- id: 1004
+  dataTypes:
+    - sophos-central
+  name: Mobile Device Threats
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Mobile Security
+  technique: T1474 - Supply Chain Compromise
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/MobileControl/index.html
+    - https://attack.mitre.org/techniques/T1474/
+  description: Detects security threats on mobile devices managed by Sophos Central, including malicious apps, jailbreak/root detection, and policy violations
+  where: safe(log.endpointType, "") == "mobile" || safe(log.type, "") in ["Event::Mobile::Threat::Detected", "Event::Mobile::Device::Jailbroken", "Event::Mobile::Device::Rooted", "Event::Mobile::App::Malicious", "Event::Mobile::Compliance::Failed"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+        - field: log.endpointType.keyword
+          operator: filter_term
+          value: 'mobile'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - log.endpointId
+    - log.userId

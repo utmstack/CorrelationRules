@@ -1,0 +1,30 @@
+- id: 1024
+  dataTypes:
+    - pa_firewall
+  name: High Availability Failover Event
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 5
+  category: System Availability
+  technique: Service Stop
+  adversary: device
+  references:
+    - https://docs.paloaltonetworks.com/pan-os/10-2/pan-os-admin/high-availability
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects high availability failover events including unexpected failovers, HA state changes, and synchronization failures that could indicate system instability or attacks
+  where: (safe(log.msg, "").contains("HA") || safe(log.msg, "").contains("high availability") || safe(log.msg, "").contains("failover") || safe(log.category, "").contains("ha")) && (safe(log.msg, "").contains("state change") || safe(log.msg, "").contains("active") || safe(log.msg, "").contains("passive") || safe(log.msg, "").contains("sync fail"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+        - field: log.category.keyword
+          operator: filter_wildcard
+          value: '*ha*'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - log.syslogHost
+    - log.panOSVirtualSystem

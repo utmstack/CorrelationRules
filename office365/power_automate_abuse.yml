@@ -1,0 +1,33 @@
+- id: 1009
+  dataTypes:
+    - o365
+  name: Suspicious Power Automate Flow Activity
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Process Automation Abuse
+  technique: Automated Collection
+  adversary: origin
+  references:
+    - https://docs.microsoft.com/en-us/power-platform/admin/audit-data-user-activity
+    - https://attack.mitre.org/techniques/T1119/
+  description: Detects creation or modification of Power Automate flows that could be used for automated data exfiltration or unauthorized process automation
+  where: |
+    safe(action, "") in ["CreateFlow", "EditFlow", "DeleteFlow", "EnableFlow", "DisableFlow", "ShareFlow", "UnshareFlow", "CreateConnection", "DeleteConnection"] && 
+    safe(actionResult, "") == "Success" &&
+    safe(log.Workload, "") == "PowerAutomate"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.Workload.keyword
+          operator: filter_term
+          value: 'PowerAutomate'
+      within: now-6h
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - action

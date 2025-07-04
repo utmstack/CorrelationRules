@@ -1,0 +1,58 @@
+- id: 1003
+  dataTypes:
+    - macos
+  name: XProtect Evasion or Tampering Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/blog/macos-malware-researchers-how-to-bypass-xprotect-on-catalina/
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects attempts to evade or tamper with XProtect malware detection including modification of XProtect files, databases, or YARA rules
+  where: |
+    (
+      safe(log.subsystem, "") == "com.apple.XProtectFramework" &&
+      (
+        safe(log.eventMessage, "") =~ ".*bypass.*" ||
+        safe(log.eventMessage, "") =~ ".*evasion.*" ||
+        safe(log.eventMessage, "") =~ ".*disable.*"
+      )
+    ) ||
+    (
+      safe(log.processImagePath, "") =~ ".*/Library/Apple/System/Library/CoreServices/XProtect\\.bundle.*" &&
+      safe(log.eventMessage, "") =~ ".*(modify|write|delete).*"
+    ) ||
+    (
+      safe(log.eventMessage, "") =~ ".*XProtect\\.(yara|meta\\.plist|bundle).*" &&
+      (
+        safe(log.eventMessage, "") =~ ".*(modify|tamper|delete).*" ||
+        safe(log.process, "") != "XProtectService"
+      )
+    ) ||
+    (
+      safe(log.process, "") == "MRT" &&
+      safe(log.eventMessage, "") =~ ".*(kill|terminate|stop).*"
+    ) ||
+    (
+      safe(log.eventMessage, "") =~ ".*gk\\.db.*" &&
+      safe(log.eventMessage, "") =~ ".*(modify|delete|truncate).*"
+    ) ||
+    (
+      safe(log.subsystem, "") == "com.apple.MRT" &&
+      safe(log.eventMessage, "") =~ ".*(bypass|disable|fail).*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.process

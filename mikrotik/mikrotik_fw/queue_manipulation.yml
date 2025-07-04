@@ -1,0 +1,31 @@
+- id: 1021
+  dataTypes:
+    - mikrotik_fw
+  name: MikroTik Queue Manipulation Attempt
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 5
+  category: Network Attack
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/display/ROS/Queues
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects attempts to manipulate MikroTik queue configurations which could lead to bandwidth theft, QoS bypass, or denial of service. This includes unauthorized modifications to queue tree, simple queues, or queue types that could impact network performance.
+  where: |
+    safe(log.topics, "") contains "queue" && 
+    (safe(log.action, "") in ["add", "remove", "set", "move"] ||
+     safe(raw, "") contains_any(["queue tree add", "queue simple add", "queue tree set", "queue simple set", "queue tree remove", "queue simple remove", "queue type set"]) ||
+     (safe(log.chain, "") == "forward" && safe(log.action, "") == "drop" && safe(log.len, 0) > 1400))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.topics

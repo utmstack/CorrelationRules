@@ -1,0 +1,30 @@
+- id: 1022
+  dataTypes:
+    - pa_firewall
+  name: CASB Policy Violation Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Policy Violation
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://docs.paloaltonetworks.com/saas-security/data-security
+    - https://attack.mitre.org/techniques/T1078/004/
+  description: Detects Cloud Access Security Broker (CASB) policy violations including unauthorized data sharing, risky user behavior, and non-compliant cloud application usage
+  where: (safe(log.sanctioned_state_of_app, "") == "unsanctioned" || safe(log.category, "").contains("policy-violation") || safe(log.category, "").contains("data-exposure")) && safe(log.act, "") == "deny"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.srcuser.keyword
+          operator: filter_term
+          value: '{{log.srcuser}}'
+        - field: log.act.keyword
+          operator: filter_term
+          value: 'deny'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - log.srcuser
+    - log.app

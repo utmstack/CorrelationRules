@@ -1,0 +1,38 @@
+- id: 1018
+  dataTypes:
+    - rhel_family
+  name: Repository GPG Key Issues in RHEL
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Package Management Security
+  technique: Supply Chain Compromise
+  adversary: origin
+  references:
+    - https://www.redhat.com/en/blog/rpm-gpg-verify-packages
+    - https://attack.mitre.org/techniques/T1195/001/
+  description: Detects GPG key verification failures, missing GPG keys, or unauthorized repository key changes in RHEL systems. These issues could indicate compromised repositories, man-in-the-middle attacks, or supply chain compromises.
+  where: |
+    (safe(log.program, "") in ["yum", "dnf", "rpm"] &&
+     (safe(log.message, "") =~ "GPG.*key.*error|GPG.*check.*failed|GPG.*signature.*invalid|GPG.*key.*not.*found|GPG.*verification.*failed" ||
+      safe(log.message, "") =~ "NOKEY|MISSING_KEY|BAD_SIGNATURE|key.*expired|key.*revoked" ||
+      safe(log.gpgcheck, "") == "failed" ||
+      safe(log.signature_status, "") in ["invalid", "missing", "expired", "untrusted"])) ||
+    (safe(log.message, "") =~ "Repository.*key.*changed|gpgkey.*modified|Importing GPG key" &&
+     safe(log.user, "") != "root")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: host.name.keyword
+          operator: filter_term
+          value: '{{host.name}}'
+        - field: log.repository.keyword
+          operator: filter_term
+          value: '{{log.repository}}'
+      within: now-6h
+      count: 3
+  deduplicateBy:
+    - host.name
+    - log.repository
+    - log.gpg_key_id

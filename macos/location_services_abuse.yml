@@ -1,0 +1,31 @@
+- id: 1021
+  dataTypes:
+    - macos
+  name: Location Services Unauthorized Access
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Privacy Violation
+  technique: T1005 - Data from Local System
+  adversary: origin
+  references:
+    - https://eclecticlight.co/2020/01/15/a-guide-to-catalinas-privacy-protection-2-controlling-privacy-settings/
+    - https://attack.mitre.org/techniques/T1005/
+  description: Detects unauthorized attempts to access location services or multiple location service permission requests that could indicate privacy violation attempts
+  where: |
+    (safe(log.subsystem, "") == "com.apple.TCC" && safe(log.eventMessage, "") contains "location") ||
+    (safe(log.process, "") == "tccd" && safe(log.eventMessage, "") contains "kTCCServiceLocation") ||
+    (safe(log.eventMessage, "") contains "LocationServices" && safe(log.eventMessage, "") contains "denied") ||
+    (safe(log.eventMessage, "") contains "CoreLocationAgent" && safe(log.eventMessage, "") contains "unauthorized")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.process

@@ -1,0 +1,29 @@
+- id: 1006
+  dataTypes:
+    - firewall-pfsense
+  name: pfBlockerNG IP Blocking Activity
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 3
+  category: Network Security
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/packages/pfblockerng/index.html
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects when pfBlockerNG blocks multiple connection attempts from the same source IP address, which could indicate command and control activity or reconnaissance attempts against blocked malicious IPs
+  where: safe(action, "") == "block" && safe(log.reason, "") == "match" && safe(log.anchor, "").contains("pfB_") && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'block'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip

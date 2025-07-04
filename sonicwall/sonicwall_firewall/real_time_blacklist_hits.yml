@@ -1,0 +1,27 @@
+- id: 1017
+  dataTypes:
+    - sonicwall_firewall
+  name: SonicWall Real-Time Blacklist Detection
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 2
+  category: Threat Intelligence
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/techdocs/pdf/sonicos-6-5-4-log-events-reference-guide.pdf
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects connections to blacklisted IPs or domains in real-time, indicating potential malware communication or compromise
+  where: safe(action, "") == "drop" && (safe(log.category, "") == "Blacklist" || safe(log.msg, "").contains("blacklist") || safe(log.msg, "").contains("blocked") || safe(log.gcat, "") == "Malicious")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - target.ip

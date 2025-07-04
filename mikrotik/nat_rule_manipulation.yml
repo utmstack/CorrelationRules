@@ -1,0 +1,36 @@
+- id: 1013
+  dataTypes:
+    - firewall-mikrotik
+  name: MikroTik NAT Rule Manipulation
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 2
+  category: Network Manipulation
+  technique: Traffic Signaling
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/3211299/NAT
+    - https://attack.mitre.org/techniques/T1205/
+  description: Detects suspicious NAT rule modifications that could indicate attempts to redirect traffic, expose internal services, or create unauthorized port forwards. Monitors for NAT masquerade issues and connection tracking table manipulation.
+  where: |
+    safe(log.topics, "") contains "system" && 
+    safe(log.restData, "") contains "nat" &&
+    (safe(log.restData, "") contains "rule added" || 
+     safe(log.restData, "") contains "rule changed" || 
+     safe(log.restData, "") contains "rule removed" ||
+     safe(log.restData, "") contains "masquerade")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.topics.keyword
+          operator: filter_term
+          value: 'system'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.deviceTime

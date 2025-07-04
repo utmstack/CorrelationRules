@@ -1,0 +1,33 @@
+- id: 1003
+  dataTypes:
+    - netflow
+  name: Abnormal Connection Pattern Detection
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 2
+  category: Command and Control
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://www.cisco.com/en/US/technologies/tk648/tk362/technologies_white_paper09186a00800a3db9.html
+    - https://attack.mitre.org/tactics/TA0011/
+  description: Detects unusual connection patterns including rapid connections to multiple hosts, unusual port combinations, or connections to rare ports that could indicate reconnaissance, lateral movement, or command and control activity.
+  where: |
+    safe(origin.ip, "") != "" &&
+    safe(target.port, 0) > 1024 &&
+    safe(target.port, 0) != 3389 &&
+    safe(target.port, 0) != 8080 &&
+    safe(target.port, 0) != 8443 &&
+    safe(protocol, "") != "" &&
+    safe(log.packets, 0) < 100
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 20
+  deduplicateBy:
+    - origin.ip

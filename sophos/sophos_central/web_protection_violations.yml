@@ -1,0 +1,27 @@
+- id: 1006
+  dataTypes:
+    - sophos-central
+  name: Web Protection Violation Detected
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: Web Protection
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/EndpointProtection/webcontrol/index.html
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects when Sophos Central blocks access to websites that violate web protection policies. This could indicate attempted access to malicious, inappropriate, or policy-violating websites.
+  where: safe(log.type, "") == "Event::Endpoint::WebControlViolation" || safe(log.type, "") == "Event::Endpoint::WebFilteringBlocked"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - log.endpointId
+    - log.userId

@@ -1,0 +1,44 @@
+- id: 1007
+  dataTypes:
+    - macos
+  name: Keychain Access Violations Detection
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+  category: Credential Access
+  technique: T1555.001 - Credentials from Password Stores: Keychain
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1555/001/
+    - https://support.apple.com/guide/keychain-access/mac-keychain-password-kyca1242/mac
+    - https://jumpcloud.com/support/understand-mac-keychain-access
+  description: Detects unauthorized or suspicious attempts to access macOS Keychain, including failed access attempts, unusual process access, and potential credential theft activities.
+  where: |
+    (safe(log.subsystem, "") == "com.apple.security" || 
+     safe(log.subsystem, "") == "com.apple.securityd" ||
+     safe(log.process, "") == "securityd" ||
+     safe(log.process, "") == "security") &&
+    (safe(log.eventMessage, "") contains "keychain" || 
+     safe(log.eventMessage, "") contains "Keychain") &&
+    (safe(log.eventMessage, "") contains "error" || 
+     safe(log.eventMessage, "") contains "failed" ||
+     safe(log.eventMessage, "") contains "denied" ||
+     safe(log.eventMessage, "") contains "unauthorized" ||
+     safe(log.eventMessage, "") contains "-25308" ||
+     safe(log.eventMessage, "") contains "accountsd wants to use") &&
+    safe(log.messageType, "") in ["error", "fault"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.process.keyword
+          operator: filter_term
+          value: '{{log.process}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.process

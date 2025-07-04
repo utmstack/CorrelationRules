@@ -1,0 +1,27 @@
+- id: 1011
+  dataTypes:
+    - firewall-sonicwall
+  name: SonicWall VPN Tunnel Anomalies Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 4
+  category: Network Security
+  technique: VPN Exploitation
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/techdocs/pdf/sonicos-6-5-4-log-events-reference-guide.pdf
+    - https://attack.mitre.org/techniques/T1133/
+  description: Detects anomalies in VPN tunnel connections including excessive connection attempts, unusual connection patterns, or VPN errors that may indicate attempted exploitation or unauthorized access
+  where: (safe(log.vpnpolicy, "") != "" || safe(log.category, "").contains("VPN") || safe(log.eventName, "").contains("VPN") || safe(log.msg, "").contains("VPN")) && (safe(log.msg, "").contains("error") || safe(log.msg, "").contains("fail") || safe(log.msg, "").contains("timeout") || safe(log.msg, "").contains("disconnect") || safe(log.result, "").contains("fail"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.vpnpolicy

@@ -1,0 +1,30 @@
+- id: 1030
+  dataTypes:
+    - o365
+  name: Information Barriers Policy Violation
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Privilege Escalation
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/purview/information-barriers
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects violations of information barrier policies designed to prevent conflicts of interest by restricting communications and collaborations between specific groups or individuals within the organization.
+  where: safe(action, "") == "InformationBarrierPolicyViolation" || (safe(log.PolicyType, "") == "InformationBarrier" && safe(actionResult, "") == "Blocked") || (safe(log.ViolationType, "") == "InformationBarrier" && safe(log.Action, "") == "CommunicationBlocked")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.PolicyType.keyword
+          operator: filter_term
+          value: 'InformationBarrier'
+      within: now-12h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.TargetUser

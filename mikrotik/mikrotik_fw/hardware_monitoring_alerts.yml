@@ -1,0 +1,36 @@
+- id: 1028
+  dataTypes:
+    - firewall-mikrotik
+  name: MikroTik Critical Hardware Monitoring Alert
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Hardware Failure
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://wiki.mikrotik.com/wiki/Manual:System/Health
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects critical hardware monitoring alerts on MikroTik devices including high temperature, voltage issues, fan failures, or other hardware problems that could lead to system instability or failure.
+  where: |
+    (safe(log.topics, "") == "system" || contains(safe(log.topics, ""), "health") || contains(safe(log.topics, ""), "critical")) &&
+    (contains(lower(safe(log.message, "")), "temperature") && 
+     (contains(lower(safe(log.message, "")), "high") || contains(lower(safe(log.message, "")), "critical") || contains(lower(safe(log.message, "")), "warning"))) ||
+    (contains(lower(safe(log.message, "")), "voltage") && 
+     (contains(lower(safe(log.message, "")), "low") || contains(lower(safe(log.message, "")), "high") || contains(lower(safe(log.message, "")), "unstable"))) ||
+    (contains(lower(safe(log.message, "")), "fan") && 
+     (contains(lower(safe(log.message, "")), "fail") || contains(lower(safe(log.message, "")), "stop") || contains(lower(safe(log.message, "")), "error"))) ||
+    (contains(lower(safe(log.message, "")), "power") && contains(lower(safe(log.message, "")), "supply")) ||
+    contains(lower(safe(log.message, "")), "hardware error")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.priority
+          operator: filter_term
+          value: '{{log.priority}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - log.topics
+    - log.message

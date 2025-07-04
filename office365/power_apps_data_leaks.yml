@@ -1,0 +1,33 @@
+- id: 1010
+  dataTypes:
+    - o365
+  name: Power Apps Data Connector Suspicious Activity
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Data Exfiltration
+  technique: Data from Cloud Storage
+  adversary: origin
+  references:
+    - https://docs.microsoft.com/en-us/power-platform/admin/audit-data-user-activity
+    - https://attack.mitre.org/techniques/T1530/
+  description: Detects creation or modification of Power Apps data connectors that could lead to unauthorized data access or exfiltration from corporate data sources
+  where: |
+    safe(action, "") in ["CreateApp", "EditApp", "DeleteApp", "ShareApp", "UnshareApp", "CreateDataConnection", "UpdateDataConnection", "DeleteDataConnection", "ExportData", "ImportData"] && 
+    safe(actionResult, "") == "Success" &&
+    safe(log.Workload, "") == "PowerApps"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_terms
+          value: '["CreateDataConnection", "UpdateDataConnection", "ExportData"]'
+      within: now-12h
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.ip

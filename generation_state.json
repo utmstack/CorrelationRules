@@ -16,6 +16,274 @@
       "timestamp": "2025-07-04T10:30:52.521023",
       "status": "success",
       "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T10:33:32.413514",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T10:34:57.538192",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T10:36:33.996184",
+      "status": "success",
+      "files_created": 5
+    }
+  ],
+  "linux/rhel_family": [
+    {
+      "timestamp": "2025-07-04T10:42:50.524270",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T10:49:54.384790",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T10:51:27.737146",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T10:55:17.584830",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T10:57:03.254817",
+      "status": "success",
+      "files_created": 5
+    }
+  ],
+  "macos/macos": [
+    {
+      "timestamp": "2025-07-04T11:01:55.931578",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T11:05:43.285994",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T11:08:41.775254",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T11:13:31.827173",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T11:18:20.838366",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T11:23:52.758157",
+      "status": "success",
+      "files_created": 4
+    }
+  ],
+  "mikrotik/mikrotik_fw": [
+    {
+      "timestamp": "2025-07-04T11:27:27.675494",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T11:32:25.695068",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T11:36:15.794556",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T11:38:15.055816",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T11:41:19.290547",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T11:44:11.898425",
+      "status": "success",
+      "files_created": 5
+    }
+  ],
+  "netflow/netflow": [
+    {
+      "timestamp": "2025-07-04T11:46:13.384160",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T11:48:43.859050",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T11:51:40.493061",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T11:53:32.047840",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T11:56:21.109081",
+      "status": "no_files_created",
+      "files_created": 0
+    }
+  ],
+  "office365/office365": [
+    {
+      "timestamp": "2025-07-04T12:01:37.474253",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T12:05:57.679765",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T12:08:55.730291",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T12:12:41.445831",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T12:15:38.813142",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T12:18:45.206205",
+      "status": "no_files_created",
+      "files_created": 0
+    }
+  ],
+  "paloalto/pa_firewall": [
+    {
+      "timestamp": "2025-07-04T12:22:03.096789",
+      "status": "success",
+      "files_created": 2
+    },
+    {
+      "timestamp": "2025-07-04T12:24:59.373154",
+      "status": "success",
+      "files_created": 3
+    },
+    {
+      "timestamp": "2025-07-04T12:27:20.992917",
+      "status": "success",
+      "files_created": 4
+    },
+    {
+      "timestamp": "2025-07-04T12:32:23.159553",
+      "status": "success",
+      "files_created": 4
+    },
+    {
+      "timestamp": "2025-07-04T12:38:03.808002",
+      "status": "success",
+      "files_created": 4
+    }
+  ],
+  "pfsense/pfsense": [
+    {
+      "timestamp": "2025-07-04T12:40:40.290359",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T12:42:36.518940",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T12:45:10.486374",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T12:48:33.320067",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T12:51:18.863572",
+      "status": "no_files_created",
+      "files_created": 0
+    }
+  ],
+  "sonicwall/sonicwall_firewall": [
+    {
+      "timestamp": "2025-07-04T12:52:42.087934",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T12:54:51.138433",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T12:56:09.519924",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T12:57:25.773974",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T13:00:55.666748",
+      "status": "success",
+      "files_created": 5
+    }
+  ],
+  "sophos/sophos_central": [
+    {
+      "timestamp": "2025-07-04T13:03:48.145296",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T13:08:13.522824",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T13:11:19.805112",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T13:13:56.436431",
+      "status": "success",
+      "files_created": 5
     }
   ]
 }

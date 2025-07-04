@@ -1,0 +1,32 @@
+- id: 1026
+  dataTypes:
+    - firewall-mikrotik
+  name: MikroTik Netinstall Attempts Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 5
+  category: System Manipulation
+  technique: OS Installation
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/24805390/Netinstall
+    - https://attack.mitre.org/techniques/T1601/
+  description: Detects attempts to use Netinstall on MikroTik devices, which could indicate an attempt to bypass security controls or install malicious firmware. Netinstall re-formats the system drive and reinstalls RouterOS.
+  where: |
+    (safe(log.topics, "") == "system" || contains(safe(log.topics, ""), "system")) &&
+    (contains(lower(safe(log.message, "")), "netinstall") || 
+     contains(lower(safe(log.message, "")), "pxe boot") ||
+     contains(lower(safe(log.message, "")), "bootp") ||
+     contains(lower(safe(log.message, "")), "tftp") && contains(lower(safe(log.message, "")), "boot"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - target.ip

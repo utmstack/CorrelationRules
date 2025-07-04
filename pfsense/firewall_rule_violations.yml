@@ -1,0 +1,30 @@
+- id: 1001
+  dataTypes:
+    - firewall-pfsense
+  name: pfSense Firewall Rule Violations
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Policy Violation
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/monitoring/logs/raw-filter-format.html
+    - https://attack.mitre.org/techniques/T1562/007/
+  description: Detects repeated attempts to violate firewall rules, indicating potential reconnaissance, policy bypass attempts, or misconfigured applications trying to access blocked resources
+  where: safe(action, "") == "block" && safe(log.reason, "") == "match" && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'block'
+      within: now-15m
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - target.ip

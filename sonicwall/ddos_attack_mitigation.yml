@@ -1,0 +1,27 @@
+- id: 1013
+  dataTypes:
+    - firewall-sonicwall
+  name: SonicWall DDoS Attack Detection and Mitigation
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Denial of Service
+  technique: Network Denial of Service
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/techdocs/pdf/sonicos-6-5-4-log-events-reference-guide.pdf
+    - https://attack.mitre.org/techniques/T1498/
+  description: Detects potential DDoS attacks based on high volume of connections, flood attacks, or specific DDoS mitigation events triggered by the SonicWall firewall
+  where: safe(log.category, "").contains("Flood") || safe(log.eventName, "").contains("DDoS") || safe(log.msg, "").contains("flood") || safe(log.msg, "").contains("syn attack") || safe(log.msg, "").contains("rate limit") || safe(log.msg, "").contains("excessive") || (safe(log.conns, "") != "" && int(safe(log.conns, "0")) > 1000) || safe(action, "") == "drop"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 100
+  deduplicateBy:
+    - origin.ip
+    - target.ip

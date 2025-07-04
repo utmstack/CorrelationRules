@@ -1,0 +1,35 @@
+- id: 1023
+  dataTypes:
+    - mikrotik_fw
+  name: MikroTik Connection Limit Violation
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Resource Exhaustion
+  technique: Network Denial of Service
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/130220087/Connection+tracking
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects violations of connection limits on MikroTik devices, including attempts to exceed maximum concurrent connections, connection rate limits, or connection tracking table exhaustion which could indicate DoS attacks or resource exhaustion attempts.
+  where: |
+    (safe(log.topics, "") contains "firewall" && 
+     safe(raw, "") contains_any(["connection limit", "conn-limit", "connection tracking", "conntrack full", "max connections", "connection overflow"])) ||
+    (safe(log.chain, "") == "input" && 
+     safe(log.action, "") == "drop" && 
+     safe(raw, "") contains_any(["new", "established"]) &&
+     safe(protocol, "") == "tcp") ||
+    (safe(log.topics, "") contains "system" && 
+     safe(raw, "") contains_any(["connection table full", "tracking table overflow"]))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1m
+      count: 100
+  deduplicateBy:
+    - origin.ip
+    - origin.port

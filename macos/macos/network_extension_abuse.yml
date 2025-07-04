@@ -1,0 +1,40 @@
+- id: 1027
+  dataTypes:
+    - macos
+  name: Suspicious Network Extension Activity
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Collection
+  technique: Man in the Browser
+  adversary: system
+  references:
+    - https://attack.mitre.org/techniques/T1185/
+    - https://developer.apple.com/documentation/networkextension
+  description: Detects potentially malicious network extension activities that could be used for traffic interception, data exfiltration, or man-in-the-middle attacks
+  where: |
+    (safe(log.subsystem, "") == "com.apple.networkextension" || 
+     safe(log.process, "") contains "NEFilterProvider" ||
+     safe(log.process, "") contains "NEAppProxyProvider") &&
+    (safe(log.eventMessage, "") contains "content filter" ||
+     safe(log.eventMessage, "") contains "packet tunnel" ||
+     safe(log.eventMessage, "") contains "proxy provider" ||
+     safe(log.eventMessage, "") contains "DNS proxy" ||
+     safe(log.eventType, "") == "error" ||
+     safe(log.eventMessage, "") contains "failed to validate" ||
+     safe(log.eventMessage, "") contains "unauthorized extension")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: system.hostname.keyword
+          operator: filter_term
+          value: '{{system.hostname}}'
+        - field: log.subsystem.keyword
+          operator: filter_term
+          value: 'com.apple.networkextension'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - system.hostname
+    - log.subsystem

@@ -1,0 +1,27 @@
+- id: 1021
+  dataTypes:
+    - o365
+  name: Office 365 App Consent Grants Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Persistence
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/defender-office-365/detect-and-remediate-illicit-consent-grants
+    - https://attack.mitre.org/techniques/T1098/003/
+  description: Detects when OAuth consent is granted to an application in Office 365. Attackers may use malicious OAuth apps to gain persistent access to user data without requiring credentials.
+  where: safe(action, "") == "Consent to application" && safe(actionResult, "") == "Success"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.appAccessContextClientAppId

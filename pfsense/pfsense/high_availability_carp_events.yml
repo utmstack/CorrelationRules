@@ -1,0 +1,27 @@
+- id: 1013
+  dataTypes:
+    - firewall-pfsense
+  name: High Availability CARP Failover Event
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 4
+  category: System Availability
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/monitoring/status/carp.html
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects critical CARP (Common Address Redundancy Protocol) events including unexpected failovers, split-brain conditions, or frequent state transitions that could indicate network issues or potential attacks on high availability
+  where: safe(log.eventType, "").contains("carp") && (safe(log.reason, "").contains("BACKUP") || safe(log.reason, "").contains("MASTER") || safe(log.reason, "").contains("INIT") || safe(log.vhid, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.interface.keyword
+          operator: filter_term
+          value: '{{log.interface}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - log.interface
+    - log.vhid

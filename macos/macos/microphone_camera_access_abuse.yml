@@ -1,0 +1,45 @@
+- id: 1020
+  dataTypes:
+    - macos
+  name: Suspicious Microphone or Camera Access
+  impact:
+    confidentiality: 5
+    integrity: 1
+    availability: 1
+  category: Collection
+  technique: Audio Capture
+  adversary: origin
+  references:
+    - https://www.rainforestqa.com/blog/macos-tcc-db-deep-dive
+    - https://attack.mitre.org/techniques/T1123/
+  description: Detects unauthorized or suspicious access to microphone or camera devices that may indicate surveillance or data collection activities
+  where: |
+    (safe(log.subsystem, "") == "com.apple.TCC" && 
+     (safe(log.eventMessage, "") contains "kTCCServiceMicrophone" || 
+      safe(log.eventMessage, "") contains "kTCCServiceCamera")) ||
+    (safe(log.eventMessage, "") contains "Update Access Record:" && 
+     (safe(log.eventMessage, "") contains "Microphone" || 
+      safe(log.eventMessage, "") contains "Camera")) ||
+    (safe(log.process, "") == "tccd" && 
+     (safe(log.eventMessage, "") contains "AVCaptureDevice" || 
+      safe(log.eventMessage, "") contains "AudioDevice")) ||
+    (safe(log.eventMessage, "") contains "accessing microphone" && 
+     safe(log.process, "") not in ["FaceTime", "Zoom", "Skype", "Teams", "Slack", "Discord", "WhatsApp"]) ||
+    (safe(log.eventMessage, "") contains "accessing camera" && 
+     safe(log.process, "") not in ["FaceTime", "Zoom", "Skype", "Teams", "Photo Booth", "Discord", "WhatsApp"]) ||
+    (safe(log.subsystem, "") == "com.apple.avfoundation" && 
+     safe(log.eventMessage, "") contains "authorization status")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.process.keyword
+          operator: filter_term
+          value: '{{log.process}}'
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.process
+    - log.service

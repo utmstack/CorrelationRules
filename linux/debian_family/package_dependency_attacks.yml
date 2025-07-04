@@ -1,0 +1,36 @@
+- id: 1019
+  dataTypes:
+    - debian_family
+  name: Package Dependency Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Software Supply Chain
+  technique: Dependency Confusion
+  adversary: origin
+  references:
+    - https://www.debian.org/doc/debian-policy/ch-relationships.html
+    - https://attack.mitre.org/techniques/T1195/001/
+  description: Detects potential dependency confusion or hijacking attacks through unusual package installation patterns, version conflicts, or suspicious dependency resolutions
+  where: |
+    (safe(log.process, "") == "apt" || safe(log.process, "") == "apt-get" || safe(log.process, "") == "dpkg") &&
+    (
+      safe(log.message, "") =~ ".*(dependency problems|but it is not going to be installed).*" ||
+      safe(log.message, "") =~ ".*(package.*has no installation candidate|held broken packages).*" ||
+      safe(log.message, "") =~ ".*(Conflicts:|Breaks:|but.*is to be installed).*" ||
+      safe(log.message, "") =~ ".*(downgrade|force-depends|force-conflicts).*" ||
+      safe(log.message, "") =~ ".*(attempting to overwrite|which is also in package).*" ||
+      (safe(log.message, "") =~ ".*install.*" && safe(log.message, "") =~ ".*(unofficial|unknown|untrusted).*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-2h
+      count: 4
+  deduplicateBy:
+    - origin.hostname
+    - log.message

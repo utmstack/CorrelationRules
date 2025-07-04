@@ -1,0 +1,27 @@
+- id: 1018
+  dataTypes:
+    - sonicwall_firewall
+  name: SonicWall DNS Filtering Alert
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 1
+  category: DNS
+  technique: DNS Tunneling
+  adversary: origin
+  references:
+    - https://www.sonicwall.com/techdocs/pdf/sonicos-6-5-4-log-events-reference-guide.pdf
+    - https://attack.mitre.org/techniques/T1071/004/
+  description: Detects DNS filtering events including blocked DNS queries, suspicious DNS behavior, or attempts to resolve malicious domains
+  where: (safe(log.category, "") == "DNS" || safe(log.app, "") == "DNS" || safe(log.appName, "") == "DNS") && (safe(action, "") == "drop" || safe(log.msg, "").contains("dns filter") || safe(log.msg, "").contains("dns block"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - target.host

@@ -1,0 +1,56 @@
+- id: 1003
+  dataTypes:
+    - rhel_family
+  name: Critical SELinux Policy Violation
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Access Control
+  technique: Exploitation for Privilege Escalation
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1068/
+    - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_selinux/troubleshooting-problems-related-to-selinux_using-selinux
+  description: Detects critical SELinux policy violations that may indicate privilege escalation attempts, unauthorized access, or malicious activity bypassing mandatory access controls
+  where: |
+    (
+      safe(log.type, "") == "AVC" &&
+      safe(log.selinux_denied, "") == "denied" &&
+      (
+        (safe(log.tclass, "") in ["capability", "capability2", "process", "security"] && 
+         safe(log.permission, "") in ["sys_admin", "sys_module", "sys_ptrace", "setuid", "setgid", "dac_override", "dac_read_search"]) ||
+        (safe(log.tclass, "") == "file" && 
+         safe(log.tcontext, "") contains "shadow_t" &&
+         safe(log.permission, "") in ["read", "write", "append"]) ||
+        (safe(log.tclass, "") == "dir" &&
+         safe(log.path, "") in ["/etc", "/boot", "/usr/lib", "/usr/lib64"] &&
+         safe(log.permission, "") in ["write", "add_name", "remove_name"]) ||
+        (safe(log.scontext, "") contains "unconfined_t" &&
+         safe(log.tcontext, "") contains "_exec_t") ||
+        (safe(log.comm, "") in ["setenforce", "semodule", "restorecon"] &&
+         safe(log.scontext, "") not contains "unconfined_t")
+      )
+    ) ||
+    (
+      safe(log.message, "") contains "SELinux" &&
+      (
+        safe(log.message, "") contains "enforcing" &&
+        safe(log.message, "") contains "disabled"
+      )
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'AVC'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.scontext
+    - log.tcontext

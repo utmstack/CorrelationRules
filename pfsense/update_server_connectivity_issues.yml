@@ -1,0 +1,26 @@
+- id: 1025
+  dataTypes:
+    - firewall-pfsense
+  name: pfSense Update Server Connectivity Issue
+  impact:
+    confidentiality: 0
+    integrity: 3
+    availability: 2
+  category: System Updates
+  technique: Update Channel Compromise
+  adversary: system
+  references:
+    - https://docs.netgate.com/pfsense/en/latest/install/upgrade.html
+    - https://attack.mitre.org/techniques/T1072/
+  description: Detects connectivity issues with pfSense update servers which may prevent critical security updates from being installed. This could indicate network problems, DNS issues, or potential interference with update mechanisms.
+  where: (safe(log.eventType, "") == "pkg" || safe(log.eventType, "") == "system") && (safe(raw, "").contains("update server") || safe(raw, "").contains("repository") || safe(raw, "").contains("pkg update") || safe(raw, "").contains("fetch failed") || safe(raw, "").contains("connection refused") || safe(raw, "").contains("unable to update") || safe(raw, "").contains("update check failed"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.syslogHost

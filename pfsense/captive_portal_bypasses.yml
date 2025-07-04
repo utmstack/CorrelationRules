@@ -1,0 +1,29 @@
+- id: 1007
+  dataTypes:
+    - firewall-pfsense
+  name: Captive Portal Authentication Bypass Attempts
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Initial Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.zenarmor.com/docs/network-security-tutorials/how-to-configure-captive-portal-on-pfsense
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects multiple failed authentication attempts or bypass attempts on the captive portal, which could indicate unauthorized access attempts to the network
+  where: safe(log.eventType, "") == "logportalauth" && safe(log.csvMsg, "").contains("FAILURE") && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: 'logportalauth'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip

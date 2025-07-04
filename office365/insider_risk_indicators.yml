@@ -1,0 +1,30 @@
+- id: 1028
+  dataTypes:
+    - o365
+  name: Insider Risk Indicator Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Collection
+  technique: Data from Local System
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/purview/insider-risk-management
+    - https://attack.mitre.org/techniques/T1005/
+  description: Detects insider risk indicators such as unusual data access patterns, mass downloads, sensitive data exfiltration attempts, or policy violations that may indicate malicious insider activity or compromised accounts.
+  where: safe(action, "") == "InsiderRiskAlert" || (safe(log.PolicyName, "") contains "InsiderRisk" && safe(actionResult, "") == "PolicyViolation") || (safe(log.RiskLevel, "") in ["High", "Critical"] && safe(log.AlertSource, "") == "InsiderRiskManagement")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.AlertSource.keyword
+          operator: filter_term
+          value: 'InsiderRiskManagement'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.PolicyName

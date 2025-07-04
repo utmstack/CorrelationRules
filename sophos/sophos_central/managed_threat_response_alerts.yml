@@ -1,0 +1,34 @@
+- id: 1018
+  dataTypes:
+    - sophos-central
+  name: Managed Threat Response Critical Alert
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Threat Detection
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/ThreatAnalysisCenter/index.html
+    - https://attack.mitre.org/tactics/TA0005/
+  description: Detects critical alerts from Sophos Managed Threat Response (MTR) service indicating active threats that require immediate investigation and response, including advanced persistent threats and sophisticated attack techniques
+  where: |
+    safe(log.type, "") in ["mtr_alert", "threat_detection"] &&
+    safe(log.severity, "") in ["critical", "high"] &&
+    safe(log.detection_type, "") in ["behavioral", "malware", "ransomware", "command_control"] &&
+    safe(log.confidence, 0) >= 80
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+        - field: log.severity.keyword
+          operator: filter_terms
+          value: '["critical", "high"]'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.endpointId
+    - log.threat_id

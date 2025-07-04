@@ -1,0 +1,32 @@
+- id: 1006
+  dataTypes:
+    - firewall-mikrotik
+  name: MikroTik FTP Brute Force Attack
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Credential Access
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://help.mikrotik.com/docs/spaces/ROS/pages/328094/Log
+    - https://attack.mitre.org/techniques/T1110/
+  description: Multiple failed FTP login attempts detected on MikroTik device, indicating potential brute force attack against FTP service
+  where: |
+    safe(log.topics, "") =~ ".*system.*error.*" && 
+    safe(log.message, "") =~ ".*login failure.*ftp.*" &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.message
+          operator: filter_wildcard
+          value: '*login failure*ftp*'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
