@@ -1,0 +1,32 @@
+- id: 1022
+  dataTypes:
+    - sophos-central
+  name: Sophos Central License Compliance Violation
+  impact:
+    confidentiality: 0
+    integrity: 2
+    availability: 5
+  category: Compliance Violation
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/Licensing/index.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects license compliance issues in Sophos Central, including expired licenses, over-usage, or non-compliant endpoints that could lead to reduced protection or service disruption
+  where: |
+    safe(log.type, "") in ["Event::Endpoint::NonCompliant", "license_violation", "license_expired"] ||
+    (safe(log.name, "") =~ "(?i)(license|compliance)") ||
+    (safe(log.event, "") =~ "(?i)(license.*expir|compliance.*violat|license.*exceed)") ||
+    (safe(log.message, "") =~ "(?i)(license.*limit|subscription.*expir|compliance.*fail)") ||
+    (safe(log.status, "") == "noncompliant" && safe(log.reason, "") =~ "(?i)license")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.customerId.keyword
+          operator: filter_term
+          value: '{{log.customerId}}'
+      within: now-7d
+      count: 5
+  deduplicateBy:
+    - log.customerId
+    - log.endpointId

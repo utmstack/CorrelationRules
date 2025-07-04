@@ -1,0 +1,30 @@
+- id: 1021
+  dataTypes:
+    - sophos-central
+  name: Sophos Central Update Failure Detected
+  impact:
+    confidentiality: 0
+    integrity: 3
+    availability: 4
+  category: System Availability
+  technique: System Services Discovery
+  adversary: origin
+  references:
+    - https://developer.sophos.com/apis
+    - https://attack.mitre.org/techniques/T1007/
+  description: Detects when Sophos Central endpoints fail to update, which could indicate connectivity issues, compromised endpoints, or attempts to prevent security updates from being applied
+  where: |
+    safe(log.type, "") in ["Event::Endpoint::UpdateFailure", "updatefailure", "update_failure"] ||
+    (safe(log.name, "") == "Event::Endpoint::UpdateFailure") ||
+    (safe(log.event, "") =~ "(?i)(update.*fail|fail.*update)") ||
+    (safe(log.severity, "") in ["high", "critical"] && safe(log.message, "") =~ "(?i)update")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointId.keyword
+          operator: filter_term
+          value: '{{log.endpointId}}'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - log.endpointId

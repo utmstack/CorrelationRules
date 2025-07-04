@@ -1,0 +1,34 @@
+- id: 1025
+  dataTypes:
+    - sophos-central
+  name: Sophos Central Admin Activity Anomaly
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Privileged Account Activity
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://docs.sophos.com/central/customer/help/en-us/ManageYourProducts/GlobalSettings/ApiTokenManagement/index.html
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects anomalous administrative activities in Sophos Central including unusual configuration changes, mass policy modifications, or admin actions outside normal hours that could indicate compromised admin accounts
+  where: |
+    (safe(log.type, "") in ["admin_action", "configuration_change", "policy_modification"] ||
+     safe(log.event, "") =~ "(?i)(admin|administrator|privilege|role.*change)") &&
+    (safe(log.userId, "") != "" || safe(log.admin_user, "") != "" || safe(log.modified_by, "") != "") &&
+    (safe(log.action, "") =~ "(?i)(delete.*policy|disable.*protection|remove.*user|grant.*admin|modify.*setting)" ||
+     safe(log.message, "") =~ "(?i)(mass.*change|bulk.*modif|disable.*all|delete.*all)" ||
+     (int(safe(log.hour, safe(log.timestamp, "12:00").split("T")[1].split(":")[0])) < 6 || 
+      int(safe(log.hour, safe(log.timestamp, "12:00").split("T")[1].split(":")[0])) > 22))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userId.keyword
+          operator: filter_term
+          value: '{{log.userId}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - log.userId
+    - log.action

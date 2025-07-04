@@ -1,0 +1,32 @@
+- id: 1023
+  dataTypes:
+    - sophos-central
+  name: Sophos Central Integration Failure
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 4
+  category: Integration Error
+  technique: Account Discovery
+  adversary: origin
+  references:
+    - https://community.sophos.com/kb/en-us/125169
+    - https://attack.mitre.org/techniques/T1087/
+  description: Detects failures in Sophos Central integrations with third-party systems, SIEM connections, or API integrations that could impact security monitoring and response capabilities
+  where: |
+    safe(log.type, "") in ["integration_error", "api_failure", "connection_failed"] ||
+    (safe(log.component, "") =~ "(?i)(integration|api|connector)") ||
+    (safe(log.event, "") =~ "(?i)(integration.*fail|api.*error|connection.*timeout)") ||
+    (safe(log.message, "") =~ "(?i)(siem.*fail|integration.*error|api.*timeout|webhook.*fail)") ||
+    (safe(log.error_code, "") in ["401", "403", "500", "503"] && safe(log.api_endpoint, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.sourceInfo.ip.keyword
+          operator: filter_term
+          value: '{{log.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - log.ip
+    - log.api_endpoint

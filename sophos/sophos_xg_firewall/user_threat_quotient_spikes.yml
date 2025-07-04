@@ -1,0 +1,37 @@
+- id: 1010
+  dataTypes:
+    - firewall-sophos-xg
+  name: Sophos XG Firewall User Threat Quotient Spikes
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: User Behavior Analytics
+  technique: Suspicious User Activity
+  adversary: origin
+  references:
+    - https://docs.sophos.com/nsg/sophos-firewall/20.0/Help/en-us/webhelp/onlinehelp/AdministratorHelp/Users/UserThreatQuotient/index.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects significant increases in user threat quotient scores which could indicate compromised accounts, insider threats, or users engaging in risky behavior patterns
+  where: |
+    safe(log.type, "") == "Event" && 
+    safe(origin.user, "") != "" &&
+    (safe(log.logMessage, "") contains "threat quotient" ||
+     safe(log.logMessage, "") contains "risk score" ||
+     safe(log.logMessage, "") contains "suspicious activity" ||
+     (safe(log.component, "") == "User" && 
+      safe(log.subType, "") == "Authentication" &&
+      (safe(log.logMessage, "") contains "multiple failed" ||
+       safe(log.logMessage, "") contains "unusual" ||
+       safe(log.logMessage, "") contains "anomal")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-2h
+      count: 15
+  deduplicateBy:
+    - origin.user
+    - origin.ip

@@ -1,0 +1,31 @@
+- id: 1006
+  dataTypes:
+    - firewall-sophos-xg
+  name: Sophos XG Firewall Heartbeat Missing Alerts
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 4
+  category: System Health
+  technique: Endpoint Health Monitoring
+  adversary: origin
+  references:
+    - https://docs.sophos.com/nsg/sophos-firewall/20.0/Help/en-us/webhelp/onlinehelp/AdministratorHelp/Logs/TroubleshootingLogs/LogFileDetails/index.html
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects when multiple endpoints are missing heartbeat signals, which could indicate network connectivity issues, endpoint compromise, or service disruption
+  where: |
+    safe(log.type, "") == "Event" && 
+    safe(log.component, "") == "Heartbeat" && 
+    (safe(log.logMessage, "") contains "missing" || 
+     safe(log.logMessage, "") contains "lost" || 
+     safe(log.hb_health, "") == "No Heartbeat")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.deviceName.keyword
+          operator: filter_term
+          value: '{{log.deviceName}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - log.deviceName

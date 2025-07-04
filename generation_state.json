@@ -284,6 +284,274 @@
       "timestamp": "2025-07-04T13:13:56.436431",
       "status": "success",
       "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T13:17:18.650651",
+      "status": "success",
+      "files_created": 5
+    }
+  ],
+  "sophos/sophos_xg_firewall": [
+    {
+      "timestamp": "2025-07-04T13:20:19.713432",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T13:23:17.798757",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T13:25:11.874616",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:15.301081",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:18.358356",
+      "status": "no_files_created",
+      "files_created": 0
+    }
+  ],
+  "syslog/cef": [
+    {
+      "timestamp": "2025-07-04T13:25:21.384123",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:25.163063",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:28.236085",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:31.243505",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:34.660105",
+      "status": "no_files_created",
+      "files_created": 0
+    }
+  ],
+  "syslog/rfc-5424": [
+    {
+      "timestamp": "2025-07-04T13:25:37.647848",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:40.802976",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:43.869690",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:47.015610",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:50.113117",
+      "status": "no_files_created",
+      "files_created": 0
+    }
+  ],
+  "syslog/rfc-5425": [
+    {
+      "timestamp": "2025-07-04T13:25:53.132304",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:56.180795",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:25:59.594933",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:02.946577",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:06.132816",
+      "status": "no_files_created",
+      "files_created": 0
+    }
+  ],
+  "syslog/rfc-6587": [
+    {
+      "timestamp": "2025-07-04T13:26:09.500924",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:13.352324",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:16.689180",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:19.702545",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:22.781874",
+      "status": "no_files_created",
+      "files_created": 0
+    }
+  ],
+  "vmware/vmware-esxi": [
+    {
+      "timestamp": "2025-07-04T13:26:26.517998",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:29.551033",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:32.805166",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:35.856850",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:38.825147",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:41.818696",
+      "status": "no_files_created",
+      "files_created": 0
+    }
+  ],
+  "windows/windows": [
+    {
+      "timestamp": "2025-07-04T13:26:44.802418",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:47.963545",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:50.950006",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:54.063148",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:26:57.020478",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:27:00.014043",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:27:03.039978",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:27:06.115684",
+      "status": "no_files_created",
+      "files_created": 0
+    }
+  ],
+  "hids/hids": [
+    {
+      "timestamp": "2025-07-04T13:27:09.084741",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:27:12.284465",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:27:15.544249",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:27:18.723641",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:27:21.879434",
+      "status": "no_files_created",
+      "files_created": 0
+    }
+  ],
+  "nids/nids": [
+    {
+      "timestamp": "2025-07-04T13:27:24.992908",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:27:28.711124",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:27:31.718529",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:27:34.717215",
+      "status": "no_files_created",
+      "files_created": 0
+    },
+    {
+      "timestamp": "2025-07-04T13:27:37.708313",
+      "status": "no_files_created",
+      "files_created": 0
     }
   ]
 }

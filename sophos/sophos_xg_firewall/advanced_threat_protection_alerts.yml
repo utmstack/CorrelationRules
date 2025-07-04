@@ -1,0 +1,27 @@
+- id: 1001
+  dataTypes:
+    - firewall-sophos-xg
+  name: Sophos XG Advanced Threat Protection Alert
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Malware
+  technique: Malware Execution
+  adversary: origin
+  references:
+    - https://docs.sophos.com/nsg/sophos-firewall/20.0/Help/en-us/webhelp/onlinehelp/AdministratorHelp/AdvancedProtection/index.html
+    - https://attack.mitre.org/techniques/T1204/
+  description: Detects when Sophos XG Firewall's Advanced Threat Protection (ATP) identifies malicious activity, including sandboxing results, malware detection, and zero-day threats
+  where: safe(log.type, "") == "ATP" && safe(log.component, "") == "Threat Protection" && (safe(log.subType, "") == "Malware" || safe(log.subType, "") == "Threat" || safe(log.virus, "") != "" || (safe(log.logMessage, "") != "" && (contains(log.logMessage, "malware") || contains(log.logMessage, "threat") || contains(log.logMessage, "virus"))))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.virus

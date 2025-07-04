@@ -1,0 +1,27 @@
+- id: 1005
+  dataTypes:
+    - firewall-sophos-xg
+  name: Sophos XG Lateral Movement Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Lateral Movement
+  technique: Remote Services
+  adversary: origin
+  references:
+    - https://docs.sophos.com/nsg/sophos-firewall/20.0/Help/en-us/webhelp/onlinehelp/AdministratorHelp/Logs/index.html
+    - https://attack.mitre.org/techniques/T1021/
+  description: Detects potential lateral movement activities within the network, including unusual internal connections, multiple service access attempts, and suspicious east-west traffic patterns
+  where: safe(origin.ip, "") != "" && safe(target.ip, "") != "" && ((safe(log.srcCountryCode, "") == safe(log.dstCountryCode, "") && safe(log.srcCountryCode, "") == "R1") || (contains(origin.ip, "10.") || contains(origin.ip, "172.") || contains(origin.ip, "192.168.")) && (contains(target.ip, "10.") || contains(target.ip, "172.") || contains(target.ip, "192.168."))) && ((safe(target.port, 0) == 445 || safe(target.port, 0) == 139 || safe(target.port, 0) == 3389 || safe(target.port, 0) == 22 || safe(target.port, 0) == 23 || safe(target.port, 0) == 5985 || safe(target.port, 0) == 5986) || (safe(log.applicationCategory, "") == "Remote Access" || safe(log.applicationCategory, "") == "Network Protocol"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - target.ip

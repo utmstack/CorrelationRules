@@ -1,0 +1,30 @@
+- id: 1002
+  dataTypes:
+    - firewall-sophos-xg
+  name: Sophos XG Synchronized Security Event
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Endpoint Security
+  technique: Security Software Discovery
+  adversary: origin
+  references:
+    - https://docs.sophos.com/nsg/sophos-firewall/20.0/Help/en-us/webhelp/onlinehelp/AdministratorHelp/SynchronizedSecurity/index.html
+    - https://attack.mitre.org/techniques/T1518/001/
+  description: Detects synchronized security events from Sophos endpoints communicating with the firewall, including heartbeat failures, compromised endpoints, and security status changes
+  where: (safe(log.type, "") == "Event" && safe(log.component, "") == "Synchronized Security") || (safe(log.hb_health, "") != "" && safe(log.hb_health, "") != "No Heartbeat" && safe(log.hb_health, "") != "Green") || (safe(log.component, "") == "Heartbeat" && (safe(log.subType, "") == "Missing" || safe(log.subType, "") == "Red" || safe(log.subType, "") == "Yellow"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.deviceName.keyword
+          operator: filter_term
+          value: '{{log.deviceName}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.deviceName

@@ -1,0 +1,35 @@
+- id: 1024
+  dataTypes:
+    - sophos-central
+  name: Sophos Central API Security Event
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: API Security
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://developer.sophos.com/apis
+    - https://attack.mitre.org/techniques/T1110/
+  description: Detects suspicious API access patterns, authentication failures, or potential abuse of Sophos Central API endpoints that could indicate unauthorized access attempts or API key compromise
+  where: |
+    (safe(log.type, "") in ["api_auth_failure", "api_rate_limit", "api_unauthorized"] ||
+     safe(log.event, "") =~ "(?i)(api.*auth.*fail|api.*unauthoriz|api.*forbidden)") &&
+    (safe(log.api_endpoint, "") != "" ||
+     safe(log.path, "") =~ "(?i)/api/" ||
+     safe(log.request_path, "") =~ "(?i)/api/") &&
+    (safe(log.status_code, 0) in [401, 403, 429] ||
+     safe(log.response_code, 0) in [401, 403, 429] ||
+     safe(log.error, "") =~ "(?i)(unauthorized|forbidden|rate.?limit)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.api_endpoint

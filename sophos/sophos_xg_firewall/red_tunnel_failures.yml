@@ -1,0 +1,35 @@
+- id: 1007
+  dataTypes:
+    - firewall-sophos-xg
+  name: Sophos XG Firewall RED Tunnel Failures
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 5
+  category: Network Connectivity
+  technique: VPN Disruption
+  adversary: origin
+  references:
+    - https://docs.sophos.com/nsg/sophos-firewall/20.0/Help/en-us/webhelp/onlinehelp/AdministratorHelp/SitetoSiteVPN/RED/index.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects RED (Remote Ethernet Device) tunnel establishment failures or disconnections which could indicate network issues, configuration problems, or potential attacks on remote connectivity
+  where: |
+    safe(log.type, "") == "Event" && 
+    (safe(log.component, "") == "RED" || safe(log.component, "") == "VPN") && 
+    safe(log.subType, "") == "System" &&
+    (safe(log.logMessage, "") contains "tunnel" && 
+     (safe(log.logMessage, "") contains "fail" || 
+      safe(log.logMessage, "") contains "down" || 
+      safe(log.logMessage, "") contains "disconnect" ||
+      safe(log.logMessage, "") contains "error"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.deviceName

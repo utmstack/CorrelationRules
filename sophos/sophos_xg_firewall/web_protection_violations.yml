@@ -1,0 +1,30 @@
+- id: 1003
+  dataTypes:
+    - firewall-sophos-xg
+  name: Sophos XG Web Protection Policy Violation
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: Web Security
+  technique: Application Layer Protocol
+  adversary: origin
+  references:
+    - https://docs.sophos.com/nsg/sophos-firewall/20.0/Help/en-us/webhelp/onlinehelp/AdministratorHelp/WebProtection/index.html
+    - https://attack.mitre.org/techniques/T1071/001/
+  description: Detects web protection policy violations including blocked websites, malicious downloads, inappropriate content access attempts, and web application attacks
+  where: (safe(log.type, "") == "Content Filtering" && (safe(log.subType, "") == "Denied" || safe(log.subType, "") == "Blocked")) || (safe(log.component, "") == "HTTP" && safe(actionResult, "") == "denied") || (safe(log.categoryType, "") != "" && (contains(log.categoryType, "Malware") || contains(log.categoryType, "Phishing") || contains(log.categoryType, "Spyware"))) || (safe(log.webExceptions, "") != "" && safe(log.webPolicy, "") != "") || (safe(log.downloadFileName, "") != "" && (contains(log.downloadFileType, "exe") || contains(log.downloadFileType, "dll") || contains(log.downloadFileType, "scr")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: target.domain.keyword
+          operator: filter_term
+          value: '{{target.domain}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - target.domain

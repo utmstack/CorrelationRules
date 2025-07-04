@@ -1,0 +1,27 @@
+- id: 1004
+  dataTypes:
+    - firewall-sophos-xg
+  name: Sophos XG Email Protection Threat Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Email Security
+  technique: Phishing
+  adversary: origin
+  references:
+    - https://docs.sophos.com/nsg/sophos-firewall/20.0/Help/en-us/webhelp/onlinehelp/AdministratorHelp/EmailProtection/index.html
+    - https://attack.mitre.org/techniques/T1566/
+  description: Detects email-based threats including spam, phishing attempts, malware attachments, and suspicious email patterns identified by Sophos XG's email protection features
+  where: (safe(log.type, "") == "Anti-Spam" || safe(log.type, "") == "Mail") && (safe(log.component, "") == "SMTP" || safe(log.component, "") == "POP3" || safe(log.component, "") == "IMAP") && ((safe(log.subType, "") == "Spam" || safe(log.subType, "") == "Virus" || safe(log.subType, "") == "Blocked") || (safe(log.virus, "") != "") || (safe(log.logMessage, "") != "" && (contains(log.logMessage, "spam") || contains(log.logMessage, "phishing") || contains(log.logMessage, "malware") || contains(log.logMessage, "virus"))) || (safe(statusCode, 0) >= 500 && safe(protocol, "") == "SMTP"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.virus

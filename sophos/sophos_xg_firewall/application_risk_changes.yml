@@ -1,0 +1,39 @@
+- id: 1009
+  dataTypes:
+    - firewall-sophos-xg
+  name: Sophos XG Firewall Application Risk Changes
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Application Security
+  technique: Risky Application Usage
+  adversary: origin
+  references:
+    - https://docs.sophos.com/nsg/sophos-firewall/20.0/Help/en-us/webhelp/onlinehelp/AdministratorHelp/WebProtection/ApplicationControl/index.html
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects changes in application risk levels or usage of high-risk applications that could indicate malware communication, data exfiltration attempts, or policy violations
+  where: |
+    safe(log.type, "") == "Content Filtering" && 
+    safe(log.component, "") == "Application" &&
+    (safe(log.applicationRisk, "") != "" && 
+     (safe(log.applicationRisk, "") == "5" || 
+      safe(log.applicationRisk, "") == "4" ||
+      (safe(log.applicationCategory, "") contains "malware" ||
+       safe(log.applicationCategory, "") contains "backdoor" ||
+       safe(log.applicationCategory, "") contains "trojan" ||
+       safe(log.applicationCategory, "") contains "botnet")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.applicationName.keyword
+          operator: filter_term
+          value: '{{log.applicationName}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.applicationName
