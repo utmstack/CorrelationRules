@@ -1,0 +1,35 @@
+- id: 1024
+  dataTypes:
+    - generic
+  name: Regular Expression DoS Attack
+  impact:
+    confidentiality: 1
+    integrity: 1
+    availability: 5
+  category: Denial of Service
+  technique: ReDoS Attack
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1499/
+    - https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+  description: Detects patterns that could cause catastrophic backtracking in regular expression engines, leading to CPU exhaustion and denial of service.
+  where: |
+    (safe(log.message, "").matches(".*[aA]{20,}.*[aA]+.*") ||
+     safe(log.message, "").matches(".*\\([^)]*\\+\\)[^)]*\\*.*") ||
+     safe(log.message, "").matches(".*\\([^)]*\\*\\)[^)]*\\+.*") ||
+     safe(log.message, "").matches(".*\\([^)]+\\)\\{[0-9]{3,}\\}.*") ||
+     safe(log.message, "").matches(".*\\(\\.[*+]\\)\\{[0-9]{2,}\\}.*") ||
+     safe(log.message, "").matches(".*[0-9]{50,}\\.[0-9]{50,}.*") ||
+     safe(log.message, "").matches(".*\\^\\([^)]+\\)\\+\\$.*") ||
+     safe(log.message, "").matches(".*\\(\\w+\\)\\*\\w+\\1.*"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.message

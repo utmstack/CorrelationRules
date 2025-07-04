@@ -1,0 +1,37 @@
+- id: 1008
+  dataTypes:
+    - traefik_module
+  name: Circuit Breaker Manipulation Detected
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Service Disruption
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/middlewares/http/circuitbreaker/
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects attempts to manipulate circuit breaker behavior through artificial failures, latency injection, or error response flooding in Traefik
+  where: |
+    (safe(log.OriginStatus, 0) >= 500 && safe(log.OriginStatus, 0) < 600) &&
+    safe(log.Duration, 0) > 30000000000 &&
+    (contains(safe(log.error, ""), "circuit breaker") ||
+     contains(safe(log.error, ""), "open state") ||
+     contains(safe(log.error, ""), "timeout") ||
+     contains(safe(log.error, ""), "connection refused") ||
+     safe(log.Retries, 0) > 2)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.ClientHost.keyword
+          operator: filter_term
+          value: '{{log.ClientHost}}'
+        - field: action.keyword
+          operator: filter_term
+          value: '{{action}}'
+      within: now-10m
+      count: 20
+  deduplicateBy:
+    - log.ClientHost
+    - action

@@ -1,0 +1,35 @@
+- id: 1011
+  dataTypes:
+    - iis
+  name: IIS Certificate Binding Issues
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Security Certificate Issues
+  technique: Certificate Manipulation
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/troubleshoot/developer/webapps/iis/www-authentication-authorization/troubleshooting-ssl-related-issues-server-certificate
+    - https://attack.mitre.org/techniques/T1553/004/
+  description: Detects certificate binding errors in IIS that could indicate SSL/TLS configuration issues, potential certificate tampering, or authentication bypass attempts
+  where: |
+    safe(statusCode, 0) == 403 && 
+    safe(log.win32Status, 0) == 5 &&
+    (
+      safe(target.path, "") =~ ".*\\.aspx.*" ||
+      safe(target.path, "") =~ ".*\\.asmx.*" ||
+      safe(target.path, "") =~ ".*\\.svc.*"
+    ) &&
+    safe(target.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - target.ip
+    - origin.host

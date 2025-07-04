@@ -1,0 +1,44 @@
+- id: 1002
+  dataTypes:
+    - apache
+  name: Directory Traversal Attack Attempts
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Web Application Attack
+  technique: Path Traversal
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1083/
+    - https://owasp.org/www-community/attacks/Path_Traversal
+  description: Detects attempts to access files outside the web root directory using directory traversal techniques
+  where: |
+    safe(origin.path, "") != "" &&
+    (
+      origin.path.contains("../") ||
+      origin.path.contains("..\\") ||
+      origin.path.contains("..%2f") ||
+      origin.path.contains("..%2F") ||
+      origin.path.contains("..%5c") ||
+      origin.path.contains("..%5C") ||
+      origin.path.contains("%2e%2e/") ||
+      origin.path.contains("%2e%2e\\") ||
+      origin.path.contains("..%252f") ||
+      origin.path.contains("..%255c") ||
+      origin.path.contains("/etc/passwd") ||
+      origin.path.contains("/windows/system32") ||
+      origin.path.contains("/proc/self") ||
+      origin.path.contains("C:\\Windows") ||
+      origin.path.contains("C:\\winnt")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip

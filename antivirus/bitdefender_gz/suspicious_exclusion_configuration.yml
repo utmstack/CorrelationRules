@@ -1,0 +1,27 @@
+- id: 1007
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Bitdefender GravityZone Suspicious Exclusions Added
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects when exclusions are added to Bitdefender GravityZone configuration. Attackers often add exclusions to prevent antivirus from scanning malicious files or directories.
+  where: (safe(log.eventType, "") == "configuration_change" && safe(log.msg, "") contains "exclusion") || (safe(log.eventType, "") == "policy_change" && (safe(log.msg, "") contains "exclusion" || safe(log.msg, "") contains "whitelist")) || (safe(log.actionTaken, "") == "exclusion_added" || safe(log.actionTaken, "") == "whitelist_added")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.suser.keyword
+          operator: filter_term
+          value: '{{log.suser}}'
+      within: now-24h
+      count: 5
+  deduplicateBy:
+    - log.suser
+    - log.hostId

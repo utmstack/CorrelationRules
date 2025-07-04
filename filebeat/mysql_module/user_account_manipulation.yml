@@ -1,0 +1,44 @@
+- id: 1003
+  dataTypes:
+    - mysql
+  name: MySQL User Account Manipulation
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Account Manipulation
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/account-management-statements.html
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects suspicious user account manipulation activities including creation of backdoor accounts, password changes, or unauthorized account modifications
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      log.msg.contains("CREATE USER") ||
+      log.msg.contains("DROP USER") ||
+      log.msg.contains("RENAME USER") ||
+      log.msg.contains("ALTER USER") && (log.msg.contains("IDENTIFIED BY") || log.msg.contains("PASSWORD")) ||
+      log.msg.contains("SET PASSWORD") ||
+      log.msg.contains("GRANT") && log.msg.contains("TO") && log.msg.contains("@") ||
+      log.msg.contains("REVOKE") && log.msg.contains("FROM") ||
+      log.msg.contains("mysql.user") && (log.msg.contains("INSERT") || log.msg.contains("UPDATE") || log.msg.contains("DELETE")) ||
+      log.msg.contains("mysql.db") && (log.msg.contains("INSERT") || log.msg.contains("UPDATE")) ||
+      log.msg.contains("mysql.tables_priv") && (log.msg.contains("INSERT") || log.msg.contains("UPDATE")) ||
+      log.msg.contains("mysql.columns_priv") && (log.msg.contains("INSERT") || log.msg.contains("UPDATE")) ||
+      log.msg.contains("mysql.procs_priv") && (log.msg.contains("INSERT") || log.msg.contains("UPDATE")) ||
+      log.errorCode == "ER_CANNOT_USER" ||
+      log.errorCode == "ER_PASSWORD_NO_MATCH"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.msg

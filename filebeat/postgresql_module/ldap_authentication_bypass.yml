@@ -1,0 +1,48 @@
+- id: 1016
+  dataTypes:
+    - postgresql
+  name: PostgreSQL LDAP Authentication Bypass Attempt
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 1
+  category: Authentication
+  technique: Authentication Bypass
+  adversary: origin
+  references:
+    - https://www.postgresql.org/docs/current/auth-ldap.html
+    - https://attack.mitre.org/techniques/T1550/001/
+  description: Detects potential LDAP authentication bypass attempts through empty bind, anonymous authentication, or LDAP injection patterns in PostgreSQL logs
+  where: |
+    safe(log.messageType, "") in ["FATAL", "ERROR"] && 
+    safe(log.msg, "") != "" && 
+    (
+      log.msg.contains("LDAP") && 
+      (
+        log.msg.contains("bind failed") ||
+        log.msg.contains("could not search LDAP") ||
+        log.msg.contains("empty password") ||
+        log.msg.contains("anonymous bind") ||
+        log.msg.contains("LDAP authentication failed") ||
+        log.msg.contains("invalid syntax")
+      )
+    ) ||
+    (
+      safe(action, "") == "postgresql.log" &&
+      safe(log.msg, "").contains("authentication failed") &&
+      safe(log.msg, "").contains("ldap")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.messageType.keyword
+          operator: filter_term
+          value: 'ERROR'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - target.host

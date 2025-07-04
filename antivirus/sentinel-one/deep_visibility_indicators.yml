@@ -1,0 +1,34 @@
+- id: 1007
+  dataTypes:
+    - antivirus-sentinel-one
+  name: Deep Visibility Threat Indicators
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Deep Visibility
+  technique: Advanced Monitoring
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/platform/deep-visibility/
+    - https://attack.mitre.org/tactics/TA0009/
+  description: Detects threat indicators from SentinelOne's deep visibility feature, including file system changes, registry modifications, network connections, and system configuration changes that indicate compromise
+  where: |
+    safe(log.eventDescription, "") =~ "(?i)(deep visibility|visibility alert|indicator|ioc match)" &&
+    (safe(log.fname, "") != "" || safe(log.filePath, "") != "" || 
+     safe(log.dhost, "") != "" || safe(log.registryKey, "") != "") &&
+    safe(log.cat, "") =~ "(?i)(threat|suspicious|malicious)"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+        - field: log.cat.keyword
+          operator: filter_term
+          value: '{{log.cat}}'
+      within: now-2h
+      count: 10
+  deduplicateBy:
+    - log.syslogHost
+    - log.fname

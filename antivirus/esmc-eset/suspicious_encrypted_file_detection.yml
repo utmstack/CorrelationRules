@@ -1,0 +1,30 @@
+- id: 1018
+  dataTypes:
+    - antivirus-esmc-eset
+  name: Suspicious Encrypted File Activity
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 4
+  category: Ransomware
+  technique: Data Encrypted for Impact
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1486/
+    - https://help.eset.com/protect_admin/10.1/en-US/events-exported-to-json-format.html
+  description: Detects suspicious encrypted file activities that may indicate ransomware encryption attempts or unauthorized file encryption operations
+  where: safe(log.event_type, "") in ["Threat_Event", "HIPS_Event"] && (safe(log.threat_name, "").contains("Ransomware") || safe(log.threat_name, "").contains("Filecoder") || safe(log.detail, "").contains("encrypted") || safe(log.object_uri, "").endsWith(".encrypted"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.host.keyword
+          operator: filter_term
+          value: '{{target.host}}'
+        - field: log.event_type.keyword
+          operator: filter_match
+          value: 'Threat_Event HIPS_Event'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - target.host
+    - log.threat_name

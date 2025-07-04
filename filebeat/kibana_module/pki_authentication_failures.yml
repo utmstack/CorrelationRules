@@ -1,0 +1,35 @@
+- id: 1019
+  dataTypes:
+    - kibana
+  name: PKI Certificate Authentication Failure
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+  category: Certificate Authentication Attack
+  technique: Forge Web Credentials
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/kibana-authentication.html
+    - https://attack.mitre.org/techniques/T1606/002/
+  description: Detects PKI certificate authentication failures that may indicate certificate spoofing, invalid certificates, or attempts to bypass client certificate validation.
+  where: |
+    (safe(log.action, "") == "authentication_failed" || 
+     safe(log.action, "") == "realm_authentication_failed" ||
+     safe(log.action, "") == "tampered_request") &&
+    (safe(log.message, "") =~ ".*pki.*" ||
+     safe(log.message, "") =~ ".*certificate.*" ||
+     safe(log.message, "") =~ ".*x509.*" ||
+     safe(log.message, "") =~ ".*client cert.*") &&
+    safe(actionResult, "") == "failure"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.action

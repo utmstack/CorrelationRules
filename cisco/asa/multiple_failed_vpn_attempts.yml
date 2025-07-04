@@ -1,0 +1,33 @@
+- id: 1002
+  dataTypes:
+    - asa
+  name: Multiple Failed VPN Authentication Attempts
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: Credential Access
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1110/
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog/syslogs1.html
+  description: Detects multiple failed VPN authentication attempts from the same source IP address, which could indicate a brute force attack or password guessing attempt against VPN credentials.
+  where: |
+    (safe(log.message_id, "") == "113015" || 
+     safe(log.message_id, "") == "113021" || 
+     safe(log.message_id, "") == "109034" ||
+     safe(log.message_id, "") == "611102") && 
+    safe(origin.ip, "") != "" &&
+    (safe(log.reason, "") =~ "(?i)(invalid|failed|rejected|authentication)" ||
+     safe(log.message, "") =~ "(?i)(authentication.*failed|invalid.*password)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip

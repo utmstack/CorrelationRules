@@ -1,0 +1,39 @@
+- id: 1010
+  dataTypes:
+    - iis
+  name: IIS FTP Service Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 4
+  category: Network Service Attack
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/iis/configuration/system.applicationhost/sites/site/ftpserver/
+    - https://attack.mitre.org/techniques/T1110/
+  description: Detects various attacks against IIS FTP service including brute force attempts, command injection, and directory traversal
+  where: |
+    safe(action, "") == "iis.ftplog" &&
+    (
+      (safe(log.ftpCommand, "").matches("^(USER|PASS)$") && safe(statusCode, 0) == 530) ||
+      (safe(log.ftpCommand, "") == "RETR" && safe(target.path, "").contains("../")) ||
+      (safe(log.ftpCommand, "") == "SITE" && safe(log.ftpSubCommand, "").matches(".*(exec|spawn|system).*")) ||
+      (safe(log.ftpCommand, "").matches("^(STOR|STOU|APPE)$") && safe(target.path, "").matches(".*\\.(asp|aspx|exe|dll|cmd|bat)$")) ||
+      (safe(log.ftpCommand, "") == "PORT" && safe(target.port, 0) < 1024) ||
+      (safe(log.ftpCommand, "") == "PASV" && safe(log.responseTime, 0) > 10000) ||
+      (safe(target.path, "").contains("%00") || safe(target.path, "").contains("\\x00")) ||
+      (safe(log.ftpCommand, "") == "CWD" && safe(target.path, "").length() > 260) ||
+      (safe(statusCode, 0) == 550 && safe(log.win32Status, 0) == 5)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.ftpCommand

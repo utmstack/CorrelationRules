@@ -1,0 +1,29 @@
+- id: 1001
+  dataTypes:
+    - aws
+  name: AWS Root Account Usage Without MFA
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Authentication
+  technique: Use of Root Account
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/IAM/latest/UserGuide/id_root-user.html
+    - https://attack.mitre.org/techniques/T1078/004/
+  description: Detects usage of AWS root account without Multi-Factor Authentication (MFA). Root account usage should be avoided for daily operations and must always use MFA when necessary.
+  where: |
+    safe(log.userIdentityType, "") == "Root" && 
+    safe(log.userIdentitySessionContextAttributesMfaAuthenticated, "") != "true" &&
+    safe(log.errorCode, "") == ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityAccountId.keyword
+          operator: filter_term
+          value: '{{log.userIdentityAccountId}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.userIdentityAccountId

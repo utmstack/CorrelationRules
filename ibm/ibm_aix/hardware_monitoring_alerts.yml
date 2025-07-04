@@ -1,0 +1,27 @@
+- id: 1023
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Hardware Monitoring Alerts
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 5
+  category: Hardware Events
+  technique: System Shutdown/Reboot
+  adversary: origin
+  references:
+    - https://www.ibm.com/support/pages/ibm-aix-how-store-error-log-errpt-messages-local-and-remote-syslog-files
+    - https://attack.mitre.org/techniques/T1529/
+  description: Monitors hardware-related events and failures in IBM AIX systems including disk failures, memory errors, CPU faults, and other hardware anomalies that could indicate impending system failure or tampering
+  where: safe(log.eventType, "") != "" && (safe(log.eventType, "").toLowerCase().contains("hardware") || safe(log.eventType, "").toLowerCase().contains("disk") || safe(log.eventType, "").toLowerCase().contains("memory") || safe(log.eventType, "").toLowerCase().contains("cpu") || safe(log.eventType, "").toLowerCase().contains("errpt") || safe(log.msg, "").toLowerCase().contains("hardware error") || safe(log.msg, "").toLowerCase().contains("disk failure") || safe(log.msg, "").toLowerCase().contains("memory fault") || safe(log.msg, "").toLowerCase().contains("sysplanar"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: from.host.keyword
+          operator: filter_term
+          value: '{{from.host}}'
+      within: now-2h
+      count: 3
+  deduplicateBy:
+    - from.host
+    - log.eventType

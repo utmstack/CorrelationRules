@@ -1,0 +1,33 @@
+- id: 1022
+  dataTypes:
+    - linux
+  name: Hardware Error Patterns
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Hardware Monitoring
+  technique: Hardware Additions
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1200/
+    - https://www.kernel.org/doc/html/latest/admin-guide/ras.html
+  description: Detects hardware-related errors including memory failures, disk errors, CPU issues, temperature warnings, and other hardware anomalies that may impact system stability
+  where: |
+    (safe(log.message, "") =~ "(?i)(mce:.*hardware error|machine check exception|cpu.*error detected|thermal throttling)" ||
+     safe(log.message, "") =~ "(?i)(ecc.*error|memory.*parity error|dimm.*failure|corrected.*error|uncorrectable.*error)" ||
+     safe(log.message, "") =~ "(?i)(ata.*error|sata.*fail|disk.*error|i/o error|bad sector|smart.*fail)" ||
+     safe(log.message, "") =~ "(?i)(pci.*error|pcie.*error|bus error|dma.*fail|irq.*nobody cared)" ||
+     safe(log.message, "") =~ "(?i)(power supply.*warn|voltage.*out of range|fan.*fail|temperature.*critical)" ||
+     (safe(log.program, "") =~ "(?i)(smartd|mcelog|sensors)" && safe(log.message, "") =~ "(?i)(warning|error|critical|fail)"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.message

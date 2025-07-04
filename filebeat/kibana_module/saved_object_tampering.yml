@@ -1,0 +1,34 @@
+- id: 1002
+  dataTypes:
+    - kibana
+  name: Saved Object Tampering Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Data Integrity Violation
+  technique: T1565.001 - Data Manipulation: Stored Data Manipulation
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/xpack-security-audit-logging.html
+    - https://attack.mitre.org/techniques/T1565/001/
+  description: Detects suspicious modification patterns of saved objects in Kibana, including rapid updates to dashboards, visualizations, or searches that could indicate tampering or malicious configuration changes
+  where: |
+    safe(log.action, "") in ["saved_object_update", "saved_object_create", "saved_object_delete"] && 
+    safe(actionResult, "") == "success" &&
+    safe(origin.user, "") != "" &&
+    safe(log.message, "") contains_any ["dashboard", "visualization", "search", "index-pattern"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.action.keyword
+          operator: filter_terms
+          value: ['saved_object_update', 'saved_object_create', 'saved_object_delete']
+      within: now-2m
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - origin.host

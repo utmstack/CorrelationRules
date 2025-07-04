@@ -1,0 +1,27 @@
+- id: 1007
+  dataTypes:
+    - antivirus-esmc-eset
+  name: ESET Host Intrusion Prevention System Triggered
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Host Intrusion
+  technique: Process Injection
+  adversary: origin
+  references:
+    - https://help.eset.com/ees/8/en-US/idh_hips_main.html
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects when ESET's Host-based Intrusion Prevention System (HIPS) blocks suspicious behavior, including process manipulation, registry modifications, and file system changes that indicate potential malware activity.
+  where: safe(log.event_type, "") == "HIPS_Event" && safe(action, "") == "blocked" && safe(severity, "") in ["medium", "high"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.host.keyword
+          operator: filter_term
+          value: '{{target.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - target.host
+    - log.processname

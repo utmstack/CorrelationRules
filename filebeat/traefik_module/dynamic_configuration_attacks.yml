@@ -1,0 +1,40 @@
+- id: 1015
+  dataTypes:
+    - traefik
+  name: Dynamic Configuration Manipulation Attempt
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Configuration Manipulation
+  technique: Configuration Modification
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/providers/overview/
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects attempts to access or modify Traefik's dynamic configuration through API endpoints, file providers, or other configuration sources that could compromise routing rules
+  where: |
+    (safe(origin.url, "") contains "/api/providers" ||
+     safe(origin.url, "") contains "/api/http/routers" ||
+     safe(origin.url, "") contains "/api/http/services" ||
+     safe(origin.url, "") contains "/api/http/middlewares" ||
+     safe(origin.url, "") contains "/api/tcp/routers" ||
+     safe(origin.url, "") contains "/api/tcp/services" ||
+     safe(origin.url, "") contains "/api/udp/routers" ||
+     safe(origin.url, "") contains "/api/udp/services" ||
+     safe(origin.url, "") contains "/api/entrypoints") &&
+    (safe(log.http.request_method, "") == "PUT" ||
+     safe(log.http.request_method, "") == "POST" ||
+     safe(log.http.request_method, "") == "DELETE" ||
+     safe(log.http.request_method, "") == "PATCH")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.http.request_method

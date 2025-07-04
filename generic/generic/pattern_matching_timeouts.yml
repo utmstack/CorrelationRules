@@ -1,0 +1,34 @@
+- id: 1025
+  dataTypes:
+    - generic
+  name: Pattern Matching Timeout Attack
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Resource Exhaustion
+  technique: Algorithmic Complexity Attack
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1499/002/
+    - https://cwe.mitre.org/data/definitions/407.html
+  description: Detects input patterns designed to cause excessive processing time in pattern matching algorithms, potentially causing timeouts and service degradation.
+  where: |
+    (safe(log.message, "").matches(".*[\\w-\\.]{100,}@[\\w-\\.]{100,}.*") ||
+     safe(log.message, "").matches(".*https?://[^/]{200,}.*") ||
+     safe(log.message, "").matches(".*[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{100,}.*") ||
+     safe(log.message, "").matches(".*[/\\\\]{50,}.*") ||
+     safe(log.message, "").matches(".*[?&][^=]{100,}=.*") ||
+     safe(log.message, "").matches(".*\\b\\w+\\b.*\\b\\1\\b.*\\b\\1\\b.*\\b\\1\\b.*\\b\\1\\b.*") ||
+     safe(log.message, "").matches(".*[\\s\\t\\r\\n]{100,}.*") ||
+     (safe(log.message, "").length() > 5000 && safe(log.message, "").matches(".*[^a-zA-Z0-9\\s]{50,}.*")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-20m
+      count: 5
+  deduplicateBy:
+    - origin.ip

@@ -1,0 +1,26 @@
+- id: 1016
+  dataTypes:
+    - linux
+  name: System Resource Exhaustion Detection
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Resource Management
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects potential system resource exhaustion including CPU, memory, or disk space issues that could lead to denial of service
+  where: safe(log.message, "") != "" && (safe(log.message, "") contains "Out of memory" || safe(log.message, "") contains "No space left on device" || safe(log.message, "") contains "Cannot allocate memory" || safe(log.message, "") contains "fork: retry: Resource temporarily unavailable" || safe(log.message, "") contains "too many open files" || safe(log.message, "") contains "cannot fork" || safe(log.message, "") contains "malloc failed") && safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - origin.host

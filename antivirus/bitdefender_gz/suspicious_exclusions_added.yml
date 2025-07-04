@@ -1,0 +1,30 @@
+- id: 1007
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Bitdefender GravityZone Suspicious Exclusion Added
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Security Configuration
+  technique: Disable or Modify Tools
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects when exclusions are added to Bitdefender GravityZone that may allow malware to operate undetected
+  where: (safe(log.eventType, "") == "exclusion_added" || safe(log.eventType, "") == "policy_change") && (safe(log.cs6, "").contains("exclusion") || safe(log.msg, "").contains("exclusion"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.suser.keyword
+          operator: filter_term
+          value: '{{log.suser}}'
+        - field: log.eventType.keyword
+          operator: filter_match
+          value: 'exclusion'
+      within: now-24h
+      count: 5
+  deduplicateBy:
+    - log.suser
+    - log.dvchost

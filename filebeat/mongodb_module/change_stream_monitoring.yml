@@ -1,0 +1,27 @@
+- id: 1011
+  dataTypes:
+    - mongodb
+  name: MongoDB Change Stream Unauthorized Access
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Database Security
+  technique: T1078 - Valid Accounts
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/changestreams/
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects unauthorized access to MongoDB change streams which could indicate attempts to monitor database activity or exfiltrate data in real-time
+  where: safe(log.component, "") == "COMMAND" && safe(log.msg, "") contains("changeStream") && (safe(severity, "") == "high" || safe(log.ctx, "") contains("unauthorized"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.ctx

@@ -1,0 +1,44 @@
+- id: 1008
+  dataTypes:
+    - logstash
+  name: Logstash Conditional Logic Bypass
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Security Evasion
+  technique: T1562.001
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/event-dependent-configuration.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects attempts to bypass conditional logic in Logstash pipelines that could allow malicious events to evade security filters or processing rules
+  where: >
+    (safe(log.component, "") == "logstash.config" || 
+     safe(log.component, "") == "logstash.pipeline" ||
+     safe(log.component, "") == "logstash.filters") && 
+    safe(log.msg, "") != "" && 
+    (
+      (log.msg.contains("conditional") && (log.msg.contains("bypass") || log.msg.contains("skip") || log.msg.contains("ignored"))) ||
+      (log.msg.contains("if") && log.msg.contains("statement") && (log.msg.contains("always false") || log.msg.contains("always true"))) ||
+      (log.msg.contains("condition") && log.msg.contains("evaluation") && log.msg.contains("failed")) ||
+      (log.msg.contains("conditional") && log.msg.contains("expression") && (log.msg.contains("malformed") || log.msg.contains("invalid"))) ||
+      (log.msg.contains("event") && log.msg.contains("dropped") && log.msg.contains("conditional")) ||
+      (log.msg.contains("filter") && log.msg.contains("condition") && log.msg.contains("not met") && safe(severity, "") == "high") ||
+      (log.msg.contains("conditional") && log.msg.contains("override")) ||
+      (log.msg.contains("field") && log.msg.contains("missing") && log.msg.contains("conditional") && log.msg.contains("skipped"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.pipelineName.keyword
+          operator: filter_term
+          value: '{{log.pipelineName}}'
+      within: now-2h
+      count: 15
+  deduplicateBy:
+    - origin.host
+    - log.pipelineName

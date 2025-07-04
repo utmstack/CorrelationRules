@@ -1,0 +1,35 @@
+- id: 1022
+  dataTypes:
+    - firepower
+  name: Firepower IOC (Indicator of Compromise) Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Malware Detection
+  technique: Indicator of Compromise
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/70/configuration/guide/fpmc-config-guide-v70/file_malware_events_and_network_file_trajectory.html
+    - https://attack.mitre.org/tactics/TA0040/
+  description: Detects when Firepower identifies an Indicator of Compromise, suggesting a host may be infected with malware or compromised
+  where: |
+    (safe(log.eventType, "") == "AMP_IOC" || 
+     safe(log.eventType, "") == "IOC_DETECTED" ||
+     safe(log.message, "") contains "indication of compromise") &&
+    safe(origin.ip, "") != "" &&
+    (safe(log.threatName, "") != "" || safe(log.sha256, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: IOC
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.sha256

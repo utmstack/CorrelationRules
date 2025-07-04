@@ -1,0 +1,39 @@
+- id: 1007
+  dataTypes:
+    - cs_switch
+  name: Dynamic ARP Inspection Failure
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Network Security
+  technique: ARP Spoofing
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst6500/ios/15-0SY/configuration/guide/15_0_sy_swcg/dynamic_arp_inspection.html
+    - https://attack.mitre.org/techniques/T1557/002/
+  description: Detects Dynamic ARP Inspection (DAI) failures which may indicate ARP spoofing attempts. DAI validates ARP packets to prevent man-in-the-middle attacks.
+  where: |
+    (safe(log.eventType, "") == "DAI" || 
+     safe(log.eventType, "") == "ARP_INSPECTION") && 
+    (safe(log.action, "") == "drop" || 
+     safe(log.action, "") == "deny" ||
+     safe(log.result, "") == "failed" ||
+     contains(safe(log.message, ""), "ARP Inspection") && 
+     (contains(safe(log.message, ""), "drop") || 
+      contains(safe(log.message, ""), "invalid") ||
+      contains(safe(log.message, ""), "mismatch")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: 'DAI'
+      within: now-5m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.mac

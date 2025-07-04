@@ -1,0 +1,48 @@
+- id: 1019
+  dataTypes:
+    - mysql
+  name: MySQL Partition Manipulation Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 5
+  category: Data Structure Manipulation
+  technique: Data Destruction
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/group-replication-network-partitioning.html
+    - https://attack.mitre.org/techniques/T1485/
+  description: Detects attempts to manipulate MySQL table partitions which could be used to cause data loss, performance degradation, or to bypass security controls. Partition manipulation can also be used to prepare for data exfiltration.
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      log.msg contains "ALTER TABLE" && log.msg contains "PARTITION" ||
+      log.msg contains "DROP PARTITION" ||
+      log.msg contains "TRUNCATE PARTITION" ||
+      log.msg contains "ADD PARTITION" ||
+      log.msg contains "REORGANIZE PARTITION" ||
+      log.msg contains "COALESCE PARTITION" ||
+      log.msg contains "EXCHANGE PARTITION" ||
+      log.msg contains "ANALYZE PARTITION" ||
+      log.msg contains "CHECK PARTITION" ||
+      log.msg contains "OPTIMIZE PARTITION" ||
+      log.msg contains "REBUILD PARTITION" ||
+      log.msg contains "REPAIR PARTITION" ||
+      log.msg contains "REMOVE PARTITIONING"
+    ) &&
+    (
+      safe(severity, "") == "high" ||
+      safe(log.level, "") == "Error" ||
+      log.msg contains "UNREACHABLE"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.thread

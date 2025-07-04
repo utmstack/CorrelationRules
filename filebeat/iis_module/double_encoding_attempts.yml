@@ -1,0 +1,32 @@
+- id: 1019
+  dataTypes:
+    - iis
+  name: IIS Double Encoding Directory Traversal Attack
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Path Traversal
+  technique: Directory Traversal
+  adversary: origin
+  references:
+    - https://www.acunetix.com/vulnerabilities/web/iis-extended-unicode-directory-traversal-vulnerability/
+    - https://attack.mitre.org/techniques/T1083/
+  description: Detects double encoding attempts to bypass directory traversal filters, including encoded dot-dot-slash sequences that could allow unauthorized file access.
+  where: |
+    safe(target.path, "") contains "%252e%252e" || safe(target.path, "") contains "%25%32%65" ||
+    safe(target.path, "") contains "%25%32%65%25%32%65" || safe(target.path, "") contains "%252f" ||
+    safe(target.path, "") contains "%255c" || safe(target.path, "") contains "%25%35%63" ||
+    safe(target.path, "") contains "%25%32%66" || safe(target.path, "") contains "%%32%65" ||
+    safe(target.path, "") contains "%%35%63" || safe(target.path, "") contains "..%252f" ||
+    safe(target.path, "") contains "..%255c"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - target.ip

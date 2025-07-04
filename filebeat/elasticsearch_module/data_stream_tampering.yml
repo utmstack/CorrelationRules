@@ -1,0 +1,27 @@
+- id: 1018
+  dataTypes:
+    - elasticsearch
+  name: Data Stream Tampering Attempt Detected
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 4
+  category: Impact
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/data-streams.html
+    - https://attack.mitre.org/techniques/T1565/
+  description: Detects attempts to tamper with Elasticsearch data streams through unauthorized modifications, deletions, or rollover operations that could compromise data integrity
+  where: (safe(log.auditRestRequestPath, "").contains("_data_stream") || safe(origin.url, "").contains("_data_stream")) && (safe(log.method, "") == "DELETE" || safe(log.method, "") == "PUT" || safe(log.auditRestRequestPath, "").contains("_rollover") || safe(log.auditRestRequestPath, "").contains("_modify_data_stream")) && (safe(action, "") == "access_granted" || safe(log.eventType, "") == "rest")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - log.auditRestRequestPath

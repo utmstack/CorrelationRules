@@ -1,0 +1,34 @@
+- id: 1021
+  dataTypes:
+    - auditd
+  name: Resource Limit Violations
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 4
+  category: System Resource Management
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/security_guide/sec-understanding_audit_log_files
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects when processes exceed configured resource limits (ulimits), which could indicate resource exhaustion attacks, denial of service attempts, or misconfigured applications consuming excessive system resources.
+  where: >
+    safe(action, "") == "auditd.log" && 
+    safe(log.record_type, "") == "ANOM_ABEND" && 
+    (
+      strings.contains(safe(log.message, ""), "RLIMIT_") ||
+      strings.contains(safe(log.message, ""), "resource limit") ||
+      strings.contains(safe(log.message, ""), "ulimit exceeded")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.pid

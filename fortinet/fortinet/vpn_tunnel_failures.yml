@@ -1,0 +1,41 @@
+- id: 1010
+  dataTypes:
+    - firewall-fortigate-traffic
+  name: Fortinet VPN Tunnel Connection Failures
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 4
+  category: Connection Issues
+  technique: Remote Services
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortigate/7.4.1/administration-guide/762116/ipsec-vpn
+    - https://attack.mitre.org/techniques/T1021/
+  description: Detects multiple VPN tunnel connection failures which could indicate connection issues, authentication problems, or potential unauthorized access attempts
+  where: |
+    safe(log.type, "") == "event" && 
+    safe(log.subtype, "") == "vpn" && 
+    (safe(log.action, "") == "tunnel-down" || 
+     safe(log.action, "") == "tunnel-disconnect" ||
+     safe(log.msg, "") =~ ".*fail.*" ||
+     safe(log.msg, "") =~ ".*error.*" ||
+     safe(log.status, "") == "negotiate_error") &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: event
+        - field: log.subtype.keyword
+          operator: filter_term
+          value: vpn
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.tunnelid

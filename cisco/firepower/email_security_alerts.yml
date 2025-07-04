@@ -1,0 +1,44 @@
+- id: 1017
+  dataTypes:
+    - firepower
+  name: Email Security Alert Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Email Security
+  technique: Phishing
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/640/configuration/guide/fpmc-config-guide-v64/file_malware_events_and_network_file_trajectory.html
+    - https://attack.mitre.org/techniques/T1566/
+  description: Detects email security alerts including malicious attachments, phishing attempts, spam detection, and email-based malware distribution
+  where: |
+    (safe(log.protocol, "") == "SMTP" || 
+     safe(log.protocol, "") == "POP3" || 
+     safe(log.protocol, "") == "IMAP") &&
+    (safe(log.disposition, "") == "MALWARE" ||
+     safe(log.disposition, "") == "CUSTOM_DETECTION" ||
+     safe(log.eventType, "") == "FILE_MALWARE_EVENT" ||
+     safe(log.eventType, "") == "INTRUSION_EVENT") &&
+    (safe(destination.port, 0) == 25 ||
+     safe(destination.port, 0) == 110 ||
+     safe(destination.port, 0) == 143 ||
+     safe(destination.port, 0) == 465 ||
+     safe(destination.port, 0) == 587 ||
+     safe(destination.port, 0) == 993 ||
+     safe(destination.port, 0) == 995)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.protocol.keyword
+          operator: filter_term
+          value: '{{log.protocol}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.fileHash

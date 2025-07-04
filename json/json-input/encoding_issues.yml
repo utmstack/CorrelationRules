@@ -1,0 +1,35 @@
+- id: 1007
+  dataTypes:
+    - json-input
+  name: JSON Encoding Attack Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 1
+  category: Encoding Attack
+  technique: Character Encoding Manipulation
+  adversary: origin
+  references:
+    - https://pragmaticwebsecurity.com/articles/spasecurity/json-stringify-xss
+    - https://attack.mitre.org/techniques/T1027/
+  description: Detects attempts to exploit JSON encoding vulnerabilities including Unicode manipulation, Base64 encoding attacks, and character escape sequence abuse
+  where: >
+    (safe(log.encoding_error, "") != "") ||
+    (safe(log.unicode_error, false) == true) ||
+    (safe(log.raw, "") contains "\\u0000") ||
+    (safe(log.raw, "") contains "\\x00") ||
+    (safe(log.parser_warning, "") contains "invalid encoding") ||
+    (safe(log.parser_warning, "") contains "truncated unicode") ||
+    (safe(log.content_length, 0) > 0 && safe(log.decoded_length, 0) > 0 && log.decoded_length > log.content_length * 10) ||
+    (safe(log.character_encoding, "") != "UTF-8" && safe(log.character_encoding, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.encoding_type

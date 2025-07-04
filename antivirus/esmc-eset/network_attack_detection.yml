@@ -1,0 +1,27 @@
+- id: 1006
+  dataTypes:
+    - antivirus-esmc-eset
+  name: ESET Network Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Network Attack
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://help.eset.com/ees/7/en-US/idh_config_epfw_network_attack_protection.html
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects network-based attacks and exploits blocked by ESET's Network Attack Protection (IDS). This includes attempts to exploit known vulnerabilities in network services and protocols.
+  where: safe(log.event_type, "") == "NetworkProtection_Event" && safe(action, "") == "blocked" && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - target.ip

@@ -1,0 +1,30 @@
+- id: 1004
+  dataTypes:
+    - azure
+  name: Azure AD Conditional Access Policy Bypass Attempt
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 1
+  category: Defense Evasion
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://danielchronlund.com/2022/01/07/the-attackers-guide-to-azure-ad-conditional-access/
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects potential attempts to bypass Azure AD Conditional Access policies through policy tampering or unauthorized modifications. Monitors for policy updates that could weaken security controls.
+  where: (safe(log.operationName, "") == "Update policy" || safe(log.operationName, "") == "Delete conditional access policy") && safe(log.service, "") == "Conditional Access"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.initiatedBy.user.userPrincipalName.keyword
+          operator: filter_term
+          value: '{{log.initiatedBy.user.userPrincipalName}}'
+        - field: log.operationName.keyword
+          operator: filter_term
+          value: 'Update conditional access policy'
+      within: now-2s
+      count: 0
+  deduplicateBy:
+    - log.targetPolicyId
+    - log.correlationId

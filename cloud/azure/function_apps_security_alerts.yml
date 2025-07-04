@@ -1,0 +1,30 @@
+- id: 1021
+  dataTypes:
+    - azure
+  name: Azure Function App Security Alert
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Application Security
+  technique: Exploitation for Credential Access
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/azure-functions/monitor-functions
+    - https://attack.mitre.org/techniques/T1212/
+  description: Detects security-related errors and warnings in Azure Function Apps, including authentication failures, authorization denials, and suspicious execution patterns
+  where: safe(log.type, "") == "FunctionAppLogs" && (safe(log.Category, "") == "Host.Results" || safe(log.Category, "") == "Function") && (safe(log.Level, "") == "Error" || safe(log.Level, "") == "Warning") && (safe(log.OperationName, "").contains("Authentication") || safe(log.OperationName, "").contains("Authorization") || safe(log.ResultType, "") == "Failed" || safe(log.ResultType, "") == "Unauthorized")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.resourceId.keyword
+          operator: filter_term
+          value: '{{log.resourceId}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.resourceId

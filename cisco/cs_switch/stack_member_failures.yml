@@ -1,0 +1,34 @@
+- id: 1016
+  dataTypes:
+    - cs_switch
+  name: Stack Member Failures Detection
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Infrastructure
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst3750/software/release/12-2_58_se/configuration/guide/3750scg/swstack.html
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects failures in Cisco switch stack members, which could indicate hardware issues, configuration problems, or potential denial of service conditions affecting network availability
+  where: |
+    safe(log.facility, "") == "STACKMGR" && 
+    (contains(safe(log.message, ""), "stack member") && 
+     (contains(safe(log.message, ""), "fail") || 
+      contains(safe(log.message, ""), "down") || 
+      contains(safe(log.message, ""), "removed") || 
+      contains(safe(log.message, ""), "lost"))) ||
+    (safe(log.severity, 10) <= 3 && contains(safe(log.message, ""), "STACKMGR"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.hostname
+    - log.facility

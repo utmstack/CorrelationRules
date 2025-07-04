@@ -1,0 +1,27 @@
+- id: 1011
+  dataTypes:
+    - azure
+  name: Azure Sentinel High/Critical Alert Pattern Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Threat Detection
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/sentinel/security-alert-schema
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects multiple high-severity or critical alerts from Azure Sentinel that may indicate coordinated attack activity or serious security incidents requiring immediate investigation
+  where: safe(log.AlertSeverity, "") in ["High", "Critical"] && safe(log.VendorName, "") == "Microsoft Sentinel" && safe(log.Status, "") == "New"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.AlertType

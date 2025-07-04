@@ -1,0 +1,45 @@
+- id: 1018
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Network-Based Threat Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 4
+  category: Network Attack
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1071/
+    - https://www.bitdefender.com/business/support/en/77209-135324-event-types.html
+  description: Detects network-based threats including C2 communications, malicious network activity, and suspicious network connections.
+  where: |
+    has(log.eventType) && 
+    (log.eventType == "network-sandboxing" || 
+     log.eventType == "fw" ||
+     (has(origin.ip) && origin.ip != "") ||
+     (has(log.msg) && (safe(log.msg, "").contains("network") || safe(log.msg, "").contains("connection") || safe(log.msg, "").contains("c2") || safe(log.msg, "").contains("command"))) ||
+     (has(log.threatType) && safe(log.threatType, "").contains("network")) ||
+     (has(log.BitdefenderGZMalwareType) && safe(log.BitdefenderGZMalwareType, "") == "RANSOMWARE"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-6h
+      count: 5
+      or:
+        - indexPattern: v11-log-*
+          with:
+            - field: log.hostId.keyword
+              operator: filter_term
+              value: '{{log.hostId}}'
+            - field: log.eventType.keyword
+              operator: filter_term
+              value: 'network-sandboxing'
+          within: now-12h
+          count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.hostId

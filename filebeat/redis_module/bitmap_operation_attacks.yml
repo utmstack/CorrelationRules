@@ -1,0 +1,37 @@
+- id: 1016
+  dataTypes:
+    - redis_module
+  name: Redis Bitmap Operation Attack Detection
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Resource Development
+  technique: Develop Capabilities
+  adversary: origin
+  references:
+    - https://redis.io/docs/latest/commands/bitop/
+    - https://redis.io/docs/latest/commands/bitfield/
+    - https://attack.mitre.org/techniques/T1587/
+  description: Detects potential attacks using Redis bitmap operations (BITOP, BITFIELD) that could be used for unauthorized access control manipulation, permission escalation, or resource exhaustion through excessive bit operations
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      (safe(log.msg, "").contains("BITOP") && safe(log.msg, "").contains("AND") && safe(log.msg, "").contains("OR") && safe(log.msg, "").contains("XOR")) ||
+      (safe(log.msg, "").contains("BITFIELD") && safe(log.msg, "").contains("OVERFLOW")) ||
+      (safe(log.msg, "").contains("SETBIT") && safe(log.severity, "") == "warning")
+    ) &&
+    safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.msg
+          operator: filter_wildcard
+          value: '*BIT*'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.host

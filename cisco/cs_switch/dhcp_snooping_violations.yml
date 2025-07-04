@@ -1,0 +1,35 @@
+- id: 1006
+  dataTypes:
+    - cs_switch
+  name: DHCP Snooping Violation Detected
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Network Security
+  technique: DHCP Spoofing
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst6500/ios/15-0SY/configuration/guide/15_0_sy_swcg/dhcp_snooping.html
+    - https://attack.mitre.org/techniques/T1557/003/
+  description: Detects DHCP snooping violations which may indicate attempts to perform DHCP spoofing attacks. DHCP snooping is a security feature that acts like a firewall between untrusted hosts and trusted DHCP servers.
+  where: |
+    safe(log.eventType, "") == "DHCP_SNOOPING" && 
+    (safe(log.action, "") == "denied" || 
+     safe(log.action, "") == "dropped" ||
+     safe(log.violation, "") == "true" ||
+     contains(safe(log.message, ""), "DHCP_SNOOPING") && 
+     (contains(safe(log.message, ""), "dropped") || 
+      contains(safe(log.message, ""), "violation") ||
+      contains(safe(log.message, ""), "untrusted")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - destination.port

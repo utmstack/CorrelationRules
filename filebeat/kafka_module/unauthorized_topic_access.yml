@@ -1,0 +1,27 @@
+- id: 1001
+  dataTypes:
+    - kafka
+  name: Unauthorized Topic Access Attempt
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Unauthorized Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://kafka.apache.org/documentation/#security_authz
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects attempts to access Kafka topics without proper authorization. This could indicate an attacker trying to read sensitive data or a misconfigured client attempting to access restricted topics.
+  where: safe(log.severity, "") == "ERROR" && safe(log.msg, "") != "" && (contains(log.msg, "is not authorized to") || contains(log.msg, "Authorization failed") || contains(log.msg, "Access denied") || contains(log.msg, "TOPIC_AUTHORIZATION_FAILED"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.msg

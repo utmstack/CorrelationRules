@@ -1,0 +1,37 @@
+- id: 1017
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Memory-Based Threat Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Malware
+  technique: Process Injection
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1055/
+    - https://www.bitdefender.com/business/support/en/77209-135324-event-types.html
+  description: Detects memory-based threats including process injection, memory manipulation, and fileless malware executing in memory.
+  where: |
+    has(log.eventType) && 
+    (log.eventType == "aph" || 
+     log.eventType == "antiexploit" ||
+     log.eventType == "hd" ||
+     (has(log.msg) && (safe(log.msg, "").contains("memory") || safe(log.msg, "").contains("injection") || safe(log.msg, "").contains("exploit"))) ||
+     (has(log.threatType) && (safe(log.threatType, "").contains("memory") || safe(log.threatType, "").contains("fileless") || safe(log.threatType, "").contains("exploit"))) ||
+     (has(origin.path) && safe(origin.path, "").contains("memory")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.hostId.keyword
+          operator: filter_term
+          value: '{{log.hostId}}'
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: '{{log.eventType}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.hostId
+    - origin.path

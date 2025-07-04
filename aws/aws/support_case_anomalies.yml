@@ -1,0 +1,26 @@
+- id: 1028
+  dataTypes:
+    - aws
+  name: AWS Support Case Anomalies
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: Account Compromise
+  technique: Support Resource Abuse
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/awssupport/latest/user/case-management.html
+    - https://attack.mitre.org/techniques/T1078/004/
+  description: Detects unusual support case activities such as multiple cases opened in short time, which could indicate an attacker trying to social engineer AWS support or gather information
+  where: safe(log.eventSource, "") == "support.amazonaws.com" && (safe(log.eventName, "") == "CreateCase" || safe(log.eventName, "") == "AddCommunicationToCase")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityArn.keyword
+          operator: filter_term
+          value: '{{log.userIdentityArn}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - log.userIdentityArn

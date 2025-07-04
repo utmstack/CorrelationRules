@@ -1,0 +1,51 @@
+- id: 1022
+  dataTypes:
+    - logstash_module
+  name: HTTP Input Plugin Security Violation
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 4
+  category: Web Application Attack
+  technique: Command Injection
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/plugins-inputs-http.html
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential security violations in Logstash HTTP input plugin including authentication bypasses, injection attempts, and DoS attacks
+  where: |
+    safe(log.component, "") == "logstash.inputs.http" && 
+    safe(log.level, "") != "" &&
+    (
+      (safe(log.msg, "") != "" && (
+        log.msg.contains("authentication failed") ||
+        log.msg.contains("unauthorized") ||
+        log.msg.contains("429") ||
+        log.msg.contains("queue full") ||
+        log.msg.contains("backpressure") ||
+        log.msg.contains("invalid request") ||
+        log.msg.contains("malformed") ||
+        log.msg.contains("<script") ||
+        log.msg.contains("SELECT ") ||
+        log.msg.contains("UNION ") ||
+        log.msg.contains("DROP ") ||
+        log.msg.contains("exec(") ||
+        log.msg.contains("system(") ||
+        log.msg.contains("eval(")
+      )) ||
+      (log.level == "ERROR" || log.level == "FATAL")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'logstash.inputs.http'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.msg

@@ -1,0 +1,41 @@
+- id: 1007
+  dataTypes:
+    - debian_family
+  name: Unattended Upgrades Security Failures
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: System Security
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1190/
+    - https://wiki.debian.org/UnattendedUpgrades
+  description: Detects failures in unattended security upgrades including authentication errors, package conflicts, and repository issues which could leave systems vulnerable to known exploits or indicate tampering with the update mechanism
+  where: |
+    (safe(log.process, "") contains "unattended-upgrade" || safe(log.message, "") contains "unattended-upgrades") &&
+    (safe(log.message, "") contains "ERROR" ||
+     safe(log.message, "") contains "FAILED" ||
+     safe(log.message, "") contains "Could not get lock" ||
+     safe(log.message, "") contains "dpkg was interrupted" ||
+     safe(log.message, "") contains "Package configuration problem" ||
+     safe(log.message, "") contains "Unmet dependencies" ||
+     safe(log.message, "") contains "Authentication failure" ||
+     safe(log.message, "") contains "Repository problem" ||
+     safe(log.message, "") contains "No space left on device" ||
+     safe(log.message, "") contains "Connection failed" ||
+     safe(log.message, "") contains "Hash Sum mismatch" ||
+     safe(log.message, "") contains "Packages kept back" ||
+     safe(log.message, "") contains "Shutdown during upgrade")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - origin.hostname
+    - log.message

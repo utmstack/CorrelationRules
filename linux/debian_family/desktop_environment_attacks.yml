@@ -1,0 +1,35 @@
+- id: 1012
+  dataTypes:
+    - debian_family
+  name: Desktop Environment Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 3
+  category: User Interface Manipulation
+  technique: Input Capture
+  adversary: origin
+  references:
+    - https://www.debian.org/security/
+    - https://attack.mitre.org/techniques/T1056/
+  description: Detects attacks targeting desktop environments like GNOME, KDE, XFCE including keyloggers, screen capture attempts, and session hijacking
+  where: |
+    (safe(log.process_name, "") in ["gnome-shell", "plasmashell", "xfce4-panel", "mate-panel"] && safe(log.signal, "") in ["SIGSEGV", "SIGABRT"]) ||
+    (safe(log.component, "") in ["gdm", "gdm3", "lightdm", "sddm"] && safe(log.event_type, "") in ["authentication_failure", "session_hijack", "bypass_attempt"]) ||
+    (safe(log.message, "") contains_any ["keylogger detected", "screen capture", "clipboard access", "input monitoring", "desktop recording"]) ||
+    (safe(log.dbus_method, "") in ["Screenshot", "RecordDesktop", "GetClipboard"] && safe(log.caller, "") not_in ["gnome-screenshot", "spectacle", "flameshot"]) ||
+    (safe(log.file_path, "") contains_any [".Xauthority", ".ICEauthority", "/tmp/.X11-unix/"] && safe(log.operation, "") in ["read", "write", "modify"] && safe(log.process_name, "") not_in ["Xorg", "gdm", "lightdm"])
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: destination.hostname.keyword
+          operator: filter_term
+          value: '{{destination.hostname}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - destination.hostname

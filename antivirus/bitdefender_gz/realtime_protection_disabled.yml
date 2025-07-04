@@ -1,0 +1,33 @@
+- id: 1005
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Real-time Protection Disabled
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: System
+  technique: T1562.001 - Impair Defenses: Disable or Modify Tools
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects when real-time protection features are disabled on an endpoint. This is a critical security event as it leaves the system vulnerable to malware infections and requires immediate investigation.
+  where: >
+    safe(log.dvchost, "") != "" &&
+    (
+      (safe(log.eventType, "") == "modules" && 
+       safe(log.BitdefenderGZModule, "") == "av" &&
+       (safe(log.cs1, "") contains "real-time" || 
+        safe(log.cs2, "") contains "real-time" ||
+        safe(log.msg, "") contains "real-time")) ||
+      (safe(log.eventType, "") == "Product ModulesStatus" &&
+       safe(log.severity, "") in ["4", "5"] &&
+       (safe(log.cs1, "") contains "protection disabled" ||
+        safe(log.cs2, "") contains "protection disabled" ||
+        safe(log.msg, "") contains "protection disabled" ||
+        safe(log.msg, "") contains "real-time scanning disabled" ||
+        safe(log.act, "") == "disabled"))
+    )
+  deduplicateBy:
+    - log.dvchost

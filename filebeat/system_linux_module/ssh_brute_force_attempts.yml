@@ -1,0 +1,26 @@
+- id: 1001
+  dataTypes:
+    - linux
+  name: SSH Brute Force Attempts
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Brute Force
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+    - https://attack.mitre.org/techniques/T1110/001/
+  description: Detects multiple failed SSH authentication attempts from the same source IP, indicating potential brute force attack
+  where: safe(log.message, "") contains "Failed password" && safe(log.message, "") contains "ssh" && safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.host

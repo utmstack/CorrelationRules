@@ -1,0 +1,33 @@
+- id: 1014
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne Offline Agent Detection Patterns
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 4
+  category: Availability
+  technique: System Shutdown/Reboot
+  adversary: origin
+  references:
+    - https://support.sentinelone.com/hc/en-us/articles/360057987594-Agent-Connectivity-and-Network-Requirements
+    - https://attack.mitre.org/techniques/T1529/
+  description: Detects patterns of SentinelOne agents going offline, which could indicate network issues, deliberate disconnection to evade monitoring, or system compromise. Multiple agents offline simultaneously may indicate coordinated attack or infrastructure issues.
+  where: |
+    safe(log.eventDescription, "") =~ ".*(agent|endpoint).*(offline|disconnect|unreachable).*" ||
+    safe(log.agentStatus, "") =~ "(offline|disconnected|inactive)" ||
+    safe(log.eventType, "") == "AgentOffline" ||
+    safe(log.activityType, "") == "agent_disconnected" ||
+    (safe(log.connectionStatus, "") == "disconnected" && 
+     safe(log.lastSeen, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.accountId.keyword
+          operator: filter_term
+          value: '{{log.accountId}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - log.accountId
+    - log.sourceGpName

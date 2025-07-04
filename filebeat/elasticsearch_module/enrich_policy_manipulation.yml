@@ -1,0 +1,27 @@
+- id: 1021
+  dataTypes:
+    - elasticsearch_module
+  name: Elasticsearch Enrich Policy Manipulation
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Configuration Change
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/ingest-enriching-data.html
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects unauthorized manipulation of Elasticsearch enrich policies which could be used to tamper with data enrichment processes, potentially leading to data integrity issues or bypassing security controls
+  where: safe(action, "") != "" && (action == "security_config_change" || safe(log.auditRestRequestPath, "").contains("/_enrich/policy") || safe(origin.url, "").contains("/_enrich/policy")) && safe(log.method, "") != "" && (log.method == "PUT" || log.method == "POST" || log.method == "DELETE")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.clusterName

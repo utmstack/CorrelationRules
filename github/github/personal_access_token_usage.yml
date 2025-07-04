@@ -1,0 +1,33 @@
+- id: 1007
+  dataTypes:
+    - github
+  name: GitHub Personal Access Token Suspicious Usage
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 1
+  category: Credential Access
+  technique: Steal Application Access Token
+  adversary: origin
+  references:
+    - https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
+    - https://attack.mitre.org/techniques/T1528/
+  description: Detects suspicious personal access token (PAT) activities including creation, usage from unusual locations, or multiple token operations. This could indicate compromised credentials or unauthorized access attempts.
+  where: |
+    safe(log.action, "") in ["personal_access_token.create", "personal_access_token.destroy", "personal_access_token.request_created", "personal_access_token.request_approved", "personal_access_token.request_denied"] ||
+    (safe(log.programmatic_access_type, "") in ["personal access token", "fine-grained personal access token"] && safe(log.action, "") in ["git.clone", "git.fetch", "git.push"]) ||
+    safe(log.event, "") == "personal_access_token_request"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.senderLogin.keyword
+          operator: filter_term
+          value: '{{log.senderLogin}}'
+        - field: log.action.keyword
+          operator: filter_term
+          value: personal_access_token
+      within: now-24h
+      count: 5
+  deduplicateBy:
+    - log.senderLogin
+    - log.hashed_token

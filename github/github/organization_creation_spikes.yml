@@ -1,0 +1,26 @@
+- id: 1022
+  dataTypes:
+    - github
+  name: GitHub Organization Creation Spikes
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Resource Management
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://docs.github.com/en/webhooks/webhook-events-and-payloads#organization
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects unusual spikes in organization creation which could indicate abuse of enterprise resources or preparation for malicious activities.
+  where: safe(log.action, "") == "organization.created" || safe(log.action, "") == "org.create"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.senderLogin.keyword
+          operator: filter_term
+          value: '{{log.senderLogin}}'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - log.senderLogin

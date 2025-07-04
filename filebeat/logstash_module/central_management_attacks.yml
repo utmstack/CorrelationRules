@@ -1,0 +1,35 @@
+- id: 1017
+  dataTypes:
+    - logstash_module
+  name: Logstash Central Management Configuration Tampering
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Configuration Manipulation
+  technique: Remote Services
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/configuring-centralized-pipelines.html
+    - https://attack.mitre.org/techniques/T1021/
+  description: Detects attempts to tamper with Logstash central management configurations, including unauthorized pipeline modifications or configuration injection attempts
+  where: |
+    safe(log.component, "") == "logstash.agent" && 
+    safe(log.msg, "") != "" &&
+    (log.msg contains "pipeline" || log.msg contains "config") &&
+    (log.msg contains "failed" || log.msg contains "error" || log.msg contains "rejected" || log.msg contains "invalid") &&
+    safe(log.level, "") in ["ERROR", "FATAL"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.pipelineName.keyword
+          operator: filter_term
+          value: '{{log.pipelineName}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.pipelineName

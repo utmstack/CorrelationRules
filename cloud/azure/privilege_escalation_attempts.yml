@@ -1,0 +1,27 @@
+- id: 1001
+  dataTypes:
+    - azure
+  name: Azure AD Privilege Escalation Attempt Detected
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 2
+  category: Privilege Escalation
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/role-based-access-control/role-assignments-alert
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects attempts to escalate privileges in Azure AD through role assignments. Monitors for the Microsoft.Authorization/roleAssignments/write operation which indicates a user or service principal is being granted additional permissions.
+  where: safe(log.operationName, "") == "Microsoft.Authorization/roleAssignments/write" && safe(log.categoryValue, "") == "Administrative"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.correlationId

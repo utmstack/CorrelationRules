@@ -1,0 +1,34 @@
+- id: 1006
+  dataTypes:
+    - aws
+  name: AWS Unusual API Call Patterns
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: Anomaly Detection
+  technique: T1106 - Execution through API
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html
+    - https://attack.mitre.org/techniques/T1106/
+  description: Detects unusual API call patterns in AWS that may indicate unauthorized access or reconnaissance activities. This rule triggers when multiple sensitive API calls are made from the same source IP within a short time window.
+  where: |
+    safe(log.eventSource, "") != "" && 
+    safe(log.sourceIPAddress, "") != "" &&
+    safe(log.eventName, "") != "" &&
+    (
+      log.eventName in ["DescribeSecurityGroups", "DescribeNetworkAcls", "DescribeVpcs", "DescribeSubnets", "DescribeRouteTables", "DescribeInstances", "DescribeSnapshots", "DescribeVolumes", "DescribeImages", "DescribeKeyPairs", "ListBuckets", "GetBucketAcl", "GetBucketPolicy", "ListAccessKeys", "ListUsers", "ListRoles", "ListPolicies", "GetAccountAuthorizationDetails", "GenerateCredentialReport", "GetCredentialReport"]
+    ) &&
+    safe(log.errorCode, "") == ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.sourceIPAddress.keyword
+          operator: filter_term
+          value: '{{log.sourceIPAddress}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - log.sourceIPAddress
+    - log.userIdentityAccountId

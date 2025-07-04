@@ -1,0 +1,35 @@
+- id: 1012
+  dataTypes:
+    - elasticsearch_module
+  name: Security Realm Modifications Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Defense Evasion
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects modifications to Elasticsearch security realms, which could indicate an attacker attempting to bypass authentication or create backdoor access
+  where: |
+    safe(action, "") != "" && 
+    safe(log.eventType, "") == "security_config_change" &&
+    (action.contains("cluster:admin/xpack/security/realm/") || 
+     action.contains("PutRealmAction") ||
+     action.contains("DeleteRealmAction") ||
+     (safe(log.component, "") == "Security" && 
+      safe(log.message, "").contains("realm"))) &&
+    safe(origin.user, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.userRealm

@@ -1,0 +1,41 @@
+- id: 1003
+  dataTypes:
+    - elasticsearch
+  name: Elasticsearch Node Compromise Indicators
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Compromise Detection
+  technique: System Compromise
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/audit-event-types.html
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects patterns indicating potential compromise of an Elasticsearch node, including authentication failures from unusual locations and critical errors.
+  where: (safe(action, "") == "authentication_failed" || safe(severity, "") == "high") && safe(origin.ip, "") != "" && safe(log.nodeName, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.nodeName.keyword
+          operator: filter_term
+          value: '{{log.nodeName}}'
+        - field: severity.keyword
+          operator: filter_term
+          value: 'high'
+      within: now-2h
+      count: 10
+    or:
+      - indexPattern: v11-log-*
+        with:
+          - field: origin.ip.keyword
+            operator: filter_term
+            value: '{{origin.ip}}'
+          - field: action.keyword
+            operator: filter_term
+            value: 'authentication_failed'
+        within: now-15m
+        count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.nodeName

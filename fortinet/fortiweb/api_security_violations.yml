@@ -1,0 +1,39 @@
+- id: 1005
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb API Security Violations
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: API Security
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.4.3/administration-guide/210196/blocking-known-attacks
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects API security violations including unauthorized access attempts, API abuse, rate limit violations, malformed requests, and attempts to exploit API vulnerabilities
+  where: |
+    safe(action, "") in ["deny", "block", "alert_deny"] &&
+    (
+      safe(log.type, "") in ["attack", "api"] ||
+      safe(log.subtype, "") == "api"
+    ) &&
+    (
+      safe(log.attack_type, "") in ["API Abuse", "API Security", "API Violation", "REST API Attack", "GraphQL Attack", "API Key Violation"] ||
+      safe(log.msg, "") =~ "(?i)(api.*violat|api.*abuse|api.*security|unauthorized.*api|api.*key.*invalid|api.*rate.*limit|malformed.*api.*request|api.*injection)" ||
+      safe(log.uri, "") =~ "(?i)(/api/|/v[0-9]+/|/rest/|/graphql)" ||
+      safe(log.api_policy, "") != "" ||
+      safe(log.content_type, "") =~ "(?i)(application/json|application/xml|text/xml)"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - log.uri

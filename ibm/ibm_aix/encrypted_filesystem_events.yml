@@ -1,0 +1,27 @@
+- id: 1006
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Encrypted File System Access Violation
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Data Protection
+  technique: Data Encrypted for Impact
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/ssw_aix_72/security/audit_events.html
+    - https://attack.mitre.org/techniques/T1486/
+  description: Detects unauthorized access or manipulation attempts on encrypted file systems in IBM AIX, including cryptographic configuration changes and encrypted file operations that may indicate data theft or ransomware activities
+  where: safe(log.eventType, "") == "CY" || (safe(log.msg, "").contains("encrypt") && (safe(action, "").contains("FILE_") || safe(log.commandType, "").contains("crypto"))) || (safe(log.objName, "").contains("/efs/") && safe(log.returnCode, "") != "0")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - log.objName

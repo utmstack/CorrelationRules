@@ -1,0 +1,30 @@
+- id: 1005
+  dataTypes:
+    - antivirus-sentinel-one
+  name: Memory Injection Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 2
+  category: Memory Attack Detection
+  technique: Process Injection
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1055/
+    - https://attack.mitre.org/techniques/T1055/001/
+  description: Detects memory injection attempts including DLL injection, process hollowing, reflective DLL injection, and other in-memory attack techniques detected by SentinelOne
+  where: |
+    safe(log.eventDescription, "") =~ "(?i)(memory injection|dll injection|process injection|reflective dll|process hollow)" &&
+    safe(log.act, "") =~ "(?i)(block|prevent|detect|alert)" &&
+    (safe(log.fname, "") =~ "(?i)(dll|exe|sys)" || safe(log.filePath, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-5m
+      count: 2
+  deduplicateBy:
+    - log.syslogHost
+    - log.sourceUser

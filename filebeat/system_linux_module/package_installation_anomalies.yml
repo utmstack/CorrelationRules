@@ -1,0 +1,26 @@
+- id: 1004
+  dataTypes:
+    - linux
+  name: Suspicious Package Installation Activity
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Installation
+  technique: Software Deployment Tools
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+    - https://attack.mitre.org/techniques/T1072/
+  description: Detects unusual package installation or removal activities that could indicate system compromise or unauthorized software deployment
+  where: (safe(log.message, "") contains "apt" || safe(log.message, "") contains "yum" || safe(log.message, "") contains "dpkg" || safe(log.message, "") contains "rpm" || safe(log.message, "") contains "snap") && (safe(log.message, "") contains "install" || safe(log.message, "") contains "remove" || safe(log.message, "") contains "purge") && safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.host

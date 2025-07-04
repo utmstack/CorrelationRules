@@ -1,0 +1,32 @@
+- id: 1012
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne Threat Mitigation Failures
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Malware Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://support.sentinelone.com/hc/en-us/articles/360004195934-Threat-Mitigation-Status
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects failed threat mitigation attempts in SentinelOne, which could indicate advanced malware evading remediation, system compromise preventing cleanup, or configuration issues. Failed mitigations require immediate investigation.
+  where: |
+    (safe(log.eventDescription, "") =~ ".*mitigation.*fail.*" ||
+     safe(log.eventDescription, "") =~ ".*remediation.*fail.*" ||
+     safe(log.mitigationStatus, "") =~ ".*fail.*" ||
+     safe(log.threatStatus, "") == "mitigation_failed" ||
+     (safe(log.activityType, "") == "mitigation" && safe(log.status, "") == "failed"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.agentId.keyword
+          operator: filter_term
+          value: '{{log.agentId}}'
+      within: now-30m
+      count: 2
+  deduplicateBy:
+    - log.agentId
+    - log.threatId

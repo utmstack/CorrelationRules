@@ -1,0 +1,33 @@
+- id: 1001
+  dataTypes:
+    - mongodb
+  name: MongoDB Authentication Bypass Attempts
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Credential Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/reference/log-messages/
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects multiple failed authentication attempts followed by a successful login from the same source, which may indicate authentication bypass or brute force attempts that succeeded
+  where: |
+    safe(log.component, "") == "ACCESS" && 
+    safe(log.msg, "") contains "Authentication" &&
+    (safe(log.msg, "") contains "failed" || safe(log.msg, "") contains "unsuccessful") &&
+    safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.msg.keyword
+          operator: wildcard
+          value: '*Authentication*successful*'
+      within: now-5m
+      count: 1
+  deduplicateBy:
+    - origin.host

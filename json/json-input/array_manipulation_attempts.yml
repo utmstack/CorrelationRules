@@ -1,0 +1,39 @@
+- id: 1005
+  dataTypes:
+    - json-input
+  name: JSON Array Manipulation Attack
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Data Manipulation
+  technique: Array Manipulation
+  adversary: origin
+  references:
+    - https://medium.com/dataseries/working-with-json-injection-attacks-90eda79305e2
+    - https://attack.mitre.org/techniques/T1565/001/
+  description: Detects attempts to manipulate JSON arrays including oversized arrays, array injection attacks, and attempts to bypass security controls through array manipulation techniques.
+  where: |
+    (safe(log.array_size, 0) > 10000 ||
+     safe(log.error, "").contains("array overflow") ||
+     safe(log.error, "").contains("array bounds") ||
+     safe(log.error, "").contains("invalid array") ||
+     safe(log.message, "").contains("array manipulation") ||
+     safe(log.message, "").contains("array injection") ||
+     safe(log.payload, "").contains("[][]") ||
+     safe(log.payload, "").contains("[null,null,null") ||
+     (safe(log.array_count, 0) > 100 && safe(log.unique_values, 0) < 5) ||
+     (safe(log.empty_arrays, 0) > 50) ||
+     safe(log.nested_arrays, 0) > 10) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-45m
+      count: 7
+  deduplicateBy:
+    - origin.ip
+    - log.array_size

@@ -1,0 +1,43 @@
+- id: 1017
+  dataTypes:
+    - deceptive-bytes
+  name: Zero-Day Behavior Patterns Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Zero-Day Threat
+  technique: Exploitation for Defense Evasion
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1211/
+    - https://attack.mitre.org/techniques/T1055/
+    - https://attack.mitre.org/techniques/T1620/
+  description: Identifies potential zero-day exploits and unknown malware through abnormal behavior patterns, deception interactions, and anomaly detection in endpoint activities
+  where: >
+    safe(log.eventType, "") in ["unknown_threat", "behavioral_anomaly", "zero_day_suspect"] &&
+    safe(log.threatSignature, "") == "unknown" &&
+    safe(log.deceptionEnvironment, false) == true &&
+    (
+      (safe(log.memoryAnomalyScore, 0) >= 90) ||
+      (safe(log.processChainAnomalyScore, 0) >= 85) ||
+      (safe(log.networkBehaviorScore, 0) >= 88) ||
+      (safe(log.fileSystemAnomalyScore, 0) >= 92)
+    ) &&
+    safe(log.knownMalwareFamily, "") == "" &&
+    safe(log.exploitTechnique, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.processName.keyword
+          operator: filter_term
+          value: '{{log.processName}}'
+      within: now-30m
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.processHash
+    - log.exploitTechnique

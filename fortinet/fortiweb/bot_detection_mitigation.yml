@@ -1,0 +1,41 @@
+- id: 1003
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb Bot Detection and Mitigation
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 4
+  category: Bot Protection
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.4.3/administration-guide/210196/blocking-known-attacks
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects bot activity, crawlers, and automated tools attempting to access protected web applications, including bad bots, scrapers, and vulnerability scanners
+  where: |
+    (
+      safe(action, "") in ["deny", "captcha", "rate_limit"] &&
+      (
+        safe(log.type, "") == "attack" ||
+        safe(log.subtype, "") == "bot"
+      )
+    ) &&
+    (
+      safe(log.attack_type, "") in ["Bot Detection", "Bad Bot", "Web Scraper", "Vulnerability Scanner", "Crawler"] ||
+      safe(log.msg, "") =~ "(?i)(bot.*detect|bad.*bot|web.*scrap|vuln.*scan|crawler|automated.*tool|suspicious.*user.*agent)" ||
+      safe(log.user_agent, "") =~ "(?i)(bot|spider|crawler|scraper|scan|nikto|nmap|masscan|zgrab|gobuster)" ||
+      safe(log.bot_score, "") != "" ||
+      safe(log.threat_score, "") > 80
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 50
+  deduplicateBy:
+    - origin.ip
+    - log.user_agent

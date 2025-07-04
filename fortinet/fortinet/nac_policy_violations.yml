@@ -1,0 +1,49 @@
+- id: 1020
+  dataTypes:
+    - firewall-fortigate-traffic
+  name: Network Access Control Policy Violation
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Unauthorized Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.fortinet.com/resources/cyberglossary/what-is-network-access-control
+    - https://attack.mitre.org/techniques/T1078/
+    - https://attack.mitre.org/techniques/T1133/
+  description: Detects violations of Network Access Control (NAC) policies including unauthorized device access, authentication failures, or attempts to access restricted network segments. This may indicate rogue devices or compromised credentials.
+  where: |
+    (
+      safe(log.subtype, "") == "nac" ||
+      safe(log.type, "") == "nac" ||
+      safe(log.service, "") == "802.1x" ||
+      safe(log.logid, "") in ["0102048000", "0102048001", "0102048002", "0102048003"]
+    ) &&
+    (
+      safe(log.msg, "").contains("nac violation") ||
+      safe(log.msg, "").contains("unauthorized device") ||
+      safe(log.msg, "").contains("authentication failed") ||
+      safe(log.msg, "").contains("access denied") ||
+      safe(log.msg, "").contains("rogue device") ||
+      safe(log.msg, "").contains("mac spoofing") ||
+      safe(log.msg, "").contains("vlan violation") ||
+      safe(log.authstatus, "") == "failed" ||
+      safe(log.nacstatus, "") in ["denied", "quarantine", "violation"]
+    ) &&
+    safe(action, "") in ["deny", "block", "quarantine"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.mac.keyword
+          operator: filter_term
+          value: '{{log.mac}}'
+      within: now-2h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.mac

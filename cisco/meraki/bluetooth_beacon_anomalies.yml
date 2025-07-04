@@ -1,0 +1,30 @@
+- id: 1009
+  dataTypes:
+    - meraki
+  name: Bluetooth Beacon Anomaly Detection
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: IoT Security
+  technique: T1200
+  adversary: origin
+  references:
+    - https://documentation.meraki.com/MR/Bluetooth/Bluetooth_Low_Energy_(BLE)
+    - https://attack.mitre.org/techniques/T1200/
+  description: Detects anomalous Bluetooth beacon activity that could indicate rogue beacons, beacon spoofing, or unauthorized tracking devices in the environment. Monitors for unexpected beacon appearances, signal strength anomalies, or suspicious beacon identifiers.
+  where: |
+    safe(log.eventType, "") contains "bluetooth" && 
+    (safe(log.beacon_uuid, "") != "" || safe(log.beacon_major, "") != "" || safe(log.beacon_minor, "") != "") &&
+    (safe(log.rssi, 0) >= 70 || safe(log.message, "") contains "anomaly" || safe(log.message, "") contains "unexpected")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.beacon_uuid.keyword
+          operator: filter_term
+          value: '{{log.beacon_uuid}}'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - log.beacon_uuid
+    - log.device_mac

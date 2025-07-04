@@ -1,0 +1,43 @@
+- id: 1001
+  dataTypes:
+    - haproxy
+  name: HAProxy Backend Server Manipulation Detection
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 5
+  category: Persistence
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://www.haproxy.com/blog/introduction-to-haproxy-logging
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects attempts to manipulate HAProxy backend servers including unauthorized server state changes, suspicious backend modifications, or attempts to disable healthy servers which could indicate service disruption attacks
+  where: |
+    (safe(log.haproxy.backend_name, "") != "" && 
+     safe(log.haproxy.server_name, "") != "" &&
+     (safe(log.haproxy.termination_state, "") contains "SD" ||
+      safe(log.haproxy.termination_state, "") contains "sD" ||
+      safe(log.haproxy.http.response.status_code, 0) == 503 ||
+      (safe(log.message, "") contains "Server" && 
+       (safe(log.message, "") contains "going DOWN" || 
+        safe(log.message, "") contains "is DOWN" ||
+        safe(log.message, "") contains "disabled")))) ||
+    (safe(action, "") == "haproxy.log" && 
+     safe(log.message, "") contains "backend" &&
+     (safe(log.message, "") contains "has no server available" ||
+      safe(log.message, "") contains "leaving forced maintenance"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.haproxy.backend_name.keyword
+          operator: filter_term
+          value: '{{log.haproxy.backend_name}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.haproxy.backend_name

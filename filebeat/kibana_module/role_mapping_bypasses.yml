@@ -1,0 +1,32 @@
+- id: 1016
+  dataTypes:
+    - kibana
+  name: Role Mapping Bypass Attempt
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Authorization Bypass
+  technique: Privilege Escalation
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/role-mappings.html
+    - https://attack.mitre.org/techniques/T1548/
+  description: Detects attempts to bypass role mapping controls in Kibana, which could allow unauthorized access to privileged functionality. This may indicate an attacker trying to escalate privileges through role manipulation.
+  where: |
+    safe(log.action, "") == "put_role_mapping" && 
+    safe(actionResult, "") == "failure" &&
+    (safe(log.message, "") =~ ".*bypass.*" || 
+     safe(log.message, "") =~ ".*unauthorized.*" ||
+     safe(log.message, "") =~ ".*denied.*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - origin.host

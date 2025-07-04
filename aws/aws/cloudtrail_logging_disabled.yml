@@ -1,0 +1,32 @@
+- id: 1004
+  dataTypes:
+    - aws
+  name: AWS CloudTrail Logging Disabled
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-concepts.html
+    - https://attack.mitre.org/techniques/T1562/008/
+  description: Detects attempts to disable CloudTrail logging which could be used to hide malicious activities and evade detection. CloudTrail provides audit logs of all AWS API calls.
+  where: |
+    safe(log.eventSource, "") == "cloudtrail.amazonaws.com" && 
+    (safe(log.eventName, "") == "StopLogging" || 
+     safe(log.eventName, "") == "DeleteTrail" || 
+     safe(log.eventName, "") == "UpdateTrail") &&
+    safe(log.errorCode, "") == ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityArn.keyword
+          operator: filter_term
+          value: '{{log.userIdentityArn}}'
+      within: now-15m
+      count: 2
+  deduplicateBy:
+    - log.userIdentityArn
+    - log.sourceIPAddress

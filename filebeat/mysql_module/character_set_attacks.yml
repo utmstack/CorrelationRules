@@ -1,0 +1,57 @@
+- id: 1025
+  dataTypes:
+    - mysql
+  name: Character Set Encoding Attack Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 2
+  category: Encoding Attack
+  technique: Multi-byte Character Injection
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/charset-unicode-sets.html
+    - https://capec.mitre.org/data/definitions/80.html
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects attempts to exploit character set encoding vulnerabilities in MySQL, including multi-byte character attacks, UTF-8 encoding bypasses, and character set switching attacks. These attacks can bypass input validation and SQL injection defenses by exploiting differences in how character encodings are interpreted.
+  where: |
+    safe(action, "") == "mysql.error" &&
+    safe(log.msg, "") != "" &&
+    (
+      log.msg.contains("CHARACTER SET") ||
+      log.msg.contains("CHARSET") ||
+      log.msg.contains("COLLATE") ||
+      log.msg.contains("utf8") ||
+      log.msg.contains("UTF-8") ||
+      log.msg.contains("latin1") ||
+      log.msg.contains("gbk") ||
+      log.msg.contains("big5") ||
+      log.msg.contains("ucs2") ||
+      log.msg.contains("utf16") ||
+      log.msg.contains("utf32") ||
+      log.msg.contains("CONVERT(") ||
+      log.msg.contains("_charset")
+    ) &&
+    (
+      log.msg.contains("Illegal mix of collations") ||
+      log.msg.contains("Invalid character string") ||
+      log.msg.contains("Incorrect string value") ||
+      log.msg.contains("Cannot convert string") ||
+      log.msg.contains("character set mismatch") ||
+      log.msg.contains("Invalid utf8") ||
+      log.msg.contains("Malformed") ||
+      log.msg.contains("encoding") ||
+      log.msg.contains("denied") ||
+      log.msg.contains("syntax error") ||
+      safe(severity, "") == "high"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-20m
+      count: 8
+  deduplicateBy:
+    - origin.host

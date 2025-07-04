@@ -1,0 +1,37 @@
+- id: 1010
+  dataTypes:
+    - osquery
+  name: Osquery Scheduled Query Abuse
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Persistence
+  technique: Scheduled Task/Job
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/configuration/
+    - https://attack.mitre.org/techniques/T1053/
+  description: Detects suspicious modifications or abuse of osquery scheduled queries. Attackers may attempt to disable security-critical scheduled queries, add malicious queries for persistence, or modify query intervals to reduce detection capabilities.
+  where: |
+    (safe(log.eventName, "") contains_any ["schedule", "scheduled_query"] ||
+     safe(action, "") contains "schedule" ||
+     safe(log.message, "") contains "scheduled") &&
+    (safe(actionResult, "") contains_any ["removed", "disabled", "failed", "error"] ||
+     safe(log.message, "") contains_any ["interval", "disable", "stop", "unschedule", "remove"] ||
+     (safe(log.message, "") matches ".*interval.*[0-9]{4,}.*")) &&
+    safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-1h
+      count: 4
+  deduplicateBy:
+    - origin.host
+    - log.eventName

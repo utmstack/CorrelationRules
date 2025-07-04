@@ -1,0 +1,30 @@
+- id: 1016
+  dataTypes:
+    - azure
+  name: Azure Subscription Ownership Transfer Detected
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Identity and Access Management
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/role-based-access-control/change-history-report
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects when ownership of an Azure subscription is transferred by monitoring role assignment changes at the subscription level. This could indicate unauthorized access or insider threat activity.
+  where: safe(log.operationName, "") == "Microsoft.Authorization/roleAssignments/write" && safe(log.properties, "").contains("Owner") && safe(log.category, "") == "Administrative" && safe(log.resourceId, "").contains("/subscriptions/") && !safe(log.resourceId, "").contains("/resourceGroups/")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.correlationId.keyword
+          operator: filter_term
+          value: '{{log.correlationId}}'
+      within: now-30m
+      count: 1
+  deduplicateBy:
+    - log.correlationId
+    - origin.ip

@@ -1,0 +1,32 @@
+- id: 1011
+  dataTypes:
+    - antivirus-kaspersky
+  name: Suspicious Packed Executable Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Malware
+  technique: Obfuscated Files or Information
+  adversary: origin
+  references:
+    - https://www.kaspersky.com/resource-center/threats/suspicious-packers
+    - https://attack.mitre.org/techniques/T1027/002/
+  description: Detects when Kaspersky identifies suspicious packed executables, which are often used by malware to evade detection and analysis. Packed executables use compression or encryption to hide their true content.
+  where: |
+    (safe(log.signatureID, "") == "3" || safe(log.cs1, "") == "DETECT") &&
+    (safe(log.cs4, "").contains("Packed") || 
+     safe(log.msg, "").contains("packed") || 
+     safe(log.msg, "").contains("packer") ||
+     safe(log.cs4, "").matches("(?i).*\\.(NSAnti|Themida|VMProtect|ASPack|UPX|PECompact|Enigma).*"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.cs4

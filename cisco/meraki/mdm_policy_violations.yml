@@ -1,0 +1,32 @@
+- id: 1012
+  dataTypes:
+    - meraki
+  name: MDM Policy Violations
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Mobile Device Management
+  technique: Unauthorized Access
+  adversary: origin
+  references:
+    - https://documentation.meraki.com/SM/Monitoring_and_Reporting/MDM_Commands_in_Systems_Manager
+    - https://attack.mitre.org/techniques/T1078/003/
+  description: Detects violations of MDM policies including jailbroken devices, unauthorized app installations, or attempts to bypass mobile device management controls
+  where: |
+    safe(log.eventType, "") == "mdm_policy_violation" ||
+    safe(log.eventType, "") == "mdm_jailbreak_detected" ||
+    safe(log.eventType, "") == "mdm_unauthorized_app" ||
+    (safe(log.message, "") =~ ".*MDM.*policy.*violation.*") ||
+    (safe(log.eventType, "") == "mdm_command" && safe(log.status, "") == "failed" && safe(log.reason, "") =~ ".*(policy|compliance).*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: device.id.keyword
+          operator: filter_term
+          value: '{{device.id}}'
+      within: now-24h
+      count: 5
+  deduplicateBy:
+    - device.id
+    - log.policyName

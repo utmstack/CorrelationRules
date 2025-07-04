@@ -1,0 +1,35 @@
+- id: 1001
+  dataTypes:
+    - firewall-fortigate-traffic
+  name: Admin Account Compromise Indicators
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Account Takeover
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1078/
+    - https://docs.fortinet.com/document/fortigate/7.4.1/fortios-log-message-reference/160372/list-of-log-types-and-subtypes
+  description: Detects multiple failed admin login attempts followed by a successful login from the same IP address, indicating potential account compromise
+  where: |
+    safe(log.logid, "") == "0100032001" && 
+    safe(log.type, "") == "event" && 
+    safe(log.subtype, "") == "system" && 
+    safe(log.logdesc, "") == "Admin login successful" && 
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.logdesc.keyword
+          operator: filter_term
+          value: 'Admin login failed'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.user

@@ -1,0 +1,40 @@
+- id: 1002
+  dataTypes:
+    - traefik
+  name: Middleware Bypass Attempt
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Access Control Bypass
+  technique: Security Control Bypass
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/middlewares/overview/
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects attempts to bypass Traefik middleware security controls such as authentication, rate limiting, or IP filtering through malformed requests or path manipulation.
+  where: |
+    (safe(log.HTTP_status, 0) == 200 || safe(log.HTTP_status, 0) == 201) &&
+    (safe(log.RequestPath, "") contains("/.") ||
+     safe(log.RequestPath, "") contains("//") ||
+     safe(log.RequestPath, "") contains("/./") ||
+     safe(log.RequestPath, "") contains("/%2e/") ||
+     safe(log.RequestPath, "") contains("/%252e/") ||
+     safe(log.RequestPath, "") contains("\\x") ||
+     safe(log.RequestPath, "") contains("%00") ||
+     safe(log.RequestPath, "") contains("%0d%0a") ||
+     (safe(log.RequestHeaders, "") contains("X-Forwarded-For") && 
+      safe(log.RequestHeaders, "") contains("127.0.0.1")) ||
+     (safe(log.RequestHeaders, "") contains("X-Real-IP") && 
+      safe(log.RequestHeaders, "") contains("localhost")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.RouterName

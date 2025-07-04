@@ -1,0 +1,28 @@
+- id: 1016
+  dataTypes:
+    - iis
+  name: IIS Failed Request Tracing Abuse - XST Attack Attempt
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Web Application Attack
+  technique: Cross-Site Tracing (XST)
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/Cross_Site_Tracing
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects potential Cross-Site Tracing (XST) attacks exploiting TRACE/TRACK HTTP methods in IIS. These methods can be used to steal cookies and authentication headers even when HttpOnly flags are set.
+  where: |
+    safe(log.method, "") == "TRACE" || safe(log.method, "") == "TRACK" ||
+    (safe(action, "") == "request" && (safe(target.path, "") contains "trace.axd" || safe(target.path, "") contains ".axd"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - target.ip

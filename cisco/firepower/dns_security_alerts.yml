@@ -1,0 +1,38 @@
+- id: 1016
+  dataTypes:
+    - firepower
+  name: DNS Security Alert Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Network Security
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/Syslogs/b_fptd_syslog_guide/security-event-syslog-messages.html
+    - https://attack.mitre.org/techniques/T1071/004/
+  description: Detects DNS security alerts including DNS blocks, DNS query anomalies, DNS response mismatches, and suspicious DNS resolution attempts
+  where: |
+    (safe(log.eventType, "") == "DNS_BLOCK" || 
+     safe(log.eventType, "") == "DNS_MONITOR" ||
+     safe(log.reason, "") == "DNS Monitor" ||
+     safe(log.reason, "") == "DNS Block") ||
+    (safe(log.message, "") contains "DNS lookup failed" ||
+     safe(log.message, "") contains "DNS responses with mis-matched id" ||
+     safe(log.message, "") contains "Deny inbound UDP" && safe(log.message, "") contains "DNS") ||
+    (safe(log.DNSSICategory, "") != "" && 
+     (safe(log.DNSSICategory, "") contains "Block list" ||
+      safe(log.DNSSICategory, "") contains "Intelligence Feed" ||
+      safe(log.DNSSICategory, "") contains "TID category"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.DNS_Query

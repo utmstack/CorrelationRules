@@ -1,0 +1,32 @@
+- id: 1004
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Antivirus Service Stopped or Disabled
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 5
+  category: System
+  technique: T1562.001 - Impair Defenses: Disable or Modify Tools
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects when the Bitdefender antivirus service or critical security modules are stopped, disabled, or experiencing failures. This is a critical security event that could indicate malicious tampering or system issues.
+  where: >
+    (safe(log.eventType, "") == "modules" || 
+     safe(log.eventType, "") == "Product ModulesStatus") &&
+    safe(log.severity, "") in ["4", "5"] &&
+    safe(log.dvchost, "") != "" &&
+    (safe(log.BitdefenderGZModule, "") in ["av", "modules", "registration"] ||
+     safe(log.cs1, "") contains "stopped" ||
+     safe(log.cs1, "") contains "disabled" ||
+     safe(log.cs2, "") contains "stopped" ||
+     safe(log.cs2, "") contains "disabled" ||
+     safe(log.msg, "") contains "stopped" ||
+     safe(log.msg, "") contains "disabled" ||
+     safe(log.act, "") == "stopped" ||
+     safe(log.outcome, "") == "failure")
+  deduplicateBy:
+    - log.dvchost
+    - log.BitdefenderGZModule

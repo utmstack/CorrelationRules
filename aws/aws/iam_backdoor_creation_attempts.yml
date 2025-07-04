@@ -1,0 +1,34 @@
+- id: 1002
+  dataTypes:
+    - aws
+  name: AWS IAM Backdoor Creation Attempts
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Privilege Escalation
+  technique: Create Account
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage.html
+    - https://attack.mitre.org/techniques/T1136/003/
+  description: Detects potential IAM backdoor creation attempts through suspicious IAM user creation, access key generation, or policy attachment activities that could provide persistent access.
+  where: |
+    safe(log.eventSource, "") == "iam.amazonaws.com" && 
+    (safe(log.eventName, "") == "CreateUser" || 
+     safe(log.eventName, "") == "CreateAccessKey" || 
+     safe(log.eventName, "") == "AttachUserPolicy" || 
+     safe(log.eventName, "") == "PutUserPolicy" || 
+     safe(log.eventName, "") == "CreateLoginProfile") &&
+    safe(log.errorCode, "") == ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.sourceIPAddress.keyword
+          operator: filter_term
+          value: '{{log.sourceIPAddress}}'
+      within: now-5m
+      count: 5
+  deduplicateBy:
+    - log.sourceIPAddress
+    - log.userIdentityArn

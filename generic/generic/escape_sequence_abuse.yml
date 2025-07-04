@@ -1,0 +1,51 @@
+- id: 1012
+  dataTypes:
+    - generic
+  name: Escape Sequence Abuse
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Log Injection
+  technique: Character Encoding Evasion
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/Log_Injection
+    - https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+  description: Detects abuse of escape sequences in logs that could be used to bypass security controls, manipulate log output, or execute command injection. This includes various escape characters and encoding patterns commonly used in attacks.
+  where: |
+    safe(log.message, "") != "" && (
+      log.message.contains("\\x00") ||
+      log.message.contains("\\x0a") ||
+      log.message.contains("\\x0d") ||
+      log.message.contains("\\x1a") ||
+      log.message.contains("\\x1b") ||
+      log.message.contains("\\x7f") ||
+      log.message.contains("\\u0000") ||
+      log.message.contains("\\u000a") ||
+      log.message.contains("\\u000d") ||
+      log.message.contains("%00") ||
+      log.message.contains("%0a") ||
+      log.message.contains("%0d") ||
+      log.message.contains("%0A") ||
+      log.message.contains("%0D") ||
+      log.message.contains("&#x0a;") ||
+      log.message.contains("&#x0d;") ||
+      log.message.contains("&#10;") ||
+      log.message.contains("&#13;") ||
+      log.message.matches(".*\\\\[btnfr].*\\\\[btnfr].*") ||
+      log.message.matches(".*\\\\x[0-9a-fA-F]{2}.*\\\\x[0-9a-fA-F]{2}.*") ||
+      log.message.matches(".*\\\\u[0-9a-fA-F]{4}.*\\\\u[0-9a-fA-F]{4}.*") ||
+      log.message.matches(".*%[0-9a-fA-F]{2}.*%[0-9a-fA-F]{2}.*%[0-9a-fA-F]{2}.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.message

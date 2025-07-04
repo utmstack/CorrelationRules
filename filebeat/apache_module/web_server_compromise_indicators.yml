@@ -1,0 +1,50 @@
+- id: 1001
+  dataTypes:
+    - apache
+  name: Web Server Compromise Indicators
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Compromise
+  technique: Web Shell
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1505/003/
+    - https://httpd.apache.org/docs/2.4/logs.html
+  description: Detects indicators of web server compromise through suspicious file access patterns commonly associated with web shells and backdoors
+  where: |
+    safe(origin.path, "") != "" && 
+    safe(actionResult, "") == "accepted" &&
+    safe(log.statusCode, 0) == 200 &&
+    (
+      origin.path.contains(".php") && (
+        origin.path.contains("shell") ||
+        origin.path.contains("c99") ||
+        origin.path.contains("r57") ||
+        origin.path.contains("wso") ||
+        origin.path.contains("b374k") ||
+        origin.path.contains("eval") ||
+        origin.path.contains("base64")
+      ) ||
+      origin.path.matches(".*\\.(jsp|jspx|asp|aspx|ashx|asmx)$") && (
+        origin.path.contains("cmd") ||
+        origin.path.contains("shell") ||
+        origin.path.contains("upload")
+      ) ||
+      origin.path.contains("/uploads/") && origin.path.matches(".*\\.(php|jsp|asp|aspx)$")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: actionResult.keyword
+          operator: filter_term
+          value: 'accepted'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - origin.path

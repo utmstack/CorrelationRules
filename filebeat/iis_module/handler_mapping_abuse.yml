@@ -1,0 +1,58 @@
+- id: 1005
+  dataTypes:
+    - iis
+  name: IIS Handler Mapping Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Persistence
+  technique: Server Software Component
+  adversary: target
+  references:
+    - https://www.robwillis.info/2022/11/analyzing-detecting-iis-backdoors/
+    - https://attack.mitre.org/techniques/T1505/004/
+  description: Detects attempts to abuse IIS handler mappings for persistence or code execution through unusual file extensions
+  where: |
+    safe(target.path, "") != "" &&
+    (
+      contains(target.path, ".svc") ||
+      contains(target.path, ".rem") ||
+      contains(target.path, ".soap") ||
+      contains(target.path, ".vbhtml") ||
+      contains(target.path, ".cshtml") ||
+      contains(target.path, ".vbhtm") ||
+      contains(target.path, ".asax") ||
+      contains(target.path, ".ascx") ||
+      contains(target.path, ".master") ||
+      contains(target.path, ".compiled") ||
+      contains(target.path, ".browser") ||
+      contains(target.path, ".webinfo") ||
+      contains(target.path, ".resx") ||
+      contains(target.path, ".resources") ||
+      contains(target.path, ".mdf") ||
+      contains(target.path, ".ldf") ||
+      contains(target.path, ".cdx")
+    ) &&
+    (
+      safe(action, "") == "post" ||
+      safe(action, "") == "put" ||
+      (safe(action, "") == "get" && safe(statusCode, 0) == 200)
+    ) &&
+    (
+      safe(log.userAgent, "") == "" ||
+      contains(lower(log.userAgent), "mozilla/4.0") ||
+      contains(lower(log.userAgent), "mozilla/5.0") ||
+      len(safe(log.userAgent, "")) < 20
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-2h
+      count: 5
+  deduplicateBy:
+    - target.ip
+    - target.path

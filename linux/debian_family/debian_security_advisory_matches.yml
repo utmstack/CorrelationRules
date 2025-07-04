@@ -1,0 +1,37 @@
+- id: 1015
+  dataTypes:
+    - debian_family
+  name: Debian Security Advisory Match Detection
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+  category: Vulnerability Management
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://www.debian.org/security/
+    - https://security-tracker.debian.org/tracker/
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects activities matching known Debian Security Advisories (DSA) including vulnerable package usage, CVE exploitation attempts, and unpatched system indicators
+  where: |
+    (safe(log.package_name, "") != "" && safe(log.cve_id, "") matches "CVE-\\d{4}-\\d{4,}" && safe(log.severity, "") in ["critical", "high"]) ||
+    (safe(log.message, "") contains_any ["DSA-", "DLA-", "DTSA-"] && safe(log.event_type, "") in ["vulnerability_detected", "exploit_attempt", "package_vulnerable"]) ||
+    (safe(log.apt_output, "") contains_any ["Security updates available", "vulnerable version installed", "security patch required"]) ||
+    (safe(log.service, "") == "unattended-upgrades" && safe(log.message, "") contains_any ["security update failed", "held back due to phased updates", "dependency resolution failed"]) ||
+    (safe(log.audit_type, "") == "SYSCALL" && safe(log.exe, "") != "" && safe(log.vulnerability_status, "") in ["unpatched", "vulnerable", "exploitable"]) ||
+    (safe(log.dpkg_status, "") contains "security" && safe(log.action, "") in ["hold", "downgrade"] && safe(log.reason, "") contains_any ["vulnerability", "CVE", "security"])
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: destination.hostname.keyword
+          operator: filter_term
+          value: '{{destination.hostname}}'
+        - field: log.package_name.keyword
+          operator: filter_term
+          value: '{{log.package_name}}'
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - destination.hostname
+    - log.cve_id

@@ -1,0 +1,26 @@
+- id: 1013
+  dataTypes:
+    - logstash
+  name: Logstash Persistent Queue Manipulation Attack
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 5
+  category: Resource Abuse
+  technique: T1499 - Endpoint Denial of Service
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/persistent-queues.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects suspicious activities targeting Logstash persistent queues that could lead to data loss, queue exhaustion, or service degradation
+  where: safe(log.component, "") != "" && (log.component.contains("queue") || log.component.contains("acked")) && safe(log.msg, "") != "" && (log.msg.contains("failed") || log.msg.contains("capacity") || log.msg.contains("disk full")) && safe(severity, "") == "high"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.host

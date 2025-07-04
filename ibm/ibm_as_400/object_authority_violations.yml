@@ -1,0 +1,37 @@
+- id: 1002
+  dataTypes:
+    - ibm-as400
+  name: IBM AS/400 Object Authority Violation Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 1
+  category: Access Control
+  technique: Unauthorized Access Attempt
+  adversary: internal
+  references:
+    - https://www.ibm.com/docs/en/i/7.5?topic=entries-af-authority-failure-journal
+    - https://attack.mitre.org/techniques/T1078/003/
+  description: Detects object authority violations and authorization failures in IBM AS/400 systems indicating potential unauthorized access attempts
+  where: |
+    safe(log.message, "") != "" && 
+    (
+      (contains(safe(log.message, ""), "AF") && contains(safe(log.message, ""), "Authority")) ||
+      contains(safe(log.message, ""), "authority failure") ||
+      contains(safe(log.message, ""), "authorization failed") ||
+      contains(safe(log.message, ""), "access denied") ||
+      contains(safe(log.message, ""), "not authorized to") ||
+      contains(safe(log.message, ""), "insufficient authority") ||
+      contains(safe(log.message, ""), "object authority") ||
+      contains(safe(log.message, ""), "AUTFAIL")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.message
+          operator: wildcard
+          value: '*authority*fail*'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - log.message

@@ -1,0 +1,38 @@
+- id: 1013
+  dataTypes:
+    - antivirus-esmc-eset
+  name: Suspicious Process Behavior Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Process Anomaly
+  technique: Process Injection
+  adversary: origin
+  references:
+    - https://help.eset.com/ees/12/en-US/idh_dialog_epfw_ids_alert.html
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects suspicious process behaviors including injection attempts, privilege escalation, and abnormal process creation patterns identified by ESET's behavioral monitoring.
+  where: |
+    safe(log.event_type, "") in ["EnterpriseInspectorAlert_Event", "HIPS_Event"] &&
+    safe(log.processname, "") != "" &&
+    (
+      safe(log.rulename, "") in ["Process injection", "Suspicious behavior", "Anomalous process"] ||
+      safe(log.action, "") in ["blocked", "terminated", "prevented"]
+    ) &&
+    safe(log.username, "") != "" &&
+    safe(severity, "") in ["high", "medium"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.username.keyword
+          operator: filter_term
+          value: '{{log.username}}'
+        - field: target.host.keyword
+          operator: filter_term
+          value: '{{target.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - log.processname
+    - target.host

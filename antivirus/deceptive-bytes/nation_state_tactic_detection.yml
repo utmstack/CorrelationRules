@@ -1,0 +1,38 @@
+- id: 1021
+  dataTypes:
+    - deceptive-bytes
+  name: Nation-State Tactic Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Advanced Persistent Threat
+  technique: Nation-State Attack Patterns
+  adversary: origin
+  references:
+    - https://attack.mitre.org/groups/
+    - https://www.cisa.gov/topics/cyber-threats-and-advisories/advanced-persistent-threats
+  description: Detects sophisticated attack patterns and techniques commonly associated with nation-state actors including advanced persistence mechanisms, custom tooling, and strategic lateral movement
+  where: >
+    safe(log.eventType, "") in ["advanced_threat_detected", "apt_behavior_detected"] &&
+    safe(log.threatCategory, "") == "nation_state" &&
+    (safe(log.tacticComplexity, "") == "high" || safe(log.behaviorScore, 0) >= 90) &&
+    safe(log.deceptionTriggered, false) == true &&
+    (safe(log.customToolDetected, false) == true || 
+     safe(log.advancedEvasion, false) == true ||
+     safe(log.targetedAssets, "") != "" ||
+     safe(log.longDwellTime, false) == true)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.threatCategory.keyword
+          operator: filter_term
+          value: 'nation_state'
+      within: now-24h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.campaignId

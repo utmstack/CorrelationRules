@@ -1,0 +1,36 @@
+- id: 1001
+  dataTypes:
+    - kibana
+  name: Unauthorized Space Access Attempt
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Access Control Violation
+  technique: T1078 - Valid Accounts
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/xpack-security-audit-logging.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects repeated failed attempts to access Kibana spaces, which may indicate an attacker trying to gain unauthorized access to restricted spaces or enumerate available spaces in the system
+  where: |
+    safe(log.action, "") == "space_get" && 
+    safe(actionResult, "") == "failure" &&
+    safe(origin.user, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.action.keyword
+          operator: filter_term
+          value: 'space_get'
+        - field: actionResult.keyword
+          operator: filter_term
+          value: 'failure'
+      within: now-5m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.host

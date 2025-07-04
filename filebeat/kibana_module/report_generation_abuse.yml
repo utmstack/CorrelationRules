@@ -1,0 +1,40 @@
+- id: 1023
+  dataTypes:
+    - kibana
+  name: Excessive Report Generation Abuse
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 4
+  category: Resource Abuse
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/xpack-security-audit-logging.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects potential abuse of Kibana reporting functionality through excessive report generation requests that could lead to resource exhaustion or data exfiltration
+  where: |
+    safe(action, "") == "kibana.audit" &&
+    (
+      safe(log.action, "").contains("report_create") ||
+      safe(log.action, "").contains("generate_report") ||
+      safe(log.component, "") == "reporting" ||
+      safe(log.message, "").contains("CSV export") ||
+      safe(log.message, "").contains("PDF generation") ||
+      safe(log.actionMessage, "").contains("export initiated")
+    ) &&
+    safe(origin.user, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'reporting'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - origin.host

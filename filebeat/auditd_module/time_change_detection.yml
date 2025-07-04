@@ -1,0 +1,40 @@
+- id: 1009
+  dataTypes:
+    - auditd_module
+  name: System Time Change Detection
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 1
+  category: Defense Evasion
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1070/006/
+    - https://attack.mitre.org/techniques/T1099/
+    - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/6/html/security_guide/sec-understanding_audit_log_files
+  description: Detects attempts to modify system time which could be used to evade detection or manipulate timestamps in logs
+  where: |
+    safe(action, "") == "auditd.log" && 
+    (safe(log.auditd.record_type, "") == "TIME_INJOFFSET" ||
+     safe(log.auditd.record_type, "") == "TIME_ADJNTPVAL" ||
+     safe(log.auditd.record_type, "") == "SYSCALL") &&
+    (safe(log.auditd.syscall, "") == "settimeofday" ||
+     safe(log.auditd.syscall, "") == "clock_settime" ||
+     safe(log.auditd.syscall, "") == "adjtimex" ||
+     safe(log.auditd.exe, "") contains "date" ||
+     safe(log.auditd.exe, "") contains "ntpdate" ||
+     safe(log.auditd.exe, "") contains "timedatectl" ||
+     safe(log.auditd.comm, "") contains "date" ||
+     safe(log.auditd.comm, "") contains "ntpdate")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - log.auditd.pid

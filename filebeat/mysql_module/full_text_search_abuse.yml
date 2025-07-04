@@ -1,0 +1,50 @@
+- id: 1020
+  dataTypes:
+    - mysql
+  name: MySQL Full-Text Search Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 3
+  category: Query Injection
+  technique: SQL Injection
+  adversary: origin
+  references:
+    - https://security.stackexchange.com/questions/104926/mysql-full-text-search-safety
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential abuse of MySQL full-text search functionality including SQL injection attempts through MATCH AGAINST queries, attempts to bypass restrictions, or excessive full-text searches that could indicate information gathering or denial of service.
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      log.msg contains "MATCH" && log.msg contains "AGAINST" ||
+      log.msg contains "FULLTEXT" ||
+      log.msg contains "WITH QUERY EXPANSION" ||
+      log.msg contains "IN BOOLEAN MODE" ||
+      log.msg contains "IN NATURAL LANGUAGE MODE"
+    ) &&
+    (
+      log.msg contains "UNION" ||
+      log.msg contains "SELECT" && log.msg contains "FROM" && log.msg contains "information_schema" ||
+      log.msg contains "LOAD_FILE" ||
+      log.msg contains "INTO OUTFILE" ||
+      log.msg contains "INTO DUMPFILE" ||
+      log.msg contains "@@" ||
+      log.msg contains "SLEEP(" ||
+      log.msg contains "BENCHMARK(" ||
+      log.msg contains "/*" && log.msg contains "*/" ||
+      log.msg contains "--" ||
+      log.msg contains "0x" ||
+      log.msg contains "CHAR(" ||
+      safe(log.errorCode, "") != ""
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.msg

@@ -1,0 +1,34 @@
+- id: 1014
+  dataTypes:
+    - firepower
+  name: Network Behavior Anomaly Detection
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 4
+  category: Anomaly
+  technique: Network Service Discovery
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/640/fdm/fptd-fdm-config-guide-640/fptd-fdm-intrusion.html
+    - https://attack.mitre.org/techniques/T1046/
+  description: Detects network behavior anomalies including unusual traffic patterns, protocol anomalies, suspicious connection rates, or deviations from baseline network behavior
+  where: |
+    (safe(log.eventType, "") == "ANOMALY_EVENT" || 
+     safe(log.eventType, "") == "NBA_EVENT") && 
+    (safe(log.anomalyScore, 0) >= 70 || 
+     safe(log.deviationFromBaseline, 0) >= 3.0 ||
+     safe(log.connectionRate, 0) > safe(log.baselineConnectionRate, 0) * 5) &&
+    (safe(log.anomalyType, "") != "" || 
+     safe(log.protocolAnomaly, false) == true)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-2h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.anomalyType

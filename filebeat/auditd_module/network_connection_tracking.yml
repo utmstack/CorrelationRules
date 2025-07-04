@@ -1,0 +1,31 @@
+- id: 1005
+  dataTypes:
+    - auditd
+  name: Suspicious Network Connection Activity
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 2
+  category: Network Activity
+  technique: T1071
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1071/
+    - https://izyknows.medium.com/linux-auditd-for-threat-detection-d06c8b941505
+  description: Tracks network connection activities including outbound connections and listening services. Detects potential backdoors, command and control communications, or data exfiltration attempts.
+  where: safe(action, "") == "auditd.log" && safe(log.auditd.log.record_type, "") == "SYSCALL" && (safe(log.auditd.log.syscall, "") == "connect" || safe(log.auditd.log.syscall, "") == "bind" || safe(log.auditd.log.syscall, "") == "listen" || safe(log.auditd.log.syscall, "") == "accept" || safe(log.auditd.log.syscall, "") == "socket") && safe(log.auditd.log.success, "") == "yes" && (safe(log.auditd.log.exit, "") != "0" || contains(safe(log.auditd.log.saddr, ""), ":1F90") || contains(safe(log.auditd.log.saddr, ""), ":115C") || contains(safe(log.auditd.log.saddr, ""), ":0050") || contains(safe(log.auditd.log.saddr, ""), ":0BB8"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.auditd.log.pid.keyword
+          operator: filter_term
+          value: '{{log.auditd.log.pid}}'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.host
+    - log.auditd.log.pid
+    - log.auditd.log.saddr

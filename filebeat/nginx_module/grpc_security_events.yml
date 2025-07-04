@@ -1,0 +1,30 @@
+- id: 1012
+  dataTypes:
+    - nginx
+  name: gRPC Authentication Bypass Attempt
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Authentication Bypass
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://nginx.org/en/docs/http/ngx_http_grpc_module.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects attempts to bypass gRPC authentication mechanisms or access gRPC endpoints without proper authorization, potentially indicating unauthorized API access attempts
+  where: safe(action, "") == "post" && contains(safe(origin.path, ""), "/grpc/") && safe(statusCode, 0) == 401 && (contains(safe(log.userAgent, ""), "grpc") || contains(safe(log.message, ""), "grpc"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'post'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - origin.path

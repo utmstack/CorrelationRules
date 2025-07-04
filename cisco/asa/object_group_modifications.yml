@@ -1,0 +1,34 @@
+- id: 1022
+  dataTypes:
+    - asa
+  name: Object Group Configuration Modifications
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Configuration Security
+  technique: Account Manipulation
+  adversary: user
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog.html
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects modifications to ASA object groups which could indicate unauthorized configuration changes or potential security policy alterations. Object groups are used to define security policies and their modification should be closely monitored.
+  where: |
+    safe(log.dataType, "") == "asa" && 
+    (
+      safe(log.messageId, "") in ["111009", "111010"] &&
+      (safe(log.message, "") =~ ".*object-group.*" ||
+       safe(log.message, "") =~ ".*object group.*" ||
+       safe(log.command, "") =~ ".*object-group.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: user.name.keyword
+          operator: filter_term
+          value: '{{user.name}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - user.name
+    - log.command

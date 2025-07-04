@@ -1,0 +1,34 @@
+- id: 1001
+  dataTypes:
+    - redis
+  name: Redis Command Injection Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Command Injection
+  technique: Injection
+  adversary: origin
+  references:
+    - https://redis.io/docs/latest/operate/oss_and_stack/management/security/
+    - https://attack.mitre.org/techniques/T1059/004/
+  description: Detects potential command injection attempts in Redis through dangerous commands like EVAL with suspicious patterns, CONFIG SET operations that modify critical settings, or attempts to execute system commands through Lua scripts
+  where: |
+    safe(log.msg, "") != "" && (
+      (safe(log.msg, "").matches("(?i)(EVAL|EVALSHA|SCRIPT\\s+LOAD).*\\b(os\\.execute|io\\.popen|io\\.open|loadfile|dofile|require)\\b")) ||
+      (safe(log.msg, "").matches("(?i)CONFIG\\s+SET\\s+(dir|dbfilename|requirepass|masterauth)")) ||
+      (safe(log.msg, "").matches("(?i)(EVAL|EVALSHA).*\\b(cat\\s+/etc/passwd|chmod|chown|wget|curl|nc|bash|sh)\\b")) ||
+      (safe(log.msg, "").matches("(?i)SCRIPT\\s+LOAD.*\\\\x[0-9a-fA-F]{2}")) ||
+      (safe(severity, "") == "high" && safe(log.msg, "").matches("(?i)Lua\\s+script\\s+attempted\\s+to\\s+access"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.msg

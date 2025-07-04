@@ -1,0 +1,31 @@
+- id: 1020
+  dataTypes:
+    - meraki
+  name: Dashboard Authentication Failures
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Authentication
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://documentation.meraki.com/General_Administration/Managing_Dashboard_Access/Managing_Dashboard_Administrators_and_Permissions
+    - https://attack.mitre.org/techniques/T1110/
+  description: Detects multiple dashboard authentication failures that could indicate brute force attempts, credential stuffing, or unauthorized access attempts to the Meraki dashboard
+  where: |
+    safe(log.eventType, "") in ["login_failure", "auth_failed", "invalid_credentials"] &&
+    safe(log.application, "") in ["meraki_dashboard", "dashboard", "web_ui"] &&
+    (safe(log.failureReason, "") in ["invalid_password", "invalid_username", "account_locked", "mfa_failed"] ||
+     safe(log.suspiciousActivity, false) == true)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - destination.user

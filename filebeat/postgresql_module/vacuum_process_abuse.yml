@@ -1,0 +1,30 @@
+- id: 1011
+  dataTypes:
+    - postgresql
+  name: PostgreSQL Vacuum Process Abuse
+  impact:
+    confidentiality: 0
+    integrity: 3
+    availability: 5
+  category: Resource Exhaustion
+  technique: T1499 - Endpoint Denial of Service
+  adversary: origin
+  references:
+    - https://www.postgresql.org/docs/current/routine-vacuuming.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects potential abuse of PostgreSQL vacuum processes including repeated failures, abnormal autovacuum behavior, or vacuum operations causing excessive resource consumption. This could indicate attempts to degrade database performance or exploit vacuum-related vulnerabilities.
+  where: safe(action, "") == "postgresql.log" && (safe(log.messageType, "") == "ERROR" || safe(log.messageType, "") == "WARNING" || safe(log.messageType, "") == "FATAL") && (safe(log.msg, "").contains("vacuum") || safe(log.msg, "").contains("VACUUM") || safe(log.msg, "").contains("autovacuum"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.msg
+          operator: wildcard
+          value: '*vacuum*'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.sessionId

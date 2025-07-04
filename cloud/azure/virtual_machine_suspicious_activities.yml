@@ -1,0 +1,32 @@
+- id: 1010
+  dataTypes:
+    - azure
+  name: Virtual Machine Suspicious Activities
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Compute Resource Compromise
+  technique: Cloud Compute Infrastructure
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/activity-log-schema
+    - https://attack.mitre.org/techniques/T1578/
+  description: Detects suspicious activities on Azure Virtual Machines including rapid creation, deletion, or configuration changes that could indicate compromise or abuse
+  where: |
+    safe(log.operationName, "").contains("Microsoft.Compute/virtualMachines") &&
+    (safe(log.operationName, "").contains("/write") || safe(log.operationName, "").contains("/delete") || 
+     safe(log.operationName, "").contains("/restart/action") || safe(log.operationName, "").contains("/powerOff/action")) &&
+    safe(log.category, "") == "Administrative" &&
+    safe(actionResult, "") == "accepted"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 8
+  deduplicateBy:
+    - origin.ip
+    - log.correlationId

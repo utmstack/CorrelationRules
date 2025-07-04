@@ -1,0 +1,51 @@
+- id: 1017
+  dataTypes:
+    - mysql
+  name: MySQL System Variable Modification Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Configuration Change
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/security-against-attack.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects modifications to MySQL system variables that could indicate malicious configuration changes. Attackers often modify system variables to disable security features, change logging behavior, or prepare for data exfiltration.
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      log.msg contains "SET GLOBAL" ||
+      log.msg contains "SET SESSION" ||
+      log.msg contains "SET @@" ||
+      log.msg contains "set global" ||
+      log.msg contains "set session"
+    ) &&
+    (
+      log.msg contains "secure_file_priv" ||
+      log.msg contains "general_log" ||
+      log.msg contains "log_output" ||
+      log.msg contains "binlog_" ||
+      log.msg contains "max_connections" ||
+      log.msg contains "max_user_connections" ||
+      log.msg contains "sql_mode" ||
+      log.msg contains "foreign_key_checks" ||
+      log.msg contains "autocommit" ||
+      log.msg contains "read_only" ||
+      log.msg contains "super_read_only"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.thread.keyword
+          operator: filter_term
+          value: '{{log.thread}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.msg

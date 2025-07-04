@@ -1,0 +1,32 @@
+- id: 1005
+  dataTypes:
+    - firepower
+  name: File Policy Violations and Suspicious File Transfers
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Data Exfiltration
+  technique: Exfiltration Over Alternative Protocol
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/640/configuration/guide/fpmc-config-guide-v64/file_policies_and_advanced_malware_protection.html
+    - https://attack.mitre.org/techniques/T1048/
+  description: Detects file policy violations including blocked file types, oversized files, or attempts to transfer prohibited content that may indicate data exfiltration or policy bypass attempts
+  where: |
+    safe(log.eventType, "") == "FILE_EVENT" && 
+    (safe(log.fileAction, "") == "BLOCK" || 
+     safe(log.fileAction, "") == "RESET_BOTH" ||
+     safe(log.fileType, "") =~ "EXECUTABLE|ARCHIVE|ENCRYPTED" && safe(log.fileSize, 0) > 10485760 ||
+     safe(log.fileStorageStatus, "") == "POLICY_VIOLATION")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-4h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.sha256

@@ -1,0 +1,35 @@
+- id: 1023
+  dataTypes:
+    - generic
+  name: Stack Overflow Exploitation Attempt
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 5
+  category: Memory Corruption
+  technique: Buffer Overflow
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1203/
+    - https://cwe.mitre.org/data/definitions/121.html
+  description: Detects patterns commonly used in stack overflow exploitation attempts including long strings of repeated characters, shellcode patterns, or memory addresses.
+  where: |
+    (safe(log.message, "").matches(".*[A-Za-z]{500,}.*") ||
+     safe(log.message, "").matches(".*\\x90{20,}.*") ||
+     safe(log.message, "").matches(".*\\x41{100,}.*") ||
+     safe(log.message, "").matches(".*0x[0-9a-fA-F]{8,}.*0x[0-9a-fA-F]{8,}.*") ||
+     safe(log.message, "").matches(".*\\xeb\\x[0-9a-fA-F]{2}.*") ||
+     safe(log.message, "").matches(".*\\x31\\xc0\\x50\\x68.*") ||
+     safe(log.message, "").matches(".*%[0-9]{4,}\\$.*") ||
+     safe(log.message, "").matches(".*\\x00{50,}.*") ||
+     safe(log.message, "").length() > 10000)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 2
+  deduplicateBy:
+    - origin.ip

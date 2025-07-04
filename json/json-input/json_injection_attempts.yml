@@ -1,0 +1,41 @@
+- id: 1002
+  dataTypes:
+    - json-input
+  name: JSON Injection Attack Attempt
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Injection Attack
+  technique: JSON Injection
+  adversary: origin
+  references:
+    - https://www.acunetix.com/blog/web-security-zone/what-are-json-injections/
+    - https://attack.mitre.org/techniques/T1027/
+  description: Detects potential JSON injection attempts including malicious payloads, script injections, and attempts to manipulate JSON structure. These attacks can lead to XSS, authentication bypass, or remote code execution.
+  where: |
+    (safe(log.payload, "").contains("<script") ||
+     safe(log.payload, "").contains("javascript:") ||
+     safe(log.payload, "").contains("eval(") ||
+     safe(log.payload, "").contains("__proto__") ||
+     safe(log.payload, "").contains("constructor") ||
+     safe(log.payload, "").contains("prototype") ||
+     safe(log.data, "").contains("<script") ||
+     safe(log.data, "").contains("javascript:") ||
+     safe(log.data, "").contains("eval(") ||
+     safe(log.json_data, "").contains("','") ||
+     safe(log.json_data, "").contains('","') ||
+     safe(log.message, "").contains("malformed JSON") ||
+     safe(log.message, "").contains("unexpected character")) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.payload

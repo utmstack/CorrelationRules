@@ -1,0 +1,35 @@
+- id: 1006
+  dataTypes:
+    - firepower
+  name: Network Discovery Anomalies Detection
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: Discovery
+  technique: Network Service Discovery
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/70/configuration/guide/fpmc-config-guide-v70/correlation_and_compliance_events.html
+    - https://attack.mitre.org/techniques/T1046/
+  description: Detects unusual network discovery activities including rapid host scanning, service enumeration, or abnormal discovery patterns that may indicate reconnaissance activities
+  where: |
+    (safe(log.eventType, "") == "DISCOVERY_EVENT" || 
+     safe(log.eventType, "") == "HOST_DISCOVERY" ||
+     safe(log.eventType, "") == "NEW_HOST" ||
+     safe(log.eventType, "") == "NEW_SUBNET") &&
+    (safe(log.discoveryType, "") == "SCAN" ||
+     safe(log.discoveryType, "") == "PORT_SCAN" ||
+     safe(log.discoveryType, "") == "SERVICE_SCAN" ||
+     safe(log.scanRate, 0) > 100)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.targetNetwork

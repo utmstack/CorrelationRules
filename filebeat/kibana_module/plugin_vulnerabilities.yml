@@ -1,0 +1,27 @@
+- id: 1014
+  dataTypes:
+    - kibana
+  name: Plugin Vulnerabilities
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Vulnerable Components
+  technique: T1203
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/kibana-plugins.html
+    - https://attack.mitre.org/techniques/T1203/
+  description: Detects potential exploitation of vulnerabilities in Kibana plugins including unauthorized plugin installation or modification attempts
+  where: safe(log.component, "") != "" && (log.component.contains("plugin") || log.component == "plugins") && (safe(log.action, "") == "plugin_install" || safe(log.action, "") == "plugin_update" || safe(log.action, "") == "plugin_remove" || (safe(log.severityLabel, "") == "error" && safe(log.message, "") != "" && log.message.contains("plugin")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.component

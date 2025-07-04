@@ -1,0 +1,35 @@
+- id: 1016
+  dataTypes:
+    - nginx
+  name: Access Log Tampering Detection
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 1
+  category: Defense Evasion
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1070/002/
+    - https://nginx.org/en/docs/http/ngx_http_log_module.html
+  description: Detects attempts to tamper with or manipulate nginx access logs, including attempts to inject null bytes, control characters, or malformed entries that could be used to hide malicious activity or corrupt log files
+  where: |
+    safe(origin.ip, "") != "" && safe(log.message, "") != "" && (
+      log.message matches ".*\\x00.*" ||
+      log.message matches ".*\\r\\n.*\\r\\n.*" ||
+      log.message matches ".*\\\\x[0-9a-fA-F]{2}.*" ||
+      safe(log.userAgent, "") matches ".*\\$\\{.*\\}.*" ||
+      safe(log.request, "") matches ".*\\n.*\\n.*" ||
+      safe(origin.path, "") matches ".*\\.\\./\\.\\./.*" ||
+      (safe(log.severity, "") == "high" && log.message matches ".*invalid log format.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip

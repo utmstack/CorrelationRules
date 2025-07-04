@@ -1,0 +1,17 @@
+- id: 1023
+  dataTypes:
+    - iis-log
+  name: IIS TRACE Method Cross-Site Tracing (XST) Attempt
+  description: Detects usage of TRACE HTTP method which could be used for Cross-Site Tracing attacks to steal authentication cookies or bypass HttpOnly cookie protection
+  where: |
+    log.method == "TRACE" &&
+    (statusCode == 200 || statusCode == 405 || statusCode == 501) &&
+    (!target.ip.matches("^(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.|127\\.)") ||
+     log.userAgent.matches("(?i).*(scanner|nikto|nessus|qualys|nmap|burp|zap|acunetix).*"))
+  confidentiality: high
+  integrity: medium
+  availability: low
+  mitreAttack:
+    - T1539 # Steal Web Session Cookie
+    - T1185 # Browser Session Hijacking
+    - T1055 # Process Injection

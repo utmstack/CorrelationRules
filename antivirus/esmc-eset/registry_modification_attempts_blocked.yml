@@ -1,0 +1,38 @@
+- id: 1014
+  dataTypes:
+    - antivirus-esmc-eset
+  name: Registry Modification Attempts Blocked
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: System Tampering
+  technique: Modify Registry
+  adversary: origin
+  references:
+    - https://help.eset.com/ees/7/en-US/idh_page_logs.html
+    - https://attack.mitre.org/techniques/T1112/
+  description: Identifies attempts to modify critical Windows registry keys that were blocked by ESET HIPS (Host Intrusion Prevention System), indicating potential persistence or system tampering attempts.
+  where: |
+    safe(log.event_type, "") == "HIPS_Event" &&
+    safe(log.rulename, "") != "" &&
+    (
+      safe(log.rulename, "") ~= "(?i)(registry|hklm|hkcu|reg)" ||
+      safe(log.targetpath, "") ~= "(?i)(registry|\\\\software\\\\|\\\\system\\\\|\\\\currentcontrolset)"
+    ) &&
+    safe(action, "") in ["blocked", "denied", "prevented"] &&
+    safe(severity, "") in ["high", "medium"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.processname.keyword
+          operator: filter_term
+          value: '{{log.processname}}'
+        - field: target.host.keyword
+          operator: filter_term
+          value: '{{target.host}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - log.rulename
+    - target.host

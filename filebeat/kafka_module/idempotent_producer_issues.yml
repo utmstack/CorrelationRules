@@ -1,0 +1,28 @@
+- id: 1018
+  dataTypes:
+    - kafka
+  name: Idempotent Producer Security Issues
+  impact:
+    confidentiality: 1
+    integrity: 4
+    availability: 2
+  category: Producer Integrity
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://cwiki.apache.org/confluence/display/KAFKA/Idempotent+Producer
+    - https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=89068820
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects issues with Kafka idempotent producers including UNKNOWN_PRODUCER_ID errors, authorization failures, and sequence number violations that could indicate message duplication attacks or producer impersonation.
+  where: safe(log.severity, "") == "ERROR" && safe(log.msg, "") != "" && (log.msg.contains("UNKNOWN_PRODUCER_ID") || log.msg.contains("ClusterAuthorizationException") || log.msg.contains("IDEMPOTENT_WRITE") || log.msg.contains("producer id") || log.msg.contains("sequence number") || log.msg.contains("duplicate"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.class

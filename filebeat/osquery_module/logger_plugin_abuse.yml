@@ -1,0 +1,32 @@
+- id: 1006
+  dataTypes:
+    - osquery
+  name: Osquery Logger Plugin Abuse Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: System Tampering
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/logging/
+    - https://attack.mitre.org/techniques/T1562/006/
+  description: Detects potential abuse of osquery logger plugins where an attacker may attempt to disable logging, modify logger configurations, or inject malicious logger plugins to evade detection. This could indicate an attempt to blind security monitoring.
+  where: |
+    (safe(log.eventName, "") == "logger_plugin" || 
+     safe(action, "") == "osquery.logger" ||
+     safe(log.message, "") contains "logger_plugin") &&
+    (safe(actionResult, "") == "removed" ||
+     safe(log.message, "") contains_any ["disable", "stop", "unload", "failed", "error"]) &&
+    safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host

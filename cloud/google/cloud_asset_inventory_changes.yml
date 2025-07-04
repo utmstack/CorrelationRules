@@ -1,0 +1,35 @@
+- id: 1013
+  dataTypes:
+    - google
+  name: Cloud Asset Inventory Suspicious Changes
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Resource Development
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://cloud.google.com/asset-inventory/docs/monitor-asset-changes
+    - https://cloud.google.com/asset-inventory/docs/audit-logging
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects suspicious changes to Google Cloud assets including creation of resources with public IPs, deletion of critical assets, or modifications to security-sensitive resources. Monitors for unexpected asset inventory changes that could indicate unauthorized resource creation or modification.
+  where: |
+    safe(log.protoPayload.serviceName, "") == "cloudasset.googleapis.com" && 
+    (
+      (safe(log.protoPayload.methodName, "") contains "Delete" && safe(log.protoPayload.request.parent, "") contains "organizations/") ||
+      (safe(log.protoPayload.methodName, "") contains "Create" && safe(log.protoPayload.response.asset.resource.data.networkInterfaces[0].accessConfigs[0].natIP, "") != "") ||
+      (safe(log.protoPayload.methodName, "") == "google.cloud.asset.v1.AssetService.UpdateFeed" && safe(log.protoPayload.request.feed.assetTypes, []) contains "iam.googleapis.com/Policy") ||
+      (safe(log.protoPayload.request.contentType, "") == "IAM_POLICY" && safe(log.protoPayload.methodName, "") contains "Export")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.protoPayload.authenticationInfo.principalEmail.keyword
+          operator: filter_term
+          value: '{{log.protoPayload.authenticationInfo.principalEmail}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - log.protoPayload.authenticationInfo.principalEmail
+    - log.protoPayload.resourceName

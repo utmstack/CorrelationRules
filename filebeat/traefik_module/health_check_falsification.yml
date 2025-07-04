@@ -1,0 +1,33 @@
+- id: 1011
+  dataTypes:
+    - traefik
+  name: Health Check Falsification Detection
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Service Availability
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/routing/services/#health-check
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects attempts to falsify health check responses, potentially causing service disruption by marking healthy services as unhealthy or unhealthy services as healthy
+  where: |
+    safe(origin.url, "") contains "/health" && 
+    safe(log.http.response_code, 0) == 200 && 
+    (safe(log.http.request_headers.user_agent, "") contains "curl" || 
+     safe(log.http.request_headers.user_agent, "") contains "wget" ||
+     safe(log.http.request_headers.user_agent, "") == "") &&
+    safe(log.http.request_method, "") != "GET"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - origin.url

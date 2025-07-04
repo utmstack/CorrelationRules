@@ -1,0 +1,41 @@
+- id: 1003
+  dataTypes:
+    - traefik
+  name: Service Discovery Poisoning Attempt
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Service Disruption
+  technique: Man-in-the-Middle Attack
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/providers/overview/
+    - https://attack.mitre.org/techniques/T1557/
+  description: Detects attempts to poison Traefik's service discovery mechanism by injecting malicious service endpoints or manipulating provider configurations.
+  where: |
+    safe(log.RequestMethod, "") in ["POST", "PUT", "DELETE"] &&
+    (safe(origin.url, "") contains("/api/providers/") ||
+     safe(origin.url, "") contains("/api/http/services/") ||
+     safe(log.RequestPath, "") contains("/consul/") ||
+     safe(log.RequestPath, "") contains("/etcd/") ||
+     safe(log.RequestPath, "") contains("/zookeeper/") ||
+     safe(log.RequestPath, "") contains("/kubernetes/")) &&
+    (safe(log.RequestBody, "") contains("loadBalancer") ||
+     safe(log.RequestBody, "") contains("servers") ||
+     safe(log.RequestBody, "") contains("url:") ||
+     safe(log.RequestBody, "") contains("address:")) &&
+    (safe(log.RequestBody, "") matches("\\b(?:10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|172\\.(?:1[6-9]|2\\d|3[01])\\.\\d{1,3}\\.\\d{1,3}|192\\.168\\.\\d{1,3}\\.\\d{1,3})\\b") ||
+     safe(log.RequestBody, "") contains("localhost") ||
+     safe(log.RequestBody, "") contains("127.0.0.1"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.ServiceName

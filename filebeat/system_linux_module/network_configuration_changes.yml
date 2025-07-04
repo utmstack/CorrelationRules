@@ -1,0 +1,38 @@
+- id: 1012
+  dataTypes:
+    - linux
+  name: Network Configuration Changes Detected
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 4
+  category: Network Security
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1016/
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+  description: Detects changes to network configuration files or network interface settings that could indicate system compromise or preparation for data exfiltration.
+  where: |
+    safe(action, "") contains "system" &&
+    (safe(log.message, "") contains "/etc/network/" ||
+     safe(log.message, "") contains "/etc/sysconfig/network" ||
+     safe(log.message, "") contains "ifconfig" ||
+     safe(log.message, "") contains "ip addr" ||
+     safe(log.message, "") contains "netplan" ||
+     safe(log.message, "") contains "/etc/resolv.conf" ||
+     safe(log.message, "") contains "/etc/hosts" ||
+     safe(log.message, "") contains "iptables" ||
+     safe(log.message, "") contains "route add" ||
+     safe(log.message, "") contains "ip route")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.message

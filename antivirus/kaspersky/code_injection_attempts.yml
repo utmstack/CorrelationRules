@@ -1,0 +1,33 @@
+- id: 1012
+  dataTypes:
+    - antivirus-kaspersky
+  name: Code Injection Attempt Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Defense Evasion
+  technique: Process Injection
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1055/
+    - https://support.kaspersky.com/KESWin/11/en-us/151065.htm
+  description: Detects attempts to inject malicious code into legitimate processes. This technique is commonly used by malware to evade detection and gain elevated privileges by running within trusted processes.
+  where: |
+    (safe(log.signatureID, "") == "3" || safe(log.cs1, "") == "DETECT") &&
+    (safe(log.msg, "").matches("(?i).*(inject|injection|CreateRemoteThread|SetWindowsHookEx|WriteProcessMemory).*") ||
+     safe(log.cs4, "").matches("(?i).*(inject|hooking|trojan|backdoor).*") ||
+     safe(action, "").matches("(?i).*(terminate|delete|quarantine).*")) &&
+    (safe(log.msg, "").matches("(?i).*(lsass|csrss|winlogon|services|svchost|explorer).*") ||
+     safe(log.descMsg, "").contains("process"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - target.host

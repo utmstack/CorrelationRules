@@ -1,0 +1,27 @@
+- id: 1012
+  dataTypes:
+    - logstash
+  name: Logstash Configuration Tampering Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Integrity Monitoring
+  technique: T1554 - Compromise Client Software Binary
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/configuration.html
+    - https://attack.mitre.org/techniques/T1554/
+  description: Detects attempts to modify Logstash configuration files or pipeline settings that could compromise data processing integrity
+  where: safe(log.component, "") == "config.source.local.configpathloader" && safe(log.msg, "") != "" && (log.msg.contains("config reload") || log.msg.contains("modified") || log.msg.contains("changed")) && safe(log.level, "") == "ERROR"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.pipelineName

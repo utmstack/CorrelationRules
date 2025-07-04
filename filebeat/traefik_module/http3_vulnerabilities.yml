@@ -1,0 +1,38 @@
+- id: 1022
+  dataTypes:
+    - traefik
+  name: HTTP/3 Vulnerabilities
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 4
+  category: Protocol Vulnerability
+  technique: Protocol Impersonation Attack
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/routing/entrypoints/#http3
+    - https://attack.mitre.org/techniques/T1071/001/
+  description: Detects potential HTTP/3 and QUIC protocol vulnerabilities including UDP port conflicts, TLS configuration issues, and authority header manipulation attempts
+  where: >
+    (safe(action, "") == "traefik.access" || safe(action, "") == "traefik") &&
+    (
+      (safe(log.RequestProtocol, "") == "HTTP/3.0") ||
+      (safe(log.msg, "") == string(log.msg) && (log.msg.contains("HTTP/3") || log.msg.contains("QUIC") || log.msg.contains("alt-svc"))) ||
+      (safe(log.error, "") == string(log.error) && log.error.contains("UDP port") && log.error.contains("already in use")) ||
+      (safe(log.entryPointName, "") == string(log.entryPointName) && safe(log.RequestScheme, "") == "https" && safe(log.TLSVersion, "") == "" && safe(log.RequestProtocol, "").contains("3")) ||
+      (safe(log.headers, "") == string(log.headers) && log.headers.contains("alt-svc") && log.headers.contains("h3="))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.ClientHost.keyword
+          operator: filter_term
+          value: '{{log.ClientHost}}'
+        - field: log.entryPointName.keyword
+          operator: filter_term
+          value: '{{log.entryPointName}}'
+      within: now-10m
+      count: 20
+  deduplicateBy:
+    - log.ClientHost
+    - log.entryPointName

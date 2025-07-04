@@ -1,0 +1,41 @@
+- id: 1012
+  dataTypes:
+    - nats
+  name: NATS JWT Authentication Failures
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 1
+  category: Authentication Security
+  technique: Credential Access
+  adversary: origin
+  references:
+    - https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/jwt
+    - https://attack.mitre.org/techniques/T1110/
+  description: Detects JWT authentication failures in NATS including invalid tokens, expired JWTs, signature verification failures, or malformed JWT attempts
+  where: |
+    safe(action, "") == "nats.log" && (
+      safe(log.msg, "") =~ ".*JWT.*invalid.*" ||
+      safe(log.msg, "") =~ ".*JWT.*expired.*" ||
+      safe(log.error, "") =~ ".*token.*verification.*failed.*" ||
+      safe(log.error, "") =~ ".*JWT.*signature.*" ||
+      safe(log.msg, "") =~ ".*malformed.*JWT.*" ||
+      safe(log.error, "") =~ ".*JWT.*decode.*error.*" ||
+      (safe(log.auth_type, "") == "jwt" && safe(log.status, "") == "failed") ||
+      (safe(log.msg_type, "") == "CONNECT" && safe(log.error, "") =~ ".*JWT.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.user
+    - log.account

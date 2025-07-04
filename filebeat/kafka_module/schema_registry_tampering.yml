@@ -1,0 +1,30 @@
+- id: 1006
+  dataTypes:
+    - kafka
+  name: Schema Registry Tampering Attempt
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Data Manipulation
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://docs.confluent.io/platform/current/schema-registry/security/index.html
+    - https://attack.mitre.org/techniques/T1565/001/
+  description: Detects attempts to tamper with Kafka Schema Registry, including unauthorized schema modifications, deletions, or version manipulations. This could compromise data integrity and break consumer applications.
+  where: safe(log.component, "") != "" && contains(log.component, "SchemaRegistry") && safe(log.severity, "") != "" && (log.severity == "ERROR" || log.severity == "WARN") && safe(log.msg, "") != "" && (contains(log.msg, "Schema not found") || contains(log.msg, "Incompatible schema") || contains(log.msg, "Schema version") || contains(log.msg, "Schema deleted") || contains(log.msg, "Unauthorized schema") || contains(log.msg, "Failed to register schema") || contains(log.msg, "Schema evolution"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.severity.keyword
+          operator: filter_term
+          value: 'ERROR'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.component

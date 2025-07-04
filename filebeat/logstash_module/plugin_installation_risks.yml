@@ -1,0 +1,26 @@
+- id: 1011
+  dataTypes:
+    - logstash
+  name: Logstash Plugin Installation Security Risk
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: System Configuration
+  technique: T1072 - Software Deployment Tools
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/plugins.html
+    - https://attack.mitre.org/techniques/T1072/
+  description: Detects suspicious plugin installation activities in Logstash that could introduce vulnerabilities or backdoors into the data pipeline
+  where: safe(log.component, "") == "pluginmanager" && safe(log.msg, "") != "" && (log.msg.contains("install") || log.msg.contains("update")) && safe(severity, "") == "high"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.host

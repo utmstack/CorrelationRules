@@ -1,0 +1,36 @@
+- id: 1005
+  dataTypes:
+    - redis
+  name: Redis Replication Poisoning Attack Detected
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Command and Control
+  technique: Remote Access Software
+  adversary: origin
+  references:
+    - https://medium.com/@knownsec404team/rce-exploits-of-redis-based-on-master-slave-replication-ef7a664ce1d0
+    - https://attack.mitre.org/techniques/T1219/
+  description: Detects potential Redis replication poisoning attacks where attackers abuse the master-slave replication mechanism to load malicious modules or execute remote commands through SLAVEOF/REPLICAOF commands
+  where: |
+    safe(log.msg, "") != "" && (
+      (safe(log.msg, "").matches("(?i)(SLAVEOF|REPLICAOF)\\s+\\d+\\.\\d+\\.\\d+\\.\\d+")) ||
+      (safe(log.msg, "").matches("(?i)(SLAVEOF|REPLICAOF)\\s+NO\\s+ONE") && safe(log.role, "") == "slave") ||
+      (safe(log.msg, "").matches("(?i)REPLCONF\\s+(listening-port|capa)")) ||
+      (safe(log.msg, "").matches("(?i)PSYNC\\s+") && safe(log.msg, "").matches("(?i)(module|backdoor|\\.so)")) ||
+      (safe(log.role, "") == "slave" && safe(log.msg, "").matches("(?i)(Full\\s+resync|MASTER\\s+<->\\s+REPLICA\\s+sync).*module")) ||
+      (safe(log.msg, "").matches("(?i)Connecting\\s+to\\s+MASTER\\s+\\d+\\.\\d+\\.\\d+\\.\\d+") && safe(severity, "") == "high") ||
+      (safe(log.msg, "").matches("(?i)(Master\\s+replid\\s+changed|Partial\\s+resynchronization\\s+not\\s+possible)") && safe(log.msg, "").matches("(?i)module"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - log.role

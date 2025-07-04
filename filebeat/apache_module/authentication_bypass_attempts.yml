@@ -1,0 +1,46 @@
+- id: 1025
+  dataTypes:
+    - apache
+  name: Authentication Bypass Attempts
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Credential Access
+  technique: Exploitation for Credential Access
+  adversary: origin
+  references:
+    - https://httpd.apache.org/docs/2.4/howto/auth.html
+    - https://attack.mitre.org/techniques/T1212/
+  description: Detects attempts to bypass authentication mechanisms through various techniques including HTTP verb tampering, authentication header manipulation, session fixation, or exploiting authentication logic flaws in protected resources.
+  where: >
+    safe(origin.ip, "") != "" &&
+    ((safe(log.statusCode, 0) == 401 || safe(log.statusCode, 0) == 403) &&
+     (safe(action, "") == "options" || 
+      safe(action, "") == "patch" ||
+      safe(action, "") == "put" ||
+      safe(log.method, "") == "TRACE" ||
+      safe(log.method, "") == "CONNECT" ||
+      safe(log.method, "") == "PROPFIND")) ||
+    (safe(origin.path, "").contains("/admin") || 
+     safe(origin.path, "").contains("/api/") ||
+     safe(origin.path, "").contains("/private") ||
+     safe(origin.path, "").contains("/.htaccess") ||
+     safe(origin.path, "").contains("/.htpasswd")) &&
+    (safe(log.request, "").contains("Authorization: Basic Og==") ||
+     safe(log.request, "").contains("Authorization: Bearer null") ||
+     safe(log.request, "").contains("X-Original-URL:") ||
+     safe(log.request, "").contains("X-Rewrite-URL:") ||
+     safe(origin.path, "").contains("..;/") ||
+     safe(origin.path, "").contains("%2e%2e")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - origin.path

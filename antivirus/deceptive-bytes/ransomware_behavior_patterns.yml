@@ -1,0 +1,31 @@
+- id: 1014
+  dataTypes:
+    - deceptive-bytes
+  name: Ransomware Behavior Detected in Deception Environment
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 5
+  category: Impact
+  technique: Data Encrypted for Impact
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1486/
+    - https://attack.mitre.org/techniques/T1490/
+    - https://deceptivebytes.com/solution/
+  description: Detects ransomware-like behavior patterns when attackers interact with deceptive files, including rapid file enumeration, encryption attempts, and ransom note creation.
+  where: safe(log.event_type, "") == "ransomware_behavior" && (safe(log.behavior_pattern, "") == "mass_encryption" || safe(log.behavior_pattern, "") == "file_enumeration" || safe(log.behavior_pattern, "") == "ransom_note_drop")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.process.keyword
+          operator: filter_term
+          value: '{{origin.process}}'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.process
+    - origin.ip

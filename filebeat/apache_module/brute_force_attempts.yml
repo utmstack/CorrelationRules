@@ -1,0 +1,41 @@
+- id: 1015
+  dataTypes:
+    - apache
+  name: Web Application Brute Force Attack
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+  category: Brute Force
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/Brute_force_attack
+    - https://attack.mitre.org/techniques/T1110/
+  description: Detects brute force login attempts against web applications by monitoring for multiple failed authentication attempts (401/403 status codes) from the same IP address within a short time window.
+  where: |
+    (safe(log.statusCode, 0) == 401 || safe(log.statusCode, 0) == 403) &&
+    safe(actionResult, "") == "denied" &&
+    (safe(origin.path, "").contains("login") ||
+     safe(origin.path, "").contains("signin") ||
+     safe(origin.path, "").contains("auth") ||
+     safe(origin.path, "").contains("admin") ||
+     safe(origin.path, "").contains("wp-login") ||
+     safe(origin.path, "").contains("administrator") ||
+     safe(origin.path, "").contains("user/login") ||
+     safe(origin.path, "").contains("account/login") ||
+     safe(action, "") == "post")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.statusCode
+          operator: filter_terms
+          value: [401, 403]
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - origin.path

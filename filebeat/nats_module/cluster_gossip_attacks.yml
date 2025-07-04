@@ -1,0 +1,33 @@
+- id: 1006
+  dataTypes:
+    - nats
+  name: NATS Cluster Gossip Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 4
+  category: Network Security
+  technique: Protocol Manipulation
+  adversary: origin
+  references:
+    - https://docs.nats.io/running-a-nats-service/configuration/clustering/cluster_config
+    - https://attack.mitre.org/techniques/T1498/
+  description: Detects potential attacks on NATS cluster gossip protocol including malformed gossip messages, excessive gossip traffic, or unauthorized cluster join attempts
+  where: |
+    safe(action, "") == "nats.log" && (
+      safe(log.msg, "") =~ ".*gossip.*error.*" ||
+      safe(log.msg, "") =~ ".*cluster.*invalid.*" ||
+      safe(log.msg, "") =~ ".*route.*authentication.*failed.*" ||
+      safe(log.msg, "") =~ ".*excessive.*gossip.*" ||
+      safe(log.level, "") == "error" && safe(log.msg, "") =~ ".*cluster.*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.host

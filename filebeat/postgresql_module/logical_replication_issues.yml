@@ -1,0 +1,39 @@
+- id: 1007
+  dataTypes:
+    - postgresql
+  name: PostgreSQL Logical Replication Security Issues
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 4
+  category: Replication Security
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://www.postgresql.org/docs/current/logical-replication-security.html
+    - https://attack.mitre.org/techniques/T1565/
+  description: Identifies security issues and anomalies in PostgreSQL logical replication that could indicate replication slot exhaustion, unauthorized access to replication streams, or attempts to manipulate replicated data.
+  where: >
+    safe(log.messageType, "") in ["ERROR", "WARNING", "FATAL"] &&
+    safe(log.msg, "") != "" &&
+    (log.msg =~ "(?i)replication slot.*does not exist" ||
+     log.msg =~ "(?i)replication slot.*already exists" ||
+     log.msg =~ "(?i)replication origin.*not found" ||
+     log.msg =~ "(?i)logical decoding.*error" ||
+     log.msg =~ "(?i)could not create replication slot" ||
+     log.msg =~ "(?i)replication slot.*is active" ||
+     log.msg =~ "(?i)cannot drop.*replication slot")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.messageType.keyword
+          operator: filter_term
+          value: 'ERROR'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.processId

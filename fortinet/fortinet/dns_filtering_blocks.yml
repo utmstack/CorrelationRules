@@ -1,0 +1,44 @@
+- id: 1018
+  dataTypes:
+    - firewall-fortigate-traffic
+  name: DNS Filtering High-Risk Domain Blocked
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: C2 Communication
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://www.fortinet.com/support/support-services/fortiguard-security-subscriptions/dns-security
+    - https://attack.mitre.org/techniques/T1071/004/
+    - https://attack.mitre.org/techniques/T1568/
+  description: Detects when DNS filtering blocks access to high-risk domains, including malicious newly registered domains, parked domains, DNS tunneling attempts, or known C2 servers. This indicates potential malware communication attempts or compromised systems.
+  where: |
+    safe(log.type, "") == "dns" &&
+    safe(action, "") in ["block", "deny", "blocked"] &&
+    (
+      safe(log.category, "") in ["malware", "phishing", "botnet", "c2", "malicious"] ||
+      safe(log.dnsfilter, "") != "" ||
+      safe(log.msg, "").contains("dns blocked") ||
+      safe(log.msg, "").contains("malicious domain") ||
+      safe(log.msg, "").contains("botnet c&c") ||
+      safe(log.msg, "").contains("dga domain") ||
+      safe(log.msg, "").contains("dns tunneling") ||
+      safe(log.threat, "").contains("dns") ||
+      safe(log.reason, "").contains("reputation")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'dns'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.qname

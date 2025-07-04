@@ -1,0 +1,40 @@
+- id: 1004
+  dataTypes:
+    - mongodb
+  name: MongoDB Collection Dropping Attempts
+  impact:
+    confidentiality: 1
+    integrity: 5
+    availability: 5
+  category: Impact
+  technique: Data Destruction
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/reference/log-messages/
+    - https://attack.mitre.org/techniques/T1485/
+  description: Detects attempts to drop collections or databases which could indicate destructive attacks or ransomware behavior
+  where: |
+    safe(log.component, "") in ["COMMAND", "STORAGE"] &&
+    safe(severity, "") in ["high", "medium"] &&
+    (safe(log.msg, "") contains "drop" ||
+     safe(log.msg, "") contains "dropDatabase" ||
+     safe(log.msg, "") contains "dropCollection" ||
+     safe(log.msg, "") contains "db.dropDatabase" ||
+     safe(log.msg, "") contains ".drop()" ||
+     safe(log.msg, "") contains "dropIndexes" ||
+     safe(log.msg, "") contains "command drop") &&
+    safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'COMMAND'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.msg

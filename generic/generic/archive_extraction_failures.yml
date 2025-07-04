@@ -1,0 +1,37 @@
+- id: 1020
+  dataTypes:
+    - generic
+  name: Archive Extraction Failures
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: System
+  technique: System Shutdown/Reboot
+  adversary: origin
+  references:
+    - https://unix.stackexchange.com/questions/634315/unzip-thinks-my-zip-file-is-a-zip-bomb
+    - https://docs.aws.amazon.com/codeguru/detector-library/python/zip-bomb-attack/
+    - https://attack.mitre.org/techniques/T1529/
+  description: Detects archive extraction failures that could indicate corrupted files, malicious archives, or system resource issues during log archive processing
+  where: |
+    (safe(log.message, "") contains "extraction failed") ||
+    (safe(log.message, "") contains "archive corrupted") ||
+    (safe(log.message, "") contains "invalid zip file") ||
+    (safe(log.message, "") contains "decompression error") ||
+    (safe(log.message, "") contains "unsupported compression") ||
+    (safe(log.message, "") contains "CRC error") ||
+    (safe(log.error, "") contains "unzip") ||
+    (safe(log.error, "") contains "tar: ") ||
+    (safe(log.error, "") contains "gzip: ")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.archive_name

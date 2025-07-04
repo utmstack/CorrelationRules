@@ -1,0 +1,31 @@
+- id: 1021
+  dataTypes:
+    - firepower
+  name: Firepower Custom Detection Rule Match
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Threat Detection
+  technique: Custom Rule Detection
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/Syslogs/b_fptd_syslog_guide/security-event-syslog-messages.html
+    - https://attack.mitre.org/tactics/TA0001/
+  description: Detects when Firepower custom security rules are triggered, indicating potential malicious activity that matches predefined threat patterns
+  where: |
+    safe(log.eventType, "") == "RULE_MESSAGE" &&
+    safe(log.priority, "") in ["1", "2", "3"] &&
+    safe(origin.ip, "") != "" &&
+    safe(log.ruleId, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.ruleId

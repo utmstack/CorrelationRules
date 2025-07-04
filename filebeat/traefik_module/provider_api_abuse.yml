@@ -1,0 +1,36 @@
+- id: 1004
+  dataTypes:
+    - traefik
+  name: Provider API Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: API Security
+  technique: API Exploitation
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/providers/overview/
+    - https://attack.mitre.org/techniques/T1106/
+  description: Detects unauthorized or suspicious access to Traefik provider APIs including Docker, Kubernetes, Consul, or file providers that could lead to configuration tampering.
+  where: |
+    (safe(origin.url, "") contains("/api/providers") ||
+     safe(origin.url, "") contains("/api/overview") ||
+     safe(log.RequestPath, "") matches("^/api/(docker|kubernetes|consul|file|etcd|zookeeper|redis)")) &&
+    (safe(log.HTTP_status, 0) in [401, 403, 429] ||
+     (safe(log.RequestMethod, "") == "GET" && safe(log.OriginContentSize, 0) > 1048576) ||
+     (safe(log.RequestMethod, "") in ["POST", "PUT", "PATCH", "DELETE"] && 
+      safe(log.ClientUsername, "") == "") ||
+     safe(log.RequestHeaders, "") !contains("Authorization") ||
+     (safe(log.Duration, 0) > 10000 && safe(log.RequestMethod, "") == "GET"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.RequestPath

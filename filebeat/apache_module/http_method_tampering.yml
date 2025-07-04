@@ -1,0 +1,44 @@
+- id: 1011
+  dataTypes:
+    - apache
+  name: HTTP Method Tampering Detected
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Web Application Attack
+  technique: Web Service API Exploitation
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/HTTP_Request_Smuggling
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects suspicious HTTP methods that may indicate method tampering or request smuggling attempts. Monitors for unusual HTTP verbs like TRACE, CONNECT, OPTIONS, or custom methods that could be used to bypass security controls.
+  where: |
+    safe(log.request, "") != "" && 
+    !safe(log.request, "").startsWith("GET ") && 
+    !safe(log.request, "").startsWith("POST ") && 
+    !safe(log.request, "").startsWith("PUT ") && 
+    !safe(log.request, "").startsWith("DELETE ") && 
+    !safe(log.request, "").startsWith("HEAD ") &&
+    !safe(log.request, "").startsWith("PATCH ") &&
+    (safe(log.request, "").contains("TRACE ") || 
+     safe(log.request, "").contains("CONNECT ") || 
+     safe(log.request, "").contains("OPTIONS ") ||
+     safe(log.request, "").contains("PROPFIND ") ||
+     safe(log.request, "").contains("PROPPATCH ") ||
+     safe(log.request, "").contains("MKCOL ") ||
+     safe(log.request, "").contains("COPY ") ||
+     safe(log.request, "").contains("MOVE ") ||
+     safe(log.request, "").contains("LOCK ") ||
+     safe(log.request, "").contains("UNLOCK "))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.request

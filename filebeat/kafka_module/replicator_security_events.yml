@@ -1,0 +1,43 @@
+- id: 1021
+  dataTypes:
+    - kafka_module
+  name: Kafka Replicator Security Event Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Authentication
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://docs.confluent.io/platform/current/multi-dc-deployments/replicator/index.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects security-related events in Kafka Replicator including authentication failures, SSL/TLS errors, or SASL mechanism issues that could indicate unauthorized access attempts or misconfigurations
+  where: |
+    safe(action, "") == "kafka.log" && 
+    safe(severity, "") == "high" &&
+    safe(log.msg, "") != "" &&
+    (
+      log.msg.contains("Authentication failed") ||
+      log.msg.contains("SASL authentication failed") ||
+      log.msg.contains("SSL handshake failed") ||
+      log.msg.contains("security.protocol") ||
+      log.msg.contains("sasl.mechanism") ||
+      log.msg.contains("Unexpected handshake request") ||
+      log.msg.contains("IllegalSaslStateException") ||
+      log.msg.contains("No serviceName defined") ||
+      log.msg.contains("Failed to create channel") ||
+      log.msg.contains("Unable to read additional data from server") ||
+      log.msg.contains("Authentication error")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.msg

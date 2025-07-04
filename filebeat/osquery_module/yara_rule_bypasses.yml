@@ -1,0 +1,41 @@
+- id: 1023
+  dataTypes:
+    - osquery_module
+  name: YARA Rule Bypass Attempt Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Defense Evasion
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/yara/
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects potential attempts to bypass YARA scanning through file size inflation, scan failures, or suspicious file operations. Monitors for oversized files, failed YARA scans, or patterns indicating evasion techniques like polymorphism or obfuscation.
+  where: |
+    (safe(log.eventName, "") == "yara" || safe(log.eventName, "") == "yara_events") &&
+    (safe(actionResult, "").contains("FAIL") ||
+     safe(log.message, "").contains("size limit") ||
+     safe(log.message, "").contains("timeout") ||
+     safe(log.message, "").contains("error") ||
+     (safe(log.fileSize, 0) > 104857600) ||  
+     safe(origin.file, "").contains("/tmp/") ||
+     safe(origin.file, "").contains("/var/tmp/") ||
+     safe(origin.file, "").contains(".enc") ||
+     safe(origin.file, "").contains(".locked") ||
+     safe(origin.file, "").contains(".crypted"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: actionResult.keyword
+          operator: filter_term
+          value: 'FAIL'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - origin.file

@@ -1,0 +1,35 @@
+- id: 1003
+  dataTypes:
+    - github
+  name: GitHub Sensitive Data Commit Detection
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Data Exposure
+  technique: Data Staged
+  adversary: origin
+  references:
+    - https://docs.github.com/en/webhooks/webhook-events-and-payloads#push
+    - https://attack.mitre.org/techniques/T1074/
+  description: Detects commits that may contain sensitive data such as API keys, passwords, private keys, or other credentials based on commit message patterns or file names.
+  where: >
+    safe(log.action, "") == "push" &&
+    safe(log.headCommitMessage, "") != "" &&
+    (safe(log.headCommitMessage, "") =~ "(?i)(password|passwd|pwd|secret|key|token|api_key|apikey|credential|auth|private_key|ssh_key|access_key|bearer)" ||
+     safe(log.headCommitAdded, "") =~ "(?i)(.env|.pem|.key|.p12|.pfx|id_rsa|id_dsa|credentials|secrets|password)" ||
+     safe(log.headCommitModified, "") =~ "(?i)(.env|.pem|.key|.p12|.pfx|id_rsa|id_dsa|credentials|secrets|password)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.repositoryName.keyword
+          operator: filter_term
+          value: '{{log.repositoryName}}'
+        - field: log.senderLogin.keyword
+          operator: filter_term
+          value: '{{log.senderLogin}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.headCommitId
+    - log.repositoryName

@@ -1,0 +1,34 @@
+- id: 1001
+  dataTypes:
+    - deceptive-bytes
+  name: Deception Token Access Patterns
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Unauthorized Access
+  technique: Credential Access
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1078/
+    - https://deceptivebytes.com/
+  description: Detects when deception tokens or honeytokens are accessed, indicating potential unauthorized activity or insider threat. Multiple token accesses from the same source within a short timeframe suggest systematic reconnaissance or data harvesting attempts.
+  where: >
+    safe(log.eventType, "") == "token_access" && 
+    safe(log.deceptionType, "") == "honeytoken" &&
+    safe(origin.ip, "") != "" &&
+    safe(log.severity, "") in ["high", "critical"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: 'token_access'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.tokenId

@@ -1,0 +1,47 @@
+- id: 1018
+  dataTypes:
+    - mysql
+  name: MySQL Replication Attack Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Replication Security
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://www.akamai.com/blog/security/please-read-me-opportunistic-ransomware-devastating-mysql-servers
+    - https://attack.mitre.org/techniques/T1565/001/
+  description: Detects potential attacks on MySQL replication including unauthorized changes to replication configuration, suspicious binary log operations, and attempts to manipulate slave servers. These attacks can lead to data loss or ransomware deployment.
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      log.msg contains "CHANGE MASTER" ||
+      log.msg contains "CHANGE REPLICATION" ||
+      log.msg contains "START SLAVE" ||
+      log.msg contains "STOP SLAVE" ||
+      log.msg contains "RESET SLAVE" ||
+      log.msg contains "SHOW SLAVE STATUS" ||
+      log.msg contains "SHOW MASTER STATUS" ||
+      log.msg contains "PURGE BINARY LOGS" ||
+      log.msg contains "FLUSH LOGS" ||
+      log.msg contains "binlog_encryption" ||
+      log.msg contains "mysqlbackups'@'%" ||
+      log.msg contains "GRANT REPLICATION" ||
+      log.msg contains "SUPER" && log.msg contains "GRANT"
+    ) &&
+    (
+      safe(severity, "") == "high" ||
+      safe(log.errorCode, "") != ""
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.subsystem

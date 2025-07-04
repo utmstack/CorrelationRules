@@ -1,0 +1,30 @@
+- id: 1008
+  dataTypes:
+    - deceptive-bytes
+  name: Deception API Call Tracking
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Execution
+  technique: Native API
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1106/
+    - https://deceptivebytes.com/solution/
+  description: Tracks suspicious API calls made to decoy services or endpoints. This behavior indicates an attacker is attempting to interact with what they believe are legitimate services but are actually deception assets.
+  where: safe(log.eventType, "") == "api_call" && safe(log.isDecoy, "") == "true" && safe(log.httpMethod, "") != "" && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.apiEndpoint.keyword
+          operator: filter_term
+          value: '{{log.apiEndpoint}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.apiEndpoint

@@ -1,0 +1,38 @@
+- id: 1010
+  dataTypes:
+    - traefik_module
+  name: Load Balancer Tampering Detected
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Infrastructure Attack
+  technique: Traffic Signaling
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/routing/services/
+    - https://attack.mitre.org/techniques/T1205/
+  description: Detects attempts to tamper with load balancer behavior through header injection, backend manipulation, or session persistence attacks in Traefik
+  where: |
+    (contains(safe(log.RequestHost, ""), "127.0.0.1") ||
+     contains(safe(log.RequestHost, ""), "localhost") ||
+     contains(safe(log.RequestHost, ""), "::1") ||
+     contains(safe(origin.url, ""), "/_internal/") ||
+     contains(safe(origin.url, ""), "/traefik/") ||
+     contains(safe(log.RequestPath, ""), "/api/rawdata") ||
+     contains(safe(log.RequestPath, ""), "/api/overview")) &&
+    (safe(log.DownstreamStatus, 0) == 403 ||
+     safe(log.DownstreamStatus, 0) == 401 ||
+     safe(log.DownstreamStatus, 0) == 200) &&
+    !contains(safe(log.ClientHost, ""), "127.0.0.1") &&
+    !contains(safe(log.ClientHost, ""), "::1")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.ClientHost.keyword
+          operator: filter_term
+          value: '{{log.ClientHost}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - log.ClientHost

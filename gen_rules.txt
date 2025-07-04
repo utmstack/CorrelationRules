@@ -1,0 +1,16 @@
+  Usage Examples:
+
+  # Re-run for all technologies, skipping existing rules (default)
+  python3 generate_correlation_rules.py
+
+  # Force regeneration of all rules (overwrites existing)
+  python3 generate_correlation_rules.py --force
+
+  # Generate rules for specific technology only
+  python3 generate_correlation_rules.py --technology antivirus/bitdefender_gz
+
+  # Generate missing rules for a specific technology
+  python3 generate_correlation_rules.py --technology aws/aws --skip-existing
+
+  # Force regeneration for specific technology
+  python3 generate_correlation_rules.py --technology cisco/asa --force

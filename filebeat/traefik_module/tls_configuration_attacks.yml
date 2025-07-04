@@ -1,0 +1,36 @@
+- id: 1006
+  dataTypes:
+    - traefik_module
+  name: TLS Configuration Attack Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Network Security
+  technique: Protocol Manipulation
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/observability/access-logs/
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential TLS configuration attacks including downgrade attempts, cipher manipulation, and certificate validation bypass attempts in Traefik
+  where: |
+    safe(log.DownstreamStatus, 0) == 400 && (
+      contains(safe(log.RequestPath, ""), "/.well-known/") ||
+      contains(safe(log.RequestPath, ""), "/acme-challenge/") ||
+      contains(safe(log.error, ""), "tls") ||
+      contains(safe(log.error, ""), "certificate") ||
+      contains(safe(log.error, ""), "handshake") ||
+      contains(safe(log.RequestProtocol, ""), "HTTP/1.0") ||
+      safe(log.TLSVersion, "") == "1.0" ||
+      safe(log.TLSVersion, "") == "1.1"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.ClientHost.keyword
+          operator: filter_term
+          value: '{{log.ClientHost}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - log.ClientHost

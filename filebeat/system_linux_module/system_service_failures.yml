@@ -1,0 +1,26 @@
+- id: 1003
+  dataTypes:
+    - linux
+  name: Critical System Service Failures
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 5
+  category: System
+  technique: System Services
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+    - https://attack.mitre.org/techniques/T1543/
+  description: Detects critical system service failures that could indicate system instability or potential attacks
+  where: safe(log.message, "") contains "systemd" && (safe(log.message, "") contains "Failed" || safe(log.message, "") contains "failed" || safe(log.message, "") contains "error" || safe(log.message, "") contains "crash") && safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.host

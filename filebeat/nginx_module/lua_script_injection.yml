@@ -1,0 +1,27 @@
+- id: 1013
+  dataTypes:
+    - nginx
+  name: Lua Script Injection Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Code Injection
+  technique: Command and Scripting Interpreter
+  adversary: origin
+  references:
+    - https://github.com/openresty/lua-nginx-module#security-considerations
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects potential Lua script injection attempts through malicious input patterns in requests that could be processed by Nginx Lua modules, potentially leading to remote code execution
+  where: (contains(safe(origin.path, ""), "lua") || contains(safe(log.request, ""), "_by_lua") || contains(safe(log.message, ""), "lua")) && (contains(safe(log.request, ""), "os.execute") || contains(safe(log.request, ""), "io.popen") || contains(safe(log.request, ""), "loadstring") || contains(safe(log.request, ""), "require") || contains(safe(origin.path, ""), "../") || contains(safe(log.referrer, ""), "os.execute"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.request

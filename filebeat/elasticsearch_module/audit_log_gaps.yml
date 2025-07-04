@@ -1,0 +1,27 @@
+- id: 1016
+  dataTypes:
+    - elasticsearch
+  name: Elasticsearch Audit Log Gaps Detected
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Evasion
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/audit-event-types.html
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects gaps in Elasticsearch audit logging which may indicate log tampering, service disruption, or attempts to evade detection by disabling audit functionality
+  where: safe(log.eventType, "") == "audit_trail_stopped" || (safe(log.component, "") == "Audit" && safe(log.level, "") == "ERROR") || (safe(log.auditComplianceOperation, "") == "audit_config_change" && safe(action, "") == "security_config_change")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-6h
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.clusterName

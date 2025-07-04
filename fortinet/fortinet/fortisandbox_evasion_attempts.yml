@@ -1,0 +1,39 @@
+- id: 1016
+  dataTypes:
+    - firewall-fortigate-traffic
+  name: FortiSandbox Evasion Attempts Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Malware
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortisandbox/4.4.4/log-message-reference/183685/event
+    - https://attack.mitre.org/techniques/T1027/
+    - https://attack.mitre.org/techniques/T1497/
+  description: Detects attempts to evade FortiSandbox analysis through various techniques such as sandbox detection, anti-debugging, or environment checks. This could indicate malware trying to avoid detection by checking for virtualized environments or analysis tools.
+  where: |
+    safe(log.subtype, "") == "fortisandbox" && 
+    safe(log.level, "") == "alert" &&
+    (
+      safe(log.msg, "").contains("sandbox evasion") ||
+      safe(log.msg, "").contains("anti-debugging") ||
+      safe(log.msg, "").contains("environment check") ||
+      safe(log.msg, "").contains("vm detection") ||
+      safe(log.threat, "").contains("evasion") ||
+      safe(log.behavior, "").contains("sandbox aware") ||
+      safe(log.verdict, "") == "suspicious" && safe(log.msg, "").contains("analysis failed")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.file

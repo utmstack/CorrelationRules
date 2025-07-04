@@ -1,0 +1,27 @@
+- id: 1006
+  dataTypes:
+    - google
+  name: VPC Firewall Rule Changes
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Network Security
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://cloud.google.com/vpc/docs/audit-logging
+    - https://attack.mitre.org/techniques/T1562/004/
+  description: Detects changes to VPC firewall rules including creation, modification, or deletion which could indicate attempts to bypass security controls or enable unauthorized network access
+  where: safe(log.resourceType, "") == "gce_firewall_rule" && safe(log.protoPayload.methodName, "") in ["v1.compute.firewalls.patch", "v1.compute.firewalls.insert", "v1.compute.firewalls.delete", "beta.compute.firewalls.patch", "beta.compute.firewalls.insert", "beta.compute.firewalls.delete"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.protoPayload.authenticationInfo.principalEmail.keyword
+          operator: filter_term
+          value: '{{log.protoPayload.authenticationInfo.principalEmail}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - log.protoPayload.authenticationInfo.principalEmail
+    - log.protoPayload.resourceName

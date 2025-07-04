@@ -1,0 +1,27 @@
+- id: 1020
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky Suspicious Service Installation Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+  category: Persistence
+  technique: System Services
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1543/003/
+    - https://support.kaspersky.com/ScanEngine/2.1/en-US/186767.htm
+  description: Detects suspicious Windows service installation or modification attempts identified by Kaspersky, which could indicate malware persistence mechanisms or privilege escalation attempts
+  where: (safe(log.msg, "") =~ ".*[Ss]ervice.*[Ii]nstall.*" || safe(log.msg, "") =~ ".*sc\\.exe.*create.*" || safe(log.msg, "") =~ ".*[Nn]ew.*[Ss]ervice.*" || safe(log.fname, "") =~ ".*\\\\services\\.exe.*" || safe(log.cs2, "") =~ ".*[Ss]ervice.*") && (safe(log.cs1, "") == "infected" || safe(log.cs1, "") == "suspicious" || safe(log.cefDeviceSeverity, "0") >= "3")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - log.msg

@@ -1,0 +1,35 @@
+- id: 1023
+  dataTypes:
+    - asa
+  name: Security Context Configuration Changes
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Configuration Security
+  technique: Defense Evasion
+  adversary: user
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog.html
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects changes to ASA security contexts which could indicate attempts to modify security boundaries or isolate administrative domains. Security context changes can affect the entire security posture of the device.
+  where: |
+    safe(log.dataType, "") == "asa" && 
+    (
+      safe(log.messageId, "") in ["111009", "111010"] &&
+      (safe(log.message, "") =~ ".*context.*" ||
+       safe(log.message, "") =~ ".*changeto.*" ||
+       safe(log.command, "") =~ ".*context.*" ||
+       safe(log.command, "") =~ ".*changeto.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: user.name.keyword
+          operator: filter_term
+          value: '{{user.name}}'
+      within: now-2h
+      count: 3
+  deduplicateBy:
+    - user.name
+    - origin.ip

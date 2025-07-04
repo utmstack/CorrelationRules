@@ -1,0 +1,38 @@
+- id: 1013
+  dataTypes:
+    - github
+  name: GitHub License Compliance Violation
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 1
+  category: Resource Development
+  technique: Develop Capabilities
+  adversary: origin
+  references:
+    - https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository
+    - https://attack.mitre.org/techniques/T1587/
+  description: Detects potential license violations or changes in repository licensing that could lead to legal compliance issues. This includes removal of license files, addition of incompatible dependencies, or changes to repository visibility that may violate license terms.
+  where: >
+    (safe(log.action, "") == "repository.publicized" ||
+     safe(log.action, "") == "repository.privatized" ||
+     (safe(log.action, "") == "push" && 
+      (contains(safe(log.headCommitRemoved, ""), "LICENSE") ||
+       contains(safe(log.headCommitRemoved, ""), "COPYING") ||
+       contains(safe(log.headCommitModified, ""), "LICENSE") ||
+       contains(safe(log.headCommitModified, ""), "package.json") ||
+       contains(safe(log.headCommitModified, ""), "requirements.txt") ||
+       contains(safe(log.headCommitModified, ""), "Gemfile") ||
+       contains(safe(log.headCommitModified, ""), "pom.xml")))) &&
+    safe(log.repositoryName, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.repositoryName.keyword
+          operator: filter_term
+          value: '{{log.repositoryName}}'
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - log.repositoryName
+    - log.action

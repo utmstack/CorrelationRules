@@ -1,0 +1,42 @@
+- id: 1006
+  dataTypes:
+    - apache
+  name: Virtual Host Tampering Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Web Application Attack
+  technique: Exploitation of Remote Services
+  adversary: origin
+  references:
+    - https://httpd.apache.org/docs/2.4/vhosts/
+    - https://attack.mitre.org/techniques/T1210/
+  description: Detects potential virtual host tampering attempts through suspicious Host header manipulation, mismatched virtual host requests, or attempts to access internal virtual hosts. This could indicate an attacker trying to bypass access controls or access restricted resources.
+  where: |
+    (
+      safe(log.referer, "") != "" && 
+      safe(origin.host, "") != "" && 
+      !log.referer.contains(origin.host) && 
+      log.referer.contains("http://localhost") || log.referer.contains("http://127.0.0.1") || log.referer.contains("http://internal")
+    ) || 
+    (
+      safe(origin.path, "").contains("../") && 
+      safe(origin.host, "") != "" && 
+      safe(log.statusCode, 0) == 200
+    ) ||
+    (
+      safe(log.userAgent, "").contains("Host:") && 
+      safe(log.userAgent, "").contains("\r\n")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - origin.host

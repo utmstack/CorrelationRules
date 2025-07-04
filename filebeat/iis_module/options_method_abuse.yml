@@ -1,0 +1,20 @@
+- id: 1024
+  dataTypes:
+    - iis-log
+  name: IIS Excessive OPTIONS Method Information Disclosure
+  description: Detects excessive OPTIONS method requests that could indicate reconnaissance attempts to discover allowed HTTP methods and server capabilities
+  where: |
+    log.method == "OPTIONS" &&
+    statusCode == 200 &&
+    (target.path == "/" || target.path == "*" || target.path.endsWith("/")) &&
+    (!target.ip.matches("^(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.)") ||
+     log.userAgent.matches("(?i).*(scanner|nikto|nessus|qualys|nmap|burp|zap|acunetix|sqlmap|havij).*") ||
+     log.userAgent == "" ||
+     log.userAgent == "-")
+  confidentiality: medium
+  integrity: low
+  availability: low
+  mitreAttack:
+    - T1595 # Active Scanning
+    - T1592 # Gather Victim Host Information
+    - T1590 # Gather Victim Network Information

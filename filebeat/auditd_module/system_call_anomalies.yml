@@ -1,0 +1,31 @@
+- id: 1002
+  dataTypes:
+    - auditd
+  name: Suspicious System Call Activity
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: System Activity
+  technique: T1106
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1106/
+    - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/security_guide/sec-understanding_audit_log_files
+  description: Detects suspicious system call patterns that may indicate malicious activity such as process injection, privilege escalation attempts, or system manipulation.
+  where: safe(action, "") == "auditd.log" && safe(log.auditd.log.record_type, "") == "SYSCALL" && safe(log.auditd.log.success, "") == "no" && (safe(log.auditd.log.syscall, "") == "ptrace" || safe(log.auditd.log.syscall, "") == "setuid" || safe(log.auditd.log.syscall, "") == "setgid" || safe(log.auditd.log.syscall, "") == "setreuid" || safe(log.auditd.log.syscall, "") == "setregid" || safe(log.auditd.log.syscall, "") == "setresuid" || safe(log.auditd.log.syscall, "") == "setresgid" || safe(log.auditd.log.syscall, "") == "capset")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.auditd.log.uid.keyword
+          operator: filter_term
+          value: '{{log.auditd.log.uid}}'
+      within: now-5m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.auditd.log.uid
+    - log.auditd.log.syscall

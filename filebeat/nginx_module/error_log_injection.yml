@@ -1,0 +1,40 @@
+- id: 1017
+  dataTypes:
+    - nginx
+  name: Error Log Injection Attack
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Initial Access
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1190/
+    - https://nginx.org/en/docs/ngx_core_module.html#error_log
+  description: Detects error log injection attempts where attackers try to inject malicious content into nginx error logs to execute code, hide activity, or cause log corruption through specially crafted requests or headers
+  where: |
+    safe(origin.ip, "") != "" && (
+      (safe(log.severityLabel, "") == "error" || safe(log.severityLabel, "") == "critical") && (
+        safe(log.message, "") matches ".*<script.*>.*</script>.*" ||
+        safe(log.message, "") matches ".*\\$\\{jndi:.*\\}.*" ||
+        safe(log.message, "") matches ".*\\\\x[0-9a-fA-F]{2}\\\\x[0-9a-fA-F]{2}.*" ||
+        safe(log.message, "") matches ".*\\r\\n\\r\\n.*" ||
+        safe(log.message, "") matches ".*\\\\u[0-9a-fA-F]{4}.*" ||
+        safe(log.request, "") matches ".*%0[dD]%0[aA].*" ||
+        safe(log.userAgent, "") matches ".*\\$\\(.*\\).*" ||
+        safe(log.referrer, "") matches ".*javascript:.*" ||
+        (safe(log.message, "") matches ".*client.*sent invalid.*" && log.message matches ".*[\\x00-\\x1F\\x7F].*")
+      )
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.message

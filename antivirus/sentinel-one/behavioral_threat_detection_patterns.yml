@@ -1,0 +1,34 @@
+- id: 1002
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne Advanced Behavioral Threat Patterns
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Advanced Threat Detection
+  technique: Behavioral Pattern Analysis
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/platform/behavioral-ai/
+    - https://attack.mitre.org/tactics/TA0002/
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects advanced behavioral threat patterns including process injection, privilege escalation attempts, lateral movement patterns, and sophisticated malware behaviors identified by SentinelOne's behavioral AI engine
+  where: |
+    safe(log.eventDescription, "") =~ "(?i)(behavioral|behavior detected|anomalous behavior|suspicious activity|threat behavior|malicious behavior)" &&
+    (
+      safe(log.eventDescription, "") =~ "(?i)(injection|escalation|lateral|persistence|evasion|defense bypass)" ||
+      safe(log.msg, "") =~ "(?i)(process injection|privilege escalation|lateral movement|persistence mechanism)"
+    ) &&
+    safe(log.syslogHost, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-15m
+      count: 2
+  deduplicateBy:
+    - log.syslogHost
+    - log.eventDescription

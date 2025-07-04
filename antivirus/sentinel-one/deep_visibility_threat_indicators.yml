@@ -1,0 +1,30 @@
+- id: 1007
+  dataTypes:
+    - antivirus-sentinel-one
+  name: Deep Visibility Threat Indicators
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Threat Intelligence
+  technique: Indicator Removal on Host
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/blog/rapid-threat-hunting-with-deep-visibility-feature-spotlight/
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects advanced threat indicators through deep visibility monitoring including suspicious file modifications, registry changes, network connections, and process behaviors that indicate potential compromise
+  where: (safe(log.indicatorcategory, "") != "" || safe(log.indicatorname, "") != "" || safe(log.indicatordescription, "") != "") && safe(log.confidencelevel, 0) >= 70
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+        - field: log.indicatorcategory.keyword
+          operator: filter_term
+          value: '{{log.indicatorcategory}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - log.syslogHost
+    - log.indicatorname

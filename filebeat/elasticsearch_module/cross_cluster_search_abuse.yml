@@ -1,0 +1,31 @@
+- id: 1017
+  dataTypes:
+    - elasticsearch
+  name: Cross-Cluster Search Abuse Detected
+  impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 3
+  category: Collection
+  technique: Data from Information Repositories
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-cross-cluster-search.html
+    - https://attack.mitre.org/techniques/T1213/
+  description: Detects suspicious cross-cluster search activities that may indicate unauthorized data access, reconnaissance, or data exfiltration attempts across multiple Elasticsearch clusters
+  where: (safe(log.auditRestRequestPath, "").contains("_remote") || safe(origin.url, "").contains("_remote")) && (safe(action, "") == "access_granted" || safe(log.eventType, "") == "transport") && (safe(log.auditRequestLayer, "") == "transport" || safe(log.transportProfile, "") == "default")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - origin.ip
+    - log.clusterName

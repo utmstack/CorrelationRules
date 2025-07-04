@@ -1,0 +1,33 @@
+- id: 1011
+  dataTypes:
+    - json-input
+  name: Prototype Pollution Attempt Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Application Attack
+  technique: Prototype Pollution
+  adversary: origin
+  references:
+    - https://www.netspi.com/blog/technical-blog/web-application-pentesting/ultimate-guide-to-prototype-pollution/
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects attempts to pollute JavaScript object prototypes through malicious JSON input containing __proto__, constructor, or prototype properties
+  where: |
+    (safe(log.__proto__, "") != "" ||
+     safe(log.constructor, "") != "" ||
+     safe(log.prototype, "") != "" ||
+     contains(safe(raw, ""), "__proto__") ||
+     contains(safe(raw, ""), "constructor.prototype") ||
+     contains(safe(raw, ""), "Object.prototype"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - origin.user

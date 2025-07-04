@@ -1,0 +1,40 @@
+- id: 1017
+  dataTypes:
+    - redis_module
+  name: Redis HyperLogLog Manipulation Attack
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Collection
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://redis.io/docs/latest/develop/data-types/probabilistic/hyperloglogs/
+    - https://redis.io/docs/latest/commands/pfadd/
+    - https://attack.mitre.org/techniques/T1565/
+  description: Detects potential manipulation of Redis HyperLogLog data structures through unusual PFADD/PFCOUNT patterns, GET/SET operations on HLL keys, or performance-based attacks using multiple-key PFCOUNT operations
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      (safe(log.msg, "").contains("PFCOUNT") && safe(log.msg, "").matches(".*PFCOUNT\\s+\\w+\\s+\\w+.*")) ||
+      (safe(log.msg, "").contains("GET") && safe(log.msg, "").contains("HLL")) ||
+      (safe(log.msg, "").contains("SET") && safe(log.msg, "").contains("HLL")) ||
+      (safe(log.msg, "").contains("PFADD") && safe(log.severity, "") == "warning") ||
+      (safe(log.msg, "").contains("corrupted HyperLogLog"))
+    ) &&
+    safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.msg
+          operator: filter_wildcard
+          value: '*PF*'
+      within: now-10m
+      count: 20
+  deduplicateBy:
+    - origin.host
+    - log.msg

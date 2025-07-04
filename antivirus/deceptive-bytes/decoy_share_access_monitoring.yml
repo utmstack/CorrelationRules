@@ -1,0 +1,27 @@
+- id: 1006
+  dataTypes:
+    - deceptive-bytes
+  name: Decoy Share Access Monitoring
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Discovery
+  technique: Network Share Discovery
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1135/
+    - https://deceptivebytes.com/solution/
+  description: Detects when an attacker attempts to access decoy network shares set up by Deceptive Bytes. This indicates potential lateral movement or reconnaissance activity within the network.
+  where: safe(log.eventType, "") == "decoy_access" && safe(log.resourceType, "") == "network_share" && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.decoyName

@@ -1,0 +1,30 @@
+- id: 1004
+  dataTypes:
+    - elasticsearch
+  name: Query Injection Attempt Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Injection Attacks
+  technique: Query Injection
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/audit-event-types.html
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential query injection attempts through suspicious REST API requests containing malicious patterns or unauthorized query parameters.
+  where: safe(log.auditRestRequestPath, "") != "" && (safe(log.auditRestRequestPath, "").contains("_script") || safe(log.auditRestRequestPath, "").contains("_search")) && safe(log.auditRequestExceptionStacktrace, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.auditRestRequestPath.keyword
+          operator: filter_match
+          value: '_script'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.auditRestRequestPath

@@ -1,0 +1,40 @@
+- id: 1019
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb HTTP Response Splitting Attempts
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 2
+  category: Injection Attack
+  technique: HTTP Response Splitting
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.2.2/log-message-reference/445549/attack
+    - https://attack.mitre.org/techniques/T1055/
+    - https://owasp.org/www-community/attacks/HTTP_Response_Splitting
+  description: Detects HTTP response splitting attempts that could allow attackers to inject arbitrary HTTP responses, potentially leading to XSS, cache poisoning, or phishing attacks
+  where: |
+    safe(log.type, "") == "attack" && 
+    (safe(log.subtype, "") in ["response_splitting", "http_response_splitting"] ||
+     safe(log.msg, "").contains("response splitting") ||
+     safe(log.msg, "").contains("HTTP/1.1") && safe(log.msg, "").contains("\\r\\n") ||
+     safe(log.msg, "").contains("%0d%0a%0d%0a") ||
+     safe(log.msg, "").contains("Content-Length:") && safe(log.msg, "").contains("\\r\\n") ||
+     safe(log.msg, "").contains("Set-Cookie:") && safe(log.msg, "").contains("\\r\\n")) &&
+    safe(action, "") in ["Alert", "Block", "Deny"] &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'Block'
+      within: now-2h
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.policy

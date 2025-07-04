@@ -1,0 +1,31 @@
+- id: 1014
+  dataTypes:
+    - auditd
+  name: Syscall Filtering Bypass Attempts
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Defense Evasion
+  technique: Process Injection
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1055/
+    - https://izyknows.medium.com/linux-auditd-for-threat-detection-d06c8b941505
+  description: Detects attempts to bypass syscall filtering through ptrace or other injection techniques
+  where: safe(log.type, "") == "SYSCALL" && (safe(log.syscall, "") == "ptrace" || safe(log.syscall, "") == "process_vm_writev" || safe(log.syscall, "") == "process_vm_readv") && safe(log.success, "") == "yes"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.syscall.keyword
+          operator: filter_match
+          value: 'ptrace process_vm_writev process_vm_readv'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.pid
+    - log.ppid

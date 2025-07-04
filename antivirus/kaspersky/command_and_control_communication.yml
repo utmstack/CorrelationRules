@@ -1,0 +1,30 @@
+- id: 1017
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky Command and Control Communication Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Command and Control
+  technique: Application Layer Protocol
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1071/
+    - https://support.kaspersky.com/KLMS/8.2/en-US/151504.htm
+  description: Detects potential command and control (C2) communication attempts identified by Kaspersky, including suspicious outbound connections, malware callbacks, and botnet communication patterns
+  where: (safe(log.cs2, "") =~ ".*[Bb]ot.*" || safe(log.cs2, "") =~ ".*C2.*" || safe(log.cs2, "") =~ ".*[Cc]ommand.*[Cc]ontrol.*" || safe(log.msg, "") =~ ".*callback.*" || safe(log.msg, "") =~ ".*beacon.*" || safe(log.cat, "") == "NetworkThreat") && safe(target.ip, "") != "" && safe(action, "") != "blocked"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - target.ip

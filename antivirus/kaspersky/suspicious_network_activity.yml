@@ -1,0 +1,44 @@
+- id: 1003
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky Suspicious Network Activity Detection
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 3
+  category: Network Threat
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://support.kaspersky.com/kwts/6.1/267200
+    - https://attack.mitre.org/techniques/T1071/
+    - https://attack.mitre.org/techniques/T1043/
+  description: Detects suspicious network activities including unusual connections, potential C2 communications, or network-based attacks identified by Kaspersky security monitoring.
+  where: |
+    safe(log.signatureID, "") != "" && 
+    (
+      contains(safe(log.msg, ""), "suspicious connection") ||
+      contains(safe(log.msg, ""), "network attack") ||
+      contains(safe(log.descMsg, ""), "network") ||
+      contains(safe(log.cs1, ""), "NETWORK") ||
+      contains(safe(log.cs2, ""), "Net-Worm") ||
+      contains(safe(log.cs4, ""), "Net-Worm") ||
+      contains(safe(log.msg, ""), "port scan") ||
+      contains(safe(log.msg, ""), "unusual traffic") ||
+      (safe(target.ip, "") != "" && safe(log.dpt, "") != "")
+    ) &&
+    safe(action, "") == "Blocked"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - target.ip

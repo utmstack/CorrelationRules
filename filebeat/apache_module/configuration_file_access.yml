@@ -1,0 +1,57 @@
+- id: 1003
+  dataTypes:
+    - apache
+  name: Suspicious Configuration File Access
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Information Gathering
+  technique: Configuration Discovery
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1005/
+    - https://httpd.apache.org/docs/2.4/configuring.html
+  description: Detects access attempts to sensitive configuration files that could expose server configuration, credentials, or other sensitive information
+  where: |
+    safe(origin.path, "") != "" &&
+    (
+      origin.path.contains(".conf") ||
+      origin.path.contains(".config") ||
+      origin.path.contains(".ini") ||
+      origin.path.contains(".xml") ||
+      origin.path.contains(".yml") ||
+      origin.path.contains(".yaml") ||
+      origin.path.contains(".env") ||
+      origin.path.contains(".git/") ||
+      origin.path.contains(".svn/") ||
+      origin.path.contains("web.config") ||
+      origin.path.contains("httpd.conf") ||
+      origin.path.contains("apache2.conf") ||
+      origin.path.contains("php.ini") ||
+      origin.path.contains("wp-config.php") ||
+      origin.path.contains("database.php") ||
+      origin.path.contains("db.php") ||
+      origin.path.contains("config.php") ||
+      origin.path.contains("settings.php") ||
+      origin.path.contains(".DS_Store") ||
+      origin.path.contains("Thumbs.db") ||
+      origin.path.contains(".bash_history") ||
+      origin.path.contains("id_rsa") ||
+      origin.path.contains(".ssh/")
+    ) &&
+    safe(log.statusCode, 0) < 400
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.statusCode
+          operator: filter_term
+          value: '200'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - origin.path

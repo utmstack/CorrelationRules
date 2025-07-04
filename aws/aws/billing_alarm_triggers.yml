@@ -1,0 +1,26 @@
+- id: 1027
+  dataTypes:
+    - aws
+  name: AWS Billing Alarm Triggers
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 4
+  category: Cost Management
+  technique: Resource Monitoring
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/monitor_estimated_charges_with_cloudwatch.html
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects when billing alarms are triggered, which may indicate unexpected cost increases due to resource hijacking, cryptomining, or other unauthorized activities
+  where: safe(log.eventSource, "") == "monitoring.amazonaws.com" && safe(log.eventName, "") == "PutMetricAlarm" && safe(log.requestParameters, "").contains("EstimatedCharges")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityAccountId.keyword
+          operator: filter_term
+          value: '{{log.userIdentityAccountId}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - log.userIdentityAccountId

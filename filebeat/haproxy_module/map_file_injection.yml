@@ -1,0 +1,36 @@
+- id: 1025
+  dataTypes:
+    - haproxy
+  name: HAProxy Map File Injection Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Code Injection
+  technique: Server Software Component Exploitation
+  adversary: origin
+  references:
+    - https://www.haproxy.com/blog/introduction-to-haproxy-maps
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential injection attempts in HAProxy map files which could be used to manipulate request routing, header manipulation, or access control lists. Map files are used for dynamic configuration and URL rewriting.
+  where: |
+    safe(action, "") == "haproxy.log" && 
+    (safe(log.message, "") contains "map" || 
+     safe(log.message, "") contains "acl") &&
+    (safe(log.message, "") contains "invalid entry" ||
+     safe(log.message, "") contains "map update failed" ||
+     safe(log.message, "") contains "pattern mismatch" ||
+     safe(log.message, "") contains "illegal character" ||
+     safe(log.message, "") contains "map reload error" ||
+     safe(log.message, "") matches "map .* contains suspicious")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-20m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.message

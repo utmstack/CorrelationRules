@@ -1,0 +1,35 @@
+- id: 1022
+  dataTypes:
+    - generic
+  name: Recursive Parsing Attack Detection
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 5
+  category: Denial of Service
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1499/
+    - https://cwe.mitre.org/data/definitions/674.html
+  description: Detects patterns that could cause recursive parsing issues or infinite loops in log processors, potentially leading to CPU exhaustion or memory overflow.
+  where: |
+    (safe(log.message, "").matches(".*\\$\\{[^}]*\\$\\{[^}]*\\}[^}]*\\}.*") ||
+     safe(log.message, "").matches(".*\\(\\([^)]*\\([^)]*\\)[^)]*\\)\\).*") ||
+     safe(log.message, "").matches(".*\\\\x[0-9a-fA-F]{2}\\\\x[0-9a-fA-F]{2}\\\\x[0-9a-fA-F]{2}\\\\x[0-9a-fA-F]{2}.*") ||
+     safe(log.message, "").contains("eval(eval(") ||
+     safe(log.message, "").contains("decode(decode(") ||
+     safe(log.message, "").contains("parse(parse(") ||
+     safe(log.message, "").matches(".*(&amp;){5,}.*") ||
+     safe(log.message, "").matches(".*(\\\\\\\\){10,}.*"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.message

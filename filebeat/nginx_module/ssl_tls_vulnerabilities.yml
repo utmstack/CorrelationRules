@@ -1,0 +1,54 @@
+- id: 1005
+  dataTypes:
+    - nginx
+  name: SSL/TLS Vulnerability Exploitation
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Protocol Attack
+  technique: SSL/TLS Exploitation
+  adversary: origin
+  references:
+    - https://nginx.org/en/docs/http/ngx_http_ssl_module.html
+    - https://attack.mitre.org/techniques/T1040/
+  description: Detects attempts to exploit SSL/TLS vulnerabilities in nginx including protocol downgrade attacks, cipher suite manipulation, certificate validation bypass, and SSL stripping attacks. Monitors error logs for SSL handshake failures and suspicious patterns.
+  where: |
+    safe(origin.ip, "") != "" &&
+    (
+      (safe(log.message, "") != "" && (
+        log.message.contains("SSL_do_handshake() failed") ||
+        log.message.contains("SSL_shutdown() failed") ||
+        log.message.contains("SSL certificate error") ||
+        log.message.contains("SSL certificate verify error") ||
+        log.message.contains("no shared cipher") ||
+        log.message.contains("unknown protocol") ||
+        log.message.contains("wrong version number") ||
+        log.message.contains("decryption failed or bad record mac") ||
+        log.message.contains("tlsv1 alert") ||
+        log.message.contains("sslv3 alert") ||
+        log.message.contains("SSL routines") ||
+        log.message.contains("peer closed connection in SSL handshake")
+      )) ||
+      (safe(protocol, "") != "" && (
+        protocol.contains("HTTP/1.0") ||
+        protocol.contains("SSLv2") ||
+        protocol.contains("SSLv3")
+      )) ||
+      (safe(log.request, "") != "" && (
+        log.request.contains("https://") && safe(origin.path, "") != "" && origin.path.startsWith("http://") ||
+        log.request.matches(".*[Ss][Ss][Ll].*[Vv]2.*") ||
+        log.request.matches(".*[Ss][Ss][Ll].*[Vv]3.*")
+      )) ||
+      (safe(log.severityLabel, "") == "error" && safe(log.message, "") != "" && log.message.contains("SSL"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip

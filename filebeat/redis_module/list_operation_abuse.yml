@@ -1,0 +1,40 @@
+- id: 1019
+  dataTypes:
+    - redis_module
+  name: Redis List Operation Abuse Detection
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: Command and Control
+  technique: Data Obfuscation
+  adversary: origin
+  references:
+    - https://redis.io/docs/latest/develop/data-types/lists/
+    - https://redis.io/docs/latest/commands/lpush/
+    - https://attack.mitre.org/techniques/T1001/
+  description: Detects abuse of Redis list operations including excessive LPUSH/RPUSH operations for data exfiltration, blocking pop operations for DoS, or unusual LRANGE queries that could indicate reconnaissance activities
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      (safe(log.msg, "").matches(".*[LR]PUSH\\s+\\w+\\s+.{1000,}.*")) ||
+      (safe(log.msg, "").contains("BLPOP") && safe(log.msg, "").contains("timeout")) ||
+      (safe(log.msg, "").contains("BRPOP") && safe(log.msg, "").contains("timeout")) ||
+      (safe(log.msg, "").contains("LRANGE") && safe(log.msg, "").matches(".*LRANGE\\s+\\w+\\s+0\\s+-1.*")) ||
+      (safe(log.msg, "").contains("LTRIM") && safe(log.severity, "") == "warning") ||
+      (safe(log.msg, "").matches(".*list.*exceeds.*memory.*"))
+    ) &&
+    safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.msg
+          operator: filter_regex
+          value: '.*(LPUSH|RPUSH|LRANGE|BLPOP|BRPOP).*'
+      within: now-15m
+      count: 30
+  deduplicateBy:
+    - origin.host

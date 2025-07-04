@@ -1,0 +1,31 @@
+- id: 1017
+  dataTypes:
+    - kafka
+  name: Transaction Coordinator Attack Detected
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 3
+  category: Transaction Manipulation
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://cwiki.apache.org/confluence/display/KAFKA/Transactional+Messaging+in+Kafka
+    - https://www.confluent.io/blog/transactions-apache-kafka/
+    - https://attack.mitre.org/techniques/T1565/
+  description: Detects potential attacks on Kafka transaction coordinator that could compromise exactly-once semantics. This includes unauthorized transaction state changes, coordinator failures, or attempts to manipulate transaction logs.
+  where: safe(log.severity, "") == "ERROR" && safe(log.msg, "") != "" && (log.msg.contains("TransactionCoordinator") || log.msg.contains("transaction coordinator") || log.msg.contains("TransactionalId")) && (log.msg.contains("unauthorized") || log.msg.contains("invalid") || log.msg.contains("failed") || log.msg.contains("timeout") || log.msg.contains("epoch"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.severity.keyword
+          operator: filter_term
+          value: 'ERROR'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.msg

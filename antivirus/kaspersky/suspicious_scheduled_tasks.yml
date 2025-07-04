@@ -1,0 +1,27 @@
+- id: 1018
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky Suspicious Scheduled Tasks Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Persistence
+  technique: Scheduled Task/Job
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1053/
+    - https://support.kaspersky.com/ScanEngine/1.0/en-US/186767.htm
+  description: Detects suspicious scheduled task creation or modification identified by Kaspersky, which could indicate persistence mechanisms used by malware or attackers
+  where: (safe(log.msg, "") =~ ".*[Ss]cheduled.*[Tt]ask.*" || safe(log.msg, "") =~ ".*schtasks.*" || safe(log.msg, "") =~ ".*cron.*" || safe(log.cs2, "") =~ ".*[Pp]ersist.*" || safe(log.fname, "") =~ ".*\\\\Tasks\\\\.*") && (safe(log.signatureID, "") != "" || safe(log.cs1, "") == "infected" || safe(log.cs1, "") == "suspicious")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - log.fname

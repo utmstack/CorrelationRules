@@ -1,0 +1,46 @@
+- id: 1022
+  dataTypes:
+    - auditd
+  name: Linux Capability Usage Tracking
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Privilege Management
+  technique: Abuse Elevation Control Mechanism
+  adversary: origin
+  references:
+    - https://man7.org/linux/man-pages/man7/capabilities.7.html
+    - https://attack.mitre.org/techniques/T1548/
+  description: Monitors the use of Linux capabilities by processes, particularly focusing on dangerous capabilities like CAP_SYS_ADMIN, CAP_NET_RAW, or CAP_DAC_OVERRIDE that could be abused for privilege escalation or system compromise.
+  where: >
+    safe(action, "") == "auditd.log" && 
+    (
+      safe(log.record_type, "") == "CAPSET" ||
+      safe(log.record_type, "") == "CAPABILITY" ||
+      (safe(log.record_type, "") == "SYSCALL" && safe(log.syscall, "") == "capset")
+    ) &&
+    (
+      strings.contains(safe(log.cap_effective, ""), "cap_sys_admin") ||
+      strings.contains(safe(log.cap_effective, ""), "cap_net_raw") ||
+      strings.contains(safe(log.cap_effective, ""), "cap_dac_override") ||
+      strings.contains(safe(log.cap_effective, ""), "cap_sys_ptrace") ||
+      strings.contains(safe(log.cap_effective, ""), "cap_sys_module") ||
+      strings.contains(safe(log.cap_effective, ""), "cap_setuid") ||
+      strings.contains(safe(log.cap_effective, ""), "cap_setgid")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.uid.keyword
+          operator: filter_term
+          value: '{{log.uid}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.comm
+    - log.cap_effective

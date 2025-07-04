@@ -1,0 +1,35 @@
+- id: 1003
+  dataTypes:
+    - nats
+  name: NATS Publisher Flooding Attack
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Denial of Service
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://docs.nats.io/running-a-nats-service/configuration
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects publisher flooding attacks where a client publishes an excessive number of messages to overwhelm the NATS server or subscribers
+  where: |
+    safe(action, "") == "nats.log" &&
+    (safe(log.operation, "") == "PUB" ||
+     safe(log.msg_type, "") == "PUB" ||
+     safe(log.event_type, "") == "publish") &&
+    safe(log.msg_size, 0) > 0
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.client_id.keyword
+          operator: filter_term
+          value: '{{log.client_id}}'
+      within: now-1m
+      count: 1000
+  deduplicateBy:
+    - origin.host
+    - log.client_id

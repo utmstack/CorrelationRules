@@ -1,0 +1,33 @@
+- id: 1007
+  dataTypes:
+    - haproxy
+  name: HTTP Request Smuggling Attempt
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Web Application Attack
+  technique: HTTP Request Smuggling
+  adversary: origin
+  references:
+    - https://www.haproxy.com/blog/haproxy-log-customization
+    - https://attack.mitre.org/techniques/T1027/
+    - https://portswigger.net/web-security/request-smuggling
+  description: Detects potential HTTP request smuggling attempts through conflicting Content-Length and Transfer-Encoding headers, malformed requests, or protocol violations
+  where: |
+    (safe(log.http_request, "") != "" && (contains(lower(safe(log.http_request, "")), "transfer-encoding") && contains(lower(safe(log.http_request, "")), "content-length"))) ||
+    (safe(log.termination_state, "") != "" && (contains(safe(log.termination_state, ""), "PR") || contains(safe(log.termination_state, ""), "PH") || contains(safe(log.termination_state, ""), "PT"))) ||
+    (safe(log.http_request, "") != "" && (contains(safe(log.http_request, ""), "\\r\\n\\r\\n") || contains(safe(log.http_request, ""), "\\n\\n"))) ||
+    (safe(log.captured_request_headers, "") != "" && (contains(lower(safe(log.captured_request_headers, "")), "chunked") && contains(lower(safe(log.captured_request_headers, "")), "identity"))) ||
+    (safe(log.http_status, 0) == 400 && safe(log.termination_state, "") != "" && contains(safe(log.termination_state, ""), "R"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.url

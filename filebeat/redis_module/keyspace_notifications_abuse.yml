@@ -1,0 +1,31 @@
+- id: 1011
+  dataTypes:
+    - redis
+  name: Keyspace Notifications Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Information Disclosure
+  technique: System Information Discovery
+  adversary: origin
+  references:
+    - https://redis.io/docs/latest/develop/use/keyspace-notifications/
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects potential abuse of Redis keyspace notifications which could be used to monitor sensitive key operations in real-time. Attackers may enable keyspace notifications to track database operations and exfiltrate information about key access patterns.
+  where: >
+    safe(log.msg, "") != "" && 
+    (log.msg.contains("CONFIG SET notify-keyspace-events") || 
+     log.msg.contains("PSUBSCRIBE __key") || 
+     log.msg.contains("SUBSCRIBE __key") ||
+     (log.msg.contains("CONFIG") && log.msg.contains("notify-keyspace-events") && !log.msg.contains("GET")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.host

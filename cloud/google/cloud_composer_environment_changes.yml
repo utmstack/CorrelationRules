@@ -1,0 +1,40 @@
+- id: 1026
+  dataTypes:
+    - google
+  name: Cloud Composer Environment Modifications
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Infrastructure Modification
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://cloud.google.com/composer/docs/how-to/audit-logging
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects modifications to Google Cloud Composer environments which could indicate unauthorized changes to workflow orchestration infrastructure. Monitors for environment creation, updates, configuration changes, and workload modifications.
+  where: |
+    safe(log.protoPayload.serviceName, "") == "composer.googleapis.com" && 
+    safe(log.protoPayload.methodName, "") in [
+      "google.cloud.orchestration.airflow.service.v1.Environments.CreateEnvironment",
+      "google.cloud.orchestration.airflow.service.v1.Environments.UpdateEnvironment",
+      "google.cloud.orchestration.airflow.service.v1.Environments.DeleteEnvironment",
+      "google.cloud.orchestration.airflow.service.v1.Environments.CreateUserWorkloadsConfigMap",
+      "google.cloud.orchestration.airflow.service.v1.Environments.UpdateUserWorkloadsConfigMap",
+      "google.cloud.orchestration.airflow.service.v1.Environments.DeleteUserWorkloadsConfigMap",
+      "google.cloud.orchestration.airflow.service.v1.Environments.CreateUserWorkloadsSecret",
+      "google.cloud.orchestration.airflow.service.v1.Environments.UpdateUserWorkloadsSecret",
+      "google.cloud.orchestration.airflow.service.v1.Environments.DeleteUserWorkloadsSecret"
+    ] &&
+    safe(severity, "") != "low"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.protoPayload.authenticationInfo.principalEmail.keyword
+          operator: filter_term
+          value: '{{log.protoPayload.authenticationInfo.principalEmail}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - log.protoPayload.authenticationInfo.principalEmail
+    - log.resourceLabelsProjectId

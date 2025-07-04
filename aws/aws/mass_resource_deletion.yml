@@ -1,0 +1,32 @@
+- id: 1005
+  dataTypes:
+    - aws
+  name: AWS Mass Resource Deletion
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 5
+  category: Impact
+  technique: Data Destruction
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-concepts.html
+    - https://attack.mitre.org/techniques/T1485/
+  description: Detects mass deletion of AWS resources which could indicate destructive attack or insider threat. Monitors for multiple delete operations across various AWS services.
+  where: |
+    (safe(log.eventName, "") contains "Delete" || 
+     safe(log.eventName, "") contains "Terminate" || 
+     safe(log.eventName, "") contains "Remove") &&
+    safe(log.errorCode, "") == "" &&
+    safe(log.eventSource, "") != "s3.amazonaws.com"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityArn.keyword
+          operator: filter_term
+          value: '{{log.userIdentityArn}}'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - log.userIdentityArn
+    - log.sourceIPAddress

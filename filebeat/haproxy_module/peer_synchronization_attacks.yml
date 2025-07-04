@@ -1,0 +1,36 @@
+- id: 1022
+  dataTypes:
+    - haproxy
+  name: HAProxy Peer Synchronization Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Network Security
+  technique: Man-in-the-Middle
+  adversary: origin
+  references:
+    - https://www.haproxy.com/documentation/haproxy-configuration-manual/2-4r1/
+    - https://attack.mitre.org/techniques/T1557/
+  description: Detects suspicious peer synchronization activities that may indicate an attempt to manipulate stick-table data or inject malicious entries across HAProxy instances. Monitors for abnormal peer connection patterns or data propagation anomalies.
+  where: |
+    safe(action, "") == "haproxy.log" && 
+    (safe(log.message, "") contains "peer" || 
+     safe(log.message, "") contains "stick-table") &&
+    (safe(log.message, "") contains "sync error" ||
+     safe(log.message, "") contains "peer connection failed" ||
+     safe(log.message, "") contains "invalid peer" ||
+     safe(log.message, "") contains "unexpected data" ||
+     safe(log.message, "") contains "sync timeout" ||
+     safe(log.message, "") matches "peer .* rejected")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.message

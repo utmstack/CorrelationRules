@@ -1,0 +1,36 @@
+- id: 1004
+  dataTypes:
+    - redis
+  name: Redis Persistence Mechanism Abuse Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Persistence
+  technique: Server Software Component
+  adversary: origin
+  references:
+    - https://medium.com/@knownsec404team/rce-exploits-of-redis-based-on-master-slave-replication-ef7a664ce1d0
+    - https://attack.mitre.org/techniques/T1505/
+  description: Detects attempts to abuse Redis persistence mechanisms for maintaining unauthorized access, including suspicious RDB/AOF operations, module loading for backdoors, or configuration changes to establish persistence
+  where: |
+    safe(log.msg, "") != "" && (
+      (safe(log.msg, "").matches("(?i)CONFIG\\s+SET\\s+(save|appendonly|appendfsync|aof-rewrite)")) ||
+      (safe(log.msg, "").matches("(?i)MODULE\\s+LOAD\\s+") && !safe(log.msg, "").matches("(?i)(redis[_-]?search|redis[_-]?graph|redis[_-]?timeseries|redis[_-]?json|redis[_-]?bloom)")) ||
+      (safe(log.msg, "").matches("(?i)CONFIG\\s+SET\\s+dir\\s+/(root|home|usr|etc|var/spool/cron)")) ||
+      (safe(log.msg, "").matches("(?i)CONFIG\\s+SET\\s+dbfilename\\s+(crontab|authorized_keys|passwd|shadow|\\.bashrc|\\.profile)")) ||
+      (safe(log.msg, "").matches("(?i)(BGREWRITEAOF|BGSAVE)") && safe(log.msg, "").matches("(?i)(ssh|cron|bash|shell)")) ||
+      (safe(log.role, "") == "master" && safe(log.msg, "").matches("(?i)Synchronization\\s+with\\s+replica.*module\\s+load")) ||
+      (safe(log.msg, "").matches("(?i)MODULE\\s+(LIST|UNLOAD)") && safe(severity, "") == "high")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.pid

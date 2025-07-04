@@ -1,0 +1,35 @@
+- id: 1015
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne Mass Deployment Anomalies
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Execution
+  technique: Deploy Malicious Tool
+  adversary: origin
+  references:
+    - https://support.sentinelone.com/hc/en-us/articles/360052967133-Deploy-Windows-Agents
+    - https://attack.mitre.org/techniques/T1608/002/
+  description: Detects anomalous mass deployment activities in SentinelOne, including rapid agent installations, bulk policy changes, or mass updates that could indicate unauthorized deployment, supply chain attack, or insider threat activity.
+  where: |
+    (safe(log.eventDescription, "") =~ ".*(mass|bulk|batch).*(deploy|install|update).*" ||
+     safe(log.eventDescription, "") =~ ".*(deploy|install).*(multiple|many|bulk).*" ||
+     safe(log.activityType, "") =~ "(mass_deployment|bulk_install|batch_update)" ||
+     safe(log.deploymentType, "") =~ "(mass|bulk|automated)" ||
+     (safe(log.eventType, "") == "AgentInstalled" && safe(log.installMethod, "") == "bulk"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.accountId.keyword
+          operator: filter_term
+          value: '{{log.accountId}}'
+        - field: log.sourceUser.keyword
+          operator: filter_term
+          value: '{{log.sourceUser}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - log.accountId
+    - log.sourceUser

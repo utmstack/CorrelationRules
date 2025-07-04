@@ -1,0 +1,30 @@
+- id: 1017
+  dataTypes:
+    - antivirus-esmc-eset
+  name: Data Loss Prevention Alert
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Data Protection
+  technique: Data from Local System
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1005/
+    - https://help.eset.com/protect_admin/10.1/en-US/events-exported-to-json-format.html
+  description: Detects when sensitive data is being accessed or transferred in violation of data loss prevention policies, potentially indicating data exfiltration attempts
+  where: safe(log.event_type, "") == "DLP_Event" && safe(action, "") in ["blocked", "quarantined"] && (safe(log.file_path, "") != "" || safe(log.target_path, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{log.user}}'
+        - field: log.event_type.keyword
+          operator: filter_term
+          value: 'DLP_Event'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.file_path

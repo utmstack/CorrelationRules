@@ -1,0 +1,33 @@
+- id: 1011
+  dataTypes:
+    - haproxy
+  name: HAProxy Stats Page Suspicious Access
+  impact:
+    confidentiality: 4
+    integrity: 1
+    availability: 1
+  category: Discovery
+  technique: T1082 - System Information Discovery
+  adversary: origin
+  references:
+    - https://www.haproxy.com/blog/exploring-the-haproxy-stats-page
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects suspicious or repeated access attempts to the HAProxy stats page, which could indicate reconnaissance activity. Attackers often target stats pages to gather information about backend servers, traffic patterns, and system configuration.
+  where: |
+    safe(origin.url, "") contains "/stats" && 
+    (safe(log.http.response.status_code, 0) == 200 || 
+     safe(log.http.response.status_code, 0) == 401 || 
+     safe(log.http.response.status_code, 0) == 403)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: origin.url.keyword
+          operator: wildcard
+          value: '*stats*'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip

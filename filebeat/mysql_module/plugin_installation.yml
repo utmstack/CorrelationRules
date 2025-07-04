@@ -1,0 +1,27 @@
+- id: 1012
+  dataTypes:
+    - mysql
+  name: MySQL Plugin Installation Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Persistence
+  technique: Server Software Component (T1505)
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/server-plugin-loading.html
+    - https://attack.mitre.org/techniques/T1505/
+  description: Detects plugin installation attempts in MySQL which could be used for persistence or to extend server functionality maliciously
+  where: >
+    safe(log.msg, "") != "" && 
+    (log.msg.contains("INSTALL PLUGIN") || 
+     log.msg.contains("plugin") && (log.msg.contains("loaded") || log.msg.contains("installed")) ||
+     log.msg.contains("library") && log.msg.contains(".so") ||
+     log.msg.contains("library") && log.msg.contains(".dll") ||
+     log.msg.contains("UNINSTALL PLUGIN") ||
+     log.subsystem == "Plugin" ||
+     log.errorCode == "MY-013129")
+  deduplicateBy:
+    - origin.host
+    - log.msg

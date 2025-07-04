@@ -1,0 +1,32 @@
+- id: 1006
+  dataTypes:
+    - json-input
+  name: JSON Type Confusion Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Application Attack
+  technique: Type Confusion
+  adversary: origin
+  references:
+    - https://bishopfox.com/blog/json-interoperability-vulnerabilities
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects attempts to exploit type confusion vulnerabilities in JSON parsing where attackers manipulate data types to bypass security controls or cause unexpected behavior
+  where: >
+    (safe(log.algorithm, "") != "" && safe(log.expected_algorithm, "") != "" && log.algorithm != log.expected_algorithm) ||
+    (safe(log.data_type_mismatch, false) == true) ||
+    (safe(log.parser_error, "") contains "type mismatch") ||
+    (safe(log.validation_error, "") contains "unexpected type") ||
+    (safe(log.json_field_type, "") != "" && safe(log.expected_field_type, "") != "" && log.json_field_type != log.expected_field_type)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.target_field

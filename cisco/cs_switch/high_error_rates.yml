@@ -1,0 +1,37 @@
+- id: 1013
+  dataTypes:
+    - cs_switch
+  name: High Error Rate Detected on Switch
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 4
+  category: Network Performance
+  technique: Network Denial of Service
+  adversary: destination
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst9200/software/release/17-16/configuration_guide/sys_mgmt/b_1716_sys_mgmt_9200_cg/configuring_system_message_logs.html
+    - https://attack.mitre.org/techniques/T1498/
+  description: Detects high error rates on Cisco switches which may indicate network issues, hardware problems, or potential denial of service conditions
+  where: |
+    safe(log.severity, 10) <= 3 &&
+    (contains(safe(log.message, ""), "error rate exceed") ||
+     contains(safe(log.message, ""), "excessive errors") ||
+     contains(safe(log.message, ""), "error threshold") ||
+     safe(log.mnemonic, "") == "EXCESSIVE_ERRORS" ||
+     safe(log.mnemonic, "") == "ERR_THRESHOLD" ||
+     (safe(log.facility, "") == "LINEPROTO" && contains(safe(log.message, ""), "error")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: destination.device.keyword
+          operator: filter_term
+          value: '{{destination.device}}'
+        - field: log.interface.keyword
+          operator: filter_term
+          value: '{{log.interface}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - destination.device
+    - log.interface

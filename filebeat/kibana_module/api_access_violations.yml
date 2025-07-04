@@ -1,0 +1,27 @@
+- id: 1015
+  dataTypes:
+    - kibana
+  name: API Access Violations
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Unauthorized Access
+  technique: T1106
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/api.html
+    - https://attack.mitre.org/techniques/T1106/
+  description: Detects unauthorized or suspicious API access attempts in Kibana including failed authentication, permission violations, or unusual API usage patterns
+  where: (safe(log.eventCategory, "") == "authentication" && safe(actionResult, "") == "failure") || (safe(log.action, "") != "" && log.action.contains("api") && (safe(actionResult, "") == "failure" || safe(log.message, "") != "" && (log.message.contains("unauthorized") || log.message.contains("forbidden") || log.message.contains("denied"))))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - log.action

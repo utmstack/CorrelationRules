@@ -1,0 +1,39 @@
+- id: 1024
+  dataTypes:
+    - apache
+  name: CORS Misconfiguration Exploitation
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Collection
+  technique: Data from Information Repositories
+  adversary: origin
+  references:
+    - https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+    - https://attack.mitre.org/techniques/T1213/
+  description: Detects attempts to exploit Cross-Origin Resource Sharing (CORS) misconfigurations through crafted Origin headers, wildcard origins, or credential requests. This could allow attackers to bypass same-origin policy and access sensitive data.
+  where: >
+    safe(origin.ip, "") != "" &&
+    (safe(log.request, "").contains("Origin:") ||
+     safe(log.referer, "").contains("null") ||
+     (safe(log.request, "").contains("Origin:") && 
+      (log.request.contains("file://") ||
+       log.request.contains("null") ||
+       log.request.contains("*"))) ||
+     (safe(action, "") == "options" && 
+      (safe(log.request, "").contains("Access-Control-Request-Method") ||
+       safe(log.request, "").contains("Access-Control-Request-Headers"))) ||
+     (safe(log.statusCode, 0) == 200 && 
+      safe(log.request, "").contains("credentials=true")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 15
+  deduplicateBy:
+    - origin.ip
+    - origin.path

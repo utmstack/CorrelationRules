@@ -1,0 +1,30 @@
+- id: 1013
+  dataTypes:
+    - auditd
+  name: Log Tampering Attempts
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Defense Evasion
+  technique: Clear Linux or Mac System Logs
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1070/002/
+    - https://www.redhat.com/en/blog/configure-linux-auditing-auditd
+  description: Detects attempts to tamper with or delete audit logs which could indicate malicious activity
+  where: safe(log.type, "") == "PATH" && (safe(log.name, "").contains("/var/log/audit/") || safe(log.name, "").contains("/var/log/messages") || safe(log.name, "").contains("/var/log/secure")) && (safe(log.nametype, "") == "DELETE" || safe(log.mode, "").contains("w"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.name.keyword
+          operator: filter_match
+          value: '/var/log/*'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.name

@@ -1,0 +1,48 @@
+- id: 1002
+  dataTypes:
+    - haproxy
+  name: HAProxy Health Check Tampering Detection
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 4
+  category: Defense Evasion
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://www.haproxy.com/documentation/haproxy-configuration-tutorials/reliability/health-checks/
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects suspicious patterns in HAProxy health check responses including failed health checks, manipulated check intervals, or attempts to bypass health monitoring which could indicate attempts to hide compromised services
+  where: |
+    (safe(action, "") == "haproxy.log" && 
+     safe(log.message, "") contains "Health check" &&
+     (safe(log.message, "") contains "failed" ||
+      safe(log.message, "") contains "timeout" ||
+      safe(log.message, "") contains "refused" ||
+      safe(log.message, "") contains "L4CON" ||
+      safe(log.message, "") contains "L4TOUT")) ||
+    (safe(log.haproxy.check_status, "") != "" &&
+     (safe(log.haproxy.check_status, "") contains "SOCKERR" ||
+      safe(log.haproxy.check_status, "") contains "L4CON" ||
+      safe(log.haproxy.check_status, "") contains "L6RSP" ||
+      safe(log.haproxy.check_status, "") contains "L7RSP")) ||
+    (safe(log.haproxy.server_name, "") != "" &&
+     safe(log.haproxy.check_duration, 0) > 5000) ||
+    (safe(log.message, "") contains "check" &&
+     safe(log.message, "") contains "reason:" &&
+     (safe(log.message, "") contains "Layer4" ||
+      safe(log.message, "") contains "Layer7"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.haproxy.server_name.keyword
+          operator: filter_term
+          value: '{{log.haproxy.server_name}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.haproxy.server_name

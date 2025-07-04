@@ -1,0 +1,32 @@
+- id: 1015
+  dataTypes:
+    - deceptive-bytes
+  name: Living Off The Land Attack Using Deceptive Resources
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Execution
+  technique: Signed Binary Proxy Execution
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1218/
+    - https://attack.mitre.org/techniques/T1053/
+    - https://lolbas-project.github.io/
+    - https://deceptivebytes.com/solution/
+  description: Detects when attackers use legitimate system tools and binaries to interact with deceptive resources, indicating Living Off The Land (LOLBins) attack techniques.
+  where: safe(log.event_type, "") == "lolbin_trap" && safe(log.process_name, "") in ["powershell.exe", "cmd.exe", "wmic.exe", "mshta.exe", "rundll32.exe", "regsvr32.exe", "certutil.exe", "bitsadmin.exe"] && safe(log.deceptive_target, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.process_name.keyword
+          operator: filter_term
+          value: '{{log.process_name}}'
+      within: now-4h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.process_name

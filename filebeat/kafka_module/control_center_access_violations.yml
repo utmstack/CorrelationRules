@@ -1,0 +1,46 @@
+- id: 1022
+  dataTypes:
+    - kafka_module
+  name: Kafka Control Center Access Violation Detected
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Unauthorized Access
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://docs.confluent.io/platform/current/control-center/index.html
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects unauthorized access attempts to Kafka Control Center including failed logins, permission violations, or unusual access patterns that could indicate compromise or insider threats
+  where: |
+    safe(action, "") == "kafka.log" &&
+    (safe(log.component, "") == "ControlCenter" || safe(log.class, "").contains("controlcenter") || safe(log.msg, "").contains("Control Center")) &&
+    (
+      (safe(severity, "") == "high" && log.msg.contains("authentication failed")) ||
+      log.msg.contains("Access denied") ||
+      log.msg.contains("Unauthorized") ||
+      log.msg.contains("403") ||
+      log.msg.contains("401") ||
+      log.msg.contains("Permission denied") ||
+      log.msg.contains("Invalid credentials") ||
+      log.msg.contains("Login failed") ||
+      log.msg.contains("password lookup") ||
+      log.msg.contains("HTTP/1.1 401") ||
+      log.msg.contains("UnauthorizedAccessException") ||
+      log.msg.contains("SecurityException") ||
+      log.msg.contains("ACL violation") ||
+      log.msg.contains("Failed to authenticate") ||
+      log.msg.contains("User not authorized")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.msg

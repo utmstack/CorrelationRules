@@ -1,0 +1,48 @@
+- id: 1013
+  dataTypes:
+    - generic
+  name: Binary Data in Text Logs
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Data Anomaly
+  technique: Binary Payload Injection
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/Binary_planting
+    - https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
+  description: Detects presence of binary data or non-printable characters in text logs which could indicate encoding evasion, malware payloads, or attempts to corrupt log processing systems. Binary data in text logs is often a sign of malicious activity or system compromise.
+  where: |
+    safe(log.message, "") != "" && (
+      log.message.matches(".*[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\xFF]+.*") ||
+      log.message.matches(".*\\x[8-9A-Fa-f][0-9A-Fa-f].*") ||
+      log.message.matches(".*\\x[0-7][0-9A-Fa-f].*") ||
+      log.message.matches(".*\xEF\xBB\xBF.*") ||
+      log.message.matches(".*\xFF\xFE.*") ||
+      log.message.matches(".*\xFE\xFF.*") ||
+      log.message.matches(".*[\x80-\xFF]{3,}.*") ||
+      log.message.matches(".*MZ.{0,100}This program.*") ||
+      log.message.matches(".*\x4D\x5A.*") ||
+      log.message.matches(".*\x7FELF.*") ||
+      log.message.matches(".*PK\x03\x04.*") ||
+      log.message.matches(".*\x50\x4B\x03\x04.*") ||
+      log.message.matches(".*\x1F\x8B\x08.*") ||
+      log.message.matches(".*GIF8[79]a.*") ||
+      log.message.matches(".*\x89PNG.*") ||
+      log.message.matches(".*\xFF\xD8\xFF.*") ||
+      log.message.length() > 0 && 
+      (log.message.matches(".*[^\x20-\x7E\x09\x0A\x0D].*") && 
+       !log.message.matches(".*[a-zA-Z0-9 .,!?:;'\"-]{10,}.*"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.message

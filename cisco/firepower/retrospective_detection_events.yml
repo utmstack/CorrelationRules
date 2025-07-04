@@ -1,0 +1,33 @@
+- id: 1023
+  dataTypes:
+    - firepower
+  name: Firepower Retrospective Malware Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Malware Detection
+  technique: Retrospective Analysis
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/70/configuration/guide/fpmc-config-guide-v70/file_malware_events_and_network_file_trajectory.html
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects when Firepower identifies a file retrospectively as malware after disposition change, indicating delayed threat identification
+  where: |
+    (safe(log.eventType, "") == "RETROSPECTIVE_MALWARE" ||
+     safe(log.eventType, "") == "MALWARE_DISPOSITION_CHANGED" ||
+     safe(log.message, "") contains "retrospective") &&
+    safe(log.disposition, "") in ["MALWARE", "MALICIOUS"] &&
+    safe(origin.ip, "") != "" &&
+    safe(log.sha256, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.sha256.keyword
+          operator: filter_term
+          value: '{{log.sha256}}'
+      within: now-7d
+      count: 1
+  deduplicateBy:
+    - log.sha256
+    - origin.ip

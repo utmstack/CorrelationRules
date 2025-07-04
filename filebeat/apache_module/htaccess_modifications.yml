@@ -1,0 +1,38 @@
+- id: 1004
+  dataTypes:
+    - apache
+  name: .htaccess File Modification Attempts
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Persistence
+  technique: Server Configuration Modification
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1505/
+    - https://httpd.apache.org/docs/2.4/howto/htaccess.html
+  description: Detects attempts to access or modify .htaccess files which could be used to establish persistence, redirect traffic, or bypass security controls
+  where: |
+    safe(origin.path, "") != "" &&
+    origin.path.contains(".htaccess") &&
+    (
+      safe(action, "") == "put" ||
+      safe(action, "") == "post" ||
+      safe(action, "") == "patch" ||
+      (safe(action, "") == "get" && safe(log.statusCode, 0) == 200)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: origin.path.keyword
+          operator: filter_match
+          value: '.htaccess'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - origin.host

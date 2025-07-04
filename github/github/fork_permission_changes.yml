@@ -1,0 +1,33 @@
+- id: 1027
+  dataTypes:
+    - github
+  name: Fork Permission Changes
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Privilege Escalation
+  technique: Permission Groups Discovery
+  adversary: origin
+  references:
+    - https://docs.github.com/en/webhooks/webhook-events-and-payloads#fork
+    - https://attack.mitre.org/techniques/T1069/
+  description: Detects changes to fork permissions or unusual forking activity that could indicate attempts to steal source code or create malicious copies of repositories for supply chain attacks.
+  where: >-
+    (safe(log.action, "") == "created" && safe(log.forkee, "") != "") ||
+    (safe(log.repositoryAllowForking, false) == true && safe(log.action, "") == "edited") ||
+    (safe(log.repositoryFork, false) == true && safe(log.repositoryPrivate, false) == false)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.senderLogin.keyword
+          operator: filter_term
+          value: '{{log.senderLogin}}'
+        - field: log.action.keyword
+          operator: filter_term
+          value: created
+      within: now-24h
+      count: 10
+  deduplicateBy:
+    - log.repositoryName
+    - log.senderLogin

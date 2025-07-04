@@ -1,0 +1,35 @@
+- id: 1013
+  dataTypes:
+    - meraki
+  name: Network Topology Changes
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Network Configuration
+  technique: Network Service Discovery
+  adversary: origin
+  references:
+    - https://documentation.meraki.com/General_Administration/Cross-Platform_Content/Meraki_Event_Log
+    - https://attack.mitre.org/techniques/T1046/
+  description: Detects significant changes to network topology including VLAN modifications, routing changes, or network segmentation alterations that could impact security posture
+  where: |
+    safe(log.eventType, "") == "topology_change" ||
+    safe(log.eventType, "") == "vlan_modified" ||
+    safe(log.eventType, "") == "routing_table_changed" ||
+    safe(log.eventType, "") == "network_added" ||
+    safe(log.eventType, "") == "network_deleted" ||
+    safe(log.eventType, "") == "subnet_modified" ||
+    (safe(log.message, "") =~ ".*(topology|VLAN|routing|network).*change.*") ||
+    (safe(log.eventType, "") == "configuration_change" && safe(log.details, "") =~ ".*(network|topology|vlan).*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: network.id.keyword
+          operator: filter_term
+          value: '{{network.id}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - network.id
+    - log.changeType

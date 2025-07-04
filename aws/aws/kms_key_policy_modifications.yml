@@ -1,0 +1,30 @@
+- id: 1020
+  dataTypes:
+    - aws
+  name: AWS KMS Key Policy Modification
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Credential Access
+  technique: Unsecured Credentials
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html
+    - https://attack.mitre.org/techniques/T1552/
+  description: Detects modifications to AWS KMS key policies which could allow unauthorized access to encrypted data or enable data exfiltration
+  where: safe(log.eventSource, "") == "kms.amazonaws.com" && (safe(log.eventName, "") == "PutKeyPolicy" || safe(log.eventName, "") == "CreateGrant" || safe(log.eventName, "") == "ScheduleKeyDeletion") && safe(log.errorCode, "") == ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityPrincipalId.keyword
+          operator: filter_term
+          value: '{{log.userIdentityPrincipalId}}'
+        - field: log.eventSource.keyword
+          operator: filter_term
+          value: 'kms.amazonaws.com'
+      within: now-2h
+      count: 2
+  deduplicateBy:
+    - log.userIdentityPrincipalId
+    - log.keyId

@@ -1,0 +1,43 @@
+- id: 1007
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb Authentication Bypass Attempt Detected
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 1
+  category: Access Control
+  technique: Authentication Bypass
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.2.2/log-message-reference/252057/event
+    - https://attack.mitre.org/techniques/T1078/
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects authentication bypass attempts including direct access to protected resources, authentication flow manipulation, and credential stuffing attacks on FortiWeb protected applications
+  where: |
+    safe(origin.ip, "") != "" && 
+    safe(log.type, "") == "attack" &&
+    (
+      safe(log.subtype, "") == "account-lockout-detection" ||
+      safe(log.msg, "") contains "authentication" ||
+      safe(log.msg, "") contains "Authentication" ||
+      safe(log.msg, "") contains "bypass" ||
+      safe(log.msg, "") contains "unauthorized access" ||
+      safe(log.attack_type, "") == "auth_bypass" ||
+      safe(log.trigger_policy, "") contains "auth"
+    ) &&
+    safe(action, "") in ["deny", "alert", "block"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'attack'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.user

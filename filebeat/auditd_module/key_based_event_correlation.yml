@@ -1,0 +1,27 @@
+- id: 1016
+  dataTypes:
+    - auditd
+  name: Key-Based Audit Event Correlation
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Audit Anomaly
+  technique: Indicator Removal on Host
+  adversary: origin
+  references:
+    - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/security_guide/sec-defining_audit_rules_and_controls
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects correlated audit events with the same key value indicating potential coordinated malicious activity or system compromise attempts
+  where: safe(log.auditd.data.key, "") != "" && safe(log.auditd.result, "") == "fail"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.auditd.data.key.keyword
+          operator: filter_term
+          value: '{{log.auditd.data.key}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - log.auditd.data.key
+    - origin.host

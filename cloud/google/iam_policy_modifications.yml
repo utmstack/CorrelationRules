@@ -1,0 +1,30 @@
+- id: 1001
+  dataTypes:
+    - google
+  name: Google Cloud IAM Policy Modifications
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Identity and Access Management
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://cloud.google.com/iam/docs/audit-logging
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects IAM policy modifications in Google Cloud Platform which could indicate privilege escalation attempts or unauthorized access changes. Monitors SetIamPolicy operations across various GCP services.
+  where: |
+    safe(log.protoPayload.methodName, "") in ["SetIamPolicy", "google.iam.admin.v1.SetIAMPolicy", "google.iam.admin.v1.WorkforcePools.SetIamPolicy", "google.iam.v1.WorkloadIdentityPools.SetIamPolicy"] ||
+    (safe(log.protoPayload.methodName, "").contains("SetIamPolicy") && 
+     safe(log.protoPayload.serviceName, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.protoPayload.authenticationInfo.principalEmail.keyword
+          operator: filter_term
+          value: '{{log.protoPayload.authenticationInfo.principalEmail}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - log.protoPayload.authenticationInfo.principalEmail
+    - log.protoPayload.resourceName

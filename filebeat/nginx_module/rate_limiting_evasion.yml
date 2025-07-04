@@ -1,0 +1,36 @@
+- id: 1007
+  dataTypes:
+    - nginx
+  name: Nginx Rate Limiting Evasion Attempt
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 4
+  category: Resource Development
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://umatechnology.org/rate-limiting-rules-in-open-source-web-servers-based-on-nginx-configs/
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects attempts to evade nginx rate limiting through burst attacks, multiple connections, or header manipulation targeting limit_req and limit_conn configurations
+  where: |
+    (safe(statusCode, 0) == 429 || safe(statusCode, 0) == 503) ||
+    (safe(log.message, "") contains "limiting requests, excess" && safe(log.severityLabel, "") == "error") ||
+    (safe(log.message, "") contains "limiting connections by zone") ||
+    (safe(actionResult, "") == "denied" && safe(log.message, "") matches ".*(burst|rate limit|throttle).*") ||
+    (safe(log.userAgent, "") == "" && safe(statusCode, 0) >= 400 && safe(statusCode, 0) < 500)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: statusCode
+          operator: filter_range
+          value:
+            gte: 429
+            lte: 503
+      within: now-5m
+      count: 20
+  deduplicateBy:
+    - origin.ip

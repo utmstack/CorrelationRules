@@ -1,0 +1,27 @@
+- id: 1027
+  dataTypes:
+    - azure
+  name: Application Gateway WAF Security Alerts
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Web Application Attack
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/web-application-firewall/ag/web-application-firewall-logs
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects Web Application Firewall alerts from Azure Application Gateway indicating potential web attacks or malicious activity
+  where: (safe(log.operationName, "") == "ApplicationGatewayFirewallLog" || safe(log.type, "") == "ApplicationGatewayFirewallLog") && (safe(log.ruleId, "") != "" || safe(log.action, "") == "Blocked" || safe(log.message, "").contains("attack") || safe(log.message, "").contains("malicious"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.ruleId

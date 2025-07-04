@@ -1,0 +1,40 @@
+- id: 1004
+  dataTypes:
+    - ibm-as400
+  name: IBM AS/400 System Value Changes Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Configuration Change
+  technique: System Configuration Modification
+  adversary: internal
+  references:
+    - https://www.ibm.com/docs/en/i/7.4?topic=entries-sv-system-value-journal
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects changes to critical system values in IBM AS/400 systems including security-related system values like QAUDCTL, QAUDLVL, QSECURITY, and QPWDLVL
+  where: |
+    safe(log.message, "") != "" && 
+    (
+      (contains(safe(log.message, ""), "SV") && contains(safe(log.message, ""), "system value")) ||
+      contains(safe(log.message, ""), "system value changed") ||
+      contains(safe(log.message, ""), "CHGSYSVAL") ||
+      contains(safe(log.message, ""), "QAUDCTL") ||
+      contains(safe(log.message, ""), "QAUDLVL") ||
+      contains(safe(log.message, ""), "QSECURITY") ||
+      contains(safe(log.message, ""), "QPWDLVL") ||
+      contains(safe(log.message, ""), "QMAXSIGN") ||
+      contains(safe(log.message, ""), "QINACTITV") ||
+      contains(safe(log.message, ""), "QRMTSIGN") ||
+      contains(safe(log.message, ""), "QRETSVRSEC")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.message
+          operator: wildcard
+          value: '*system*value*'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.message

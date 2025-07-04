@@ -1,0 +1,34 @@
+- id: 1016
+  dataTypes:
+    - asa
+  name: Syslog Server Configuration Modifications
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1070/001/
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog/syslogs1.html
+  description: Detects modifications to syslog server configuration on ASA devices. Attackers may attempt to disable or redirect syslog to hide their activities or prevent security monitoring.
+  where: |
+    safe(log.message_id, "") == "111008" && 
+    safe(origin.user, "") != "" &&
+    (safe(log.command, "") =~ "(?i)(logging host|no logging|logging trap|logging facility)" ||
+     safe(log.message, "") =~ "(?i)(syslog.*config|logging.*changed|logging.*disabled)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.message_id.keyword
+          operator: filter_term
+          value: '111008'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - origin.ip

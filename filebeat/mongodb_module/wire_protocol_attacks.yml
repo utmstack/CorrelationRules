@@ -1,0 +1,40 @@
+- id: 1017
+  dataTypes:
+    - mongodb
+  name: MongoDB Wire Protocol Attack Attempts
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Protocol Manipulation
+  technique: Man-in-the-Middle
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/reference/mongodb-wire-protocol/
+    - https://attack.mitre.org/techniques/T1557/
+  description: Detects potential attacks on MongoDB wire protocol including malformed requests, protocol violations, and suspicious socket-level activities that could indicate exploitation attempts or man-in-the-middle attacks.
+  where: |
+    safe(log.component, "") == "NETWORK" && 
+    (severity == "high" || severity == "medium") && 
+    (
+      safe(log.message, "") matches ".*wire protocol.*error.*" ||
+      safe(log.message, "") matches ".*socket.*exception.*" ||
+      safe(log.message, "") matches ".*protocol.*violation.*" ||
+      safe(log.message, "") matches ".*invalid.*opcode.*" ||
+      safe(log.message, "") matches ".*malformed.*request.*" ||
+      safe(log.message, "") matches ".*unexpected.*message.*format.*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: origin.port
+          operator: filter_term
+          value: '{{origin.port}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - origin.port

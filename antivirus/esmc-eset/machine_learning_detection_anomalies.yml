@@ -1,0 +1,32 @@
+- id: 1012
+  dataTypes:
+    - antivirus-esmc-eset
+  name: Machine Learning Detection Anomalies
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Malware Detection
+  technique: Malicious File
+  adversary: origin
+  references:
+    - https://help.eset.com/protect_admin/11.0/en-US/events-exported-to-json-format.html
+    - https://attack.mitre.org/techniques/T1204/002/
+  description: Identifies threats detected by ESET's machine learning engine that analyzes file behavior patterns and characteristics to identify previously unknown malware variants.
+  where: |
+    safe(log.event_type, "") == "EnterpriseInspectorAlert_Event" && 
+    safe(log.scanner, "") in ["Machine learning", "ML detection", "AI detection"] &&
+    safe(log.objecttype, "") in ["file", "process", "memory"] &&
+    safe(severity, "") in ["high", "medium"] &&
+    safe(actionResult, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - target.ip
+    - log.processname

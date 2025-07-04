@@ -1,0 +1,38 @@
+- id: 1021
+  dataTypes:
+    - meraki
+  name: Meraki Organization Admin Changes
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Configuration Management
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://documentation.meraki.com/General_Administration/Cross-Platform_Content/Meraki_Event_Log
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects administrative changes made to Meraki organization settings including user account modifications, permission changes, and organization-wide configuration updates. These changes could indicate unauthorized access or insider threats.
+  where: >
+    safe(dataType, "") == "meraki" && 
+    safe(log.event_type, "") == "event_log" &&
+    (
+      contains(safe(log.message, ""), "admin") || 
+      contains(safe(log.message, ""), "organization") ||
+      contains(safe(log.message, ""), "permission") ||
+      contains(safe(log.message, ""), "role") ||
+      contains(safe(log.message, ""), "user added") ||
+      contains(safe(log.message, ""), "user removed") ||
+      contains(safe(log.message, ""), "user modified")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - log.network_name

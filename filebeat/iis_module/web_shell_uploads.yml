@@ -1,0 +1,48 @@
+- id: 1001
+  dataTypes:
+    - iis
+  name: IIS Web Shell Upload Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Initial Access
+  technique: Web Shell
+  adversary: target
+  references:
+    - https://www.microsoft.com/en-us/security/blog/2022/12/12/iis-modules-the-evolution-of-web-shells-and-how-to-detect-them/
+    - https://attack.mitre.org/techniques/T1505/003/
+  description: Detects potential web shell uploads based on suspicious file extensions and POST requests to uncommon paths
+  where: |
+    safe(action, "") == "post" && 
+    safe(target.path, "") != "" &&
+    (
+      contains(target.path, ".aspx") ||
+      contains(target.path, ".asp") ||
+      contains(target.path, ".asmx") ||
+      contains(target.path, ".ashx") ||
+      contains(target.path, ".axd")
+    ) &&
+    (
+      contains(lower(target.path), "upload") ||
+      contains(lower(target.path), "temp") ||
+      contains(lower(target.path), "tmp") ||
+      contains(lower(target.path), "test") ||
+      contains(lower(target.path), "shell") ||
+      contains(lower(target.path), "cmd") ||
+      contains(lower(target.path), "eval") ||
+      contains(lower(target.path), "exec")
+    ) &&
+    safe(statusCode, 0) >= 200 &&
+    safe(statusCode, 0) < 300
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - target.ip
+    - target.path

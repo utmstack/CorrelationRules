@@ -1,0 +1,52 @@
+- id: 1002
+  dataTypes:
+    - iis
+  name: ASPX Injection Attempt Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Execution
+  technique: Command and Scripting Interpreter
+  adversary: target
+  references:
+    - https://www.acunetix.com/blog/articles/using-logs-to-investigate-a-web-application-attack/
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects potential ASPX code injection attempts through suspicious query strings and POST data patterns
+  where: |
+    safe(target.path, "") != "" &&
+    (
+      contains(lower(target.path), ".aspx") ||
+      contains(lower(target.path), ".asp") ||
+      contains(lower(target.path), ".asmx")
+    ) &&
+    (
+      contains(lower(log.message), "system.") ||
+      contains(lower(log.message), "eval(") ||
+      contains(lower(log.message), "execute(") ||
+      contains(lower(log.message), "request.form") ||
+      contains(lower(log.message), "request.querystring") ||
+      contains(lower(log.message), "response.write") ||
+      contains(lower(log.message), "server.execute") ||
+      contains(lower(log.message), "server.transfer") ||
+      contains(lower(log.message), "process.start") ||
+      contains(lower(log.message), "shell.application") ||
+      contains(lower(log.message), "wscript.shell") ||
+      contains(lower(log.message), "scripting.filesystemobject") ||
+      contains(lower(log.message), "%3cscript") ||
+      contains(lower(log.message), "<script") ||
+      contains(lower(log.message), "javascript:") ||
+      contains(lower(log.message), "vbscript:")
+    ) &&
+    safe(statusCode, 0) != 404
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - target.ip
+    - origin.host

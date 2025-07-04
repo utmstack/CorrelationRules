@@ -1,0 +1,33 @@
+- id: 1015
+  dataTypes:
+    - antivirus-kaspersky
+  name: Lateral Movement Indicators Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Lateral Movement
+  technique: Remote Services
+  adversary: origin
+  references:
+    - https://attack.mitre.org/tactics/TA0008/
+    - https://support.kaspersky.com/KESWin/11/en-us/151065.htm
+  description: Detects indicators of lateral movement attempts within the network. Attackers use various techniques to move from one compromised system to others, expanding their access and control across the network.
+  where: |
+    (safe(log.signatureID, "") == "3" || safe(log.cs1, "") == "DETECT") &&
+    (safe(log.msg, "").matches("(?i).*(psexec|wmi|rdp|smb|admin\\$|ipc\\$|c\\$|remote.{0,20}desktop|remote.{0,20}access|lateral|pivot).*") ||
+     safe(log.cs4, "").matches("(?i).*(exploit.{0,10}smb|exploit.{0,10}rdp|lateral|psexec|mimikatz|bloodhound|sharphound).*") ||
+     safe(log.descMsg, "").matches("(?i).*(remote.{0,20}execution|network.{0,20}spread|propagat).*")) &&
+    safe(target.ip, "") != "" &&
+    safe(origin.ip, "") != safe(target.ip, "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-2h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - target.ip

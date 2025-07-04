@@ -1,0 +1,27 @@
+- id: 1019
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky WMI Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Execution
+  technique: Windows Management Instrumentation
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1047/
+    - https://support.kaspersky.com/KLMS/8.2/en-US/151684.htm
+  description: Detects potential Windows Management Instrumentation (WMI) abuse identified by Kaspersky, including suspicious WMI queries, event subscriptions, or process creation via WMI
+  where: (safe(log.msg, "") =~ ".*[Ww][Mm][Ii].*" || safe(log.msg, "") =~ ".*wmic.*" || safe(log.msg, "") =~ ".*winmgmt.*" || safe(log.fname, "") =~ ".*scrcons.*exe.*" || safe(log.cs2, "") =~ ".*WMI.*") && (safe(log.cefDeviceSeverity, "0") >= "3" || safe(action, "") == "blocked")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-2h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.msg

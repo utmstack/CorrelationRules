@@ -1,0 +1,39 @@
+- id: 1012
+  dataTypes:
+    - redis
+  name: Redis Transaction Manipulation Attack
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+  category: Data Manipulation
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://redis.io/docs/latest/develop/interact/transactions/
+    - https://attack.mitre.org/techniques/T1565/
+  description: Detects suspicious patterns in Redis transaction operations that may indicate attempts to manipulate data atomicity or exploit race conditions. This includes unusual MULTI/EXEC patterns, WATCH command abuse, or transaction failures that could indicate manipulation attempts.
+  where: >
+    safe(log.msg, "") != "" && 
+    (
+      (log.msg.contains("MULTI") && log.msg.contains("EXEC") && log.severity == "warning") ||
+      (log.msg.contains("WATCH") && log.msg.contains("Transaction discarded")) ||
+      (log.msg.contains("DISCARD") && safe(log.severity, "") == "warning") ||
+      (log.msg.contains("ERR EXEC without MULTI")) ||
+      (log.msg.contains("ERR WATCH inside MULTI")) ||
+      (log.msg.contains("Transaction") && log.msg.contains("abort"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.msg
+          operator: filter_wildcard
+          value: '*MULTI*'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.pid

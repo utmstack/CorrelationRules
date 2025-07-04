@@ -1,0 +1,35 @@
+- id: 1011
+  dataTypes:
+    - aws
+  name: Lambda Function Privilege Escalation
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Privilege Escalation
+  technique: T1548 - Abuse Elevation Control Mechanism
+  adversary: origin
+  references:
+    - https://bishopfox.com/blog/privilege-escalation-in-aws
+    - https://attack.mitre.org/techniques/T1548/
+  description: Detects potential privilege escalation through Lambda functions when IAM policies are attached to roles or users that can be exploited. This may indicate an attacker attempting to escalate privileges by attaching administrative policies to Lambda execution roles.
+  where: |
+    safe(log.eventSource, "") == "iam.amazonaws.com" && 
+    (safe(log.eventName, "") == "AttachRolePolicy" || safe(log.eventName, "") == "AttachUserPolicy") &&
+    safe(log.errorCode, "") == "" &&
+    (
+      contains(safe(log.requestParametersRoleArn, ""), "lambda") ||
+      contains(safe(log.userIdentityArn, ""), "lambda") ||
+      contains(safe(log.requestParametersPolicyArn, ""), "AdministratorAccess") ||
+      contains(safe(log.requestParametersPolicyArn, ""), "IAMFullAccess")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityArn.keyword
+          operator: filter_term
+          value: '{{log.userIdentityArn}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.userIdentityArn

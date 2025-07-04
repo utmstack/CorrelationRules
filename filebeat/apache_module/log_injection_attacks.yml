@@ -1,0 +1,67 @@
+- id: 1019
+  dataTypes:
+    - apache
+  name: Apache Log Injection Attack
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 1
+  category: Injection Attack
+  technique: Log Injection
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/Log_Injection
+    - https://attack.mitre.org/techniques/T1027/
+  description: Detects attempts to inject malicious content into Apache logs through HTTP requests containing newlines, carriage returns, or other log injection patterns
+  where: |
+    (
+      safe(origin.path, "") != "" && 
+      (
+        origin.path.contains("%0a") ||
+        origin.path.contains("%0d") ||
+        origin.path.contains("%0A") ||
+        origin.path.contains("%0D") ||
+        origin.path.contains("\\n") ||
+        origin.path.contains("\\r") ||
+        origin.path.contains("\n") ||
+        origin.path.contains("\r") ||
+        origin.path.contains("%250a") ||
+        origin.path.contains("%250d")
+      )
+    ) ||
+    (
+      safe(log.userAgent, "") != "" && 
+      (
+        log.userAgent.contains("%0a") ||
+        log.userAgent.contains("%0d") ||
+        log.userAgent.contains("%0A") ||
+        log.userAgent.contains("%0D") ||
+        log.userAgent.contains("\\n") ||
+        log.userAgent.contains("\\r") ||
+        log.userAgent.contains("\n") ||
+        log.userAgent.contains("\r") ||
+        log.userAgent.contains("%250a") ||
+        log.userAgent.contains("%250d") ||
+        log.userAgent.contains("${") ||
+        log.userAgent.contains("#{")
+      )
+    ) ||
+    (
+      safe(log.referer, "") != "" && 
+      (
+        log.referer.contains("%0a") ||
+        log.referer.contains("%0d") ||
+        log.referer.contains("\\n") ||
+        log.referer.contains("\\r")
+      )
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip

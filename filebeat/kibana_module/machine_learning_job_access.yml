@@ -1,0 +1,39 @@
+- id: 1007
+  dataTypes:
+    - kibana
+  name: Unauthorized Machine Learning Job Access
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Unauthorized Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/machine-learning/current/ml-security-overview.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects unauthorized attempts to access, modify, or delete machine learning jobs in Kibana. This could indicate an attacker trying to manipulate ML-based security detections or exfiltrate sensitive ML model data.
+  where: |
+    safe(log.action, "") =~ "ml_.*" &&
+    safe(actionResult, "") == "failure" &&
+    (safe(log.action, "") == "ml_get_job" ||
+     safe(log.action, "") == "ml_put_job" ||
+     safe(log.action, "") == "ml_delete_job" ||
+     safe(log.action, "") == "ml_open_job" ||
+     safe(log.action, "") == "ml_close_job" ||
+     safe(log.action, "") == "ml_get_datafeed" ||
+     safe(log.action, "") == "ml_put_datafeed")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.host

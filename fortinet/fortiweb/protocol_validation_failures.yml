@@ -1,0 +1,37 @@
+- id: 1017
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb Protocol Validation Failures
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Protocol Anomaly
+  technique: Protocol Manipulation
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.2.2/log-message-reference/252057/event
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects protocol validation failures in FortiWeb, indicating attempts to bypass security controls through malformed or non-compliant HTTP/HTTPS requests
+  where: |
+    safe(log.type, "") == "attack" && 
+    (safe(log.subtype, "") in ["http_protocol_validation", "protocol_constraint_violation"] ||
+     safe(log.msg, "").contains("protocol violation") ||
+     safe(log.msg, "").contains("invalid HTTP") ||
+     safe(log.msg, "").contains("malformed request")) &&
+    safe(action, "") in ["Alert", "Block", "Deny"] &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'attack'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - target.port

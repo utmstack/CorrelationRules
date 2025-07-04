@@ -1,0 +1,53 @@
+- id: 1004
+  dataTypes:
+    - nginx
+  name: Nginx Cache Poisoning Attack
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Web Application Attack
+  technique: Cache Poisoning
+  adversary: origin
+  references:
+    - https://portswigger.net/research/practical-web-cache-poisoning
+    - https://attack.mitre.org/techniques/T1505/
+  description: Detects potential cache poisoning attacks targeting nginx cache mechanisms. Monitors for malicious headers designed to poison cache entries, suspicious Host header manipulation, and attempts to inject cached responses.
+  where: |
+    safe(origin.ip, "") != "" &&
+    (
+      (safe(log.request, "") != "" && (
+        log.request.contains("X-Forwarded-Host:") ||
+        log.request.contains("X-Original-URL:") ||
+        log.request.contains("X-Rewrite-URL:") ||
+        log.request.contains("X-Forwarded-Server:") ||
+        log.request.contains("X-Host:") ||
+        log.request.contains("X-HTTP-Host-Override:") ||
+        log.request.contains("Forwarded:") ||
+        log.request.matches(".*Host:.*[<>\"'].*") ||
+        log.request.matches(".*Host:.*\\$(\\{|\\().*")
+      )) ||
+      (safe(log.userAgent, "") != "" && (
+        log.userAgent.contains("$(") ||
+        log.userAgent.contains("${") ||
+        log.userAgent.contains("<script") ||
+        log.userAgent.contains("javascript:")
+      )) ||
+      (safe(origin.path, "") != "" && (
+        origin.path.contains("?cb=") ||
+        origin.path.contains("?cache_buster=") ||
+        origin.path.contains("?utm_") && origin.path.matches(".*[<>\"'].*")
+      )) ||
+      (safe(log.referrer, "") != "" && log.referrer.matches(".*[<>\"'`].*"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.path

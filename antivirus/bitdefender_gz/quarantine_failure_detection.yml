@@ -1,0 +1,27 @@
+- id: 1006
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Bitdefender GravityZone Quarantine Failure Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Malware Detection
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects when Bitdefender GravityZone fails to quarantine detected malware. This could indicate that the malware is actively resisting remediation attempts or that there are permission issues preventing proper quarantine.
+  where: safe(log.eventType, "") == "quarantine_failed" || (safe(log.eventType, "") == "AntiMalware" && safe(log.actionTaken, "") == "quarantine_failed") || (safe(log.msg, "") contains "quarantine failed" || safe(log.msg, "") contains "unable to quarantine")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.hostId

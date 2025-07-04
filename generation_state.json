@@ -1,0 +1,21 @@
+{
+  "antivirus/bitdefender_gz": [
+    {
+      "timestamp": "2025-07-04T10:24:35.476283",
+      "status": "success",
+      "files_created": 5
+    }
+  ],
+  "linux/debian_family": [
+    {
+      "timestamp": "2025-07-04T10:29:09.494555",
+      "status": "success",
+      "files_created": 5
+    },
+    {
+      "timestamp": "2025-07-04T10:30:52.521023",
+      "status": "success",
+      "files_created": 5
+    }
+  ]
+}

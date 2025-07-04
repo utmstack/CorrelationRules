@@ -1,0 +1,43 @@
+- id: 1012
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Kerberos Authentication Anomaly
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Authentication
+  technique: Kerberoasting
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/aix/7.2?topic=kerberos-network-authentication-service
+    - https://attack.mitre.org/techniques/T1558/003/
+  description: Detects anomalous Kerberos authentication events on IBM AIX systems, including failed authentication attempts, ticket manipulation, and potential Kerberos attacks
+  where: >
+    (
+      safe(log.eventType, "") == "krb5kdc" ||
+      safe(log.eventType, "") == "kadmind" ||
+      safe(log.eventType, "") == "auth" ||
+      safe(log.msg, "").contains("krb5") ||
+      safe(log.msg, "").contains("kerberos")
+    ) && 
+    (
+      safe(log.msg, "").contains("authentication failed") ||
+      safe(log.msg, "").contains("preauthentication failed") ||
+      safe(log.msg, "").contains("ticket expired") ||
+      safe(log.msg, "").contains("invalid ticket") ||
+      safe(log.msg, "").contains("KDC_ERR") ||
+      safe(log.msg, "").contains("TGT request") ||
+      safe(action, "").contains("LOGON")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - origin.ip

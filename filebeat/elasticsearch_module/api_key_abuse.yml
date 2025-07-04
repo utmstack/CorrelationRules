@@ -1,0 +1,39 @@
+- id: 1014
+  dataTypes:
+    - elasticsearch_module
+  name: API Key Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Credential Access
+  technique: Steal Application Access Token
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html
+    - https://attack.mitre.org/techniques/T1528/
+  description: Detects suspicious API key operations including excessive creation, deletion, or usage patterns that could indicate credential theft or abuse
+  where: |
+    safe(log.authenticationType, "") == "API_KEY" &&
+    (
+      (safe(action, "") == "authentication_failed" && 
+       safe(log.apikeyName, "") != "") ||
+      (safe(action, "").contains("cluster:admin/xpack/security/api_key/") && 
+       (action.contains("/create") || action.contains("/invalidate"))) ||
+      (safe(log.eventType, "") == "access_denied" && 
+       safe(log.apikeyName, "") != "")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.authenticationType.keyword
+          operator: filter_term
+          value: 'API_KEY'
+      within: now-15m
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - log.apikeyName

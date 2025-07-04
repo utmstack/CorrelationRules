@@ -1,0 +1,49 @@
+- id: 1004
+  dataTypes:
+    - haproxy
+  name: HAProxy ACL Bypass Attempt Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Defense Evasion
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.haproxy.com/documentation/haproxy-configuration-tutorials/core-concepts/acls/
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects attempts to bypass HAProxy Access Control Lists (ACLs) through various techniques including header manipulation, request smuggling, or exploiting ACL misconfigurations to access restricted resources
+  where: |
+    (safe(action, "") == "haproxy.log" &&
+     ((safe(log.haproxy.http.response.status_code, 0) == 403 &&
+       safe(log.haproxy.http.request.time_wait, 0) < 10) ||
+      (safe(log.message, "") contains "ACL" &&
+       (safe(log.message, "") contains "denied" ||
+        safe(log.message, "") contains "blocked" ||
+        safe(log.message, "") contains "forbidden")) ||
+      (safe(log.haproxy.http.request.raw_headers, "") contains "X-Forwarded-For" &&
+       count(split(safe(log.haproxy.http.request.raw_headers, ""), "X-Forwarded-For")) > 2) ||
+      (safe(log.haproxy.termination_state, "") contains "PR" &&
+       safe(log.haproxy.http.request.body_size, 0) > 100000) ||
+      (safe(log.haproxy.http.request.method, "") != "" &&
+       safe(log.haproxy.http.request.method, "") !in ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH"]) ||
+      (safe(log.haproxy.frontend_name, "") != safe(log.haproxy.backend_name, "") &&
+       safe(log.haproxy.http.response.status_code, 0) == 200 &&
+       safe(log.haproxy.http.request.uri, "") contains "../"))) ||
+    (safe(log.haproxy.http.request.captured_headers, "") != "" &&
+     (safe(log.haproxy.http.request.captured_headers, "") contains "admin" ||
+      safe(log.haproxy.http.request.captured_headers, "") contains "internal") &&
+     safe(log.haproxy.source, "") !contains "10." &&
+     safe(log.haproxy.source, "") !contains "192.168." &&
+     safe(log.haproxy.source, "") !contains "172.")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.haproxy.source.keyword
+          operator: filter_term
+          value: '{{log.haproxy.source}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - log.haproxy.source
+    - origin.host

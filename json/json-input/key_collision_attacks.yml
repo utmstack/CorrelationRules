@@ -1,0 +1,35 @@
+- id: 1010
+  dataTypes:
+    - json-input
+  name: JSON Key Collision Attack Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Parser Exploitation
+  technique: Duplicate Key Manipulation
+  adversary: origin
+  references:
+    - https://bishopfox.com/blog/json-interoperability-vulnerabilities
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects attempts to exploit JSON parser inconsistencies through duplicate keys, which can lead to security bypasses, data corruption, or unexpected application behavior
+  where: >
+    (safe(log.duplicate_keys_found, false) == true) ||
+    (safe(log.duplicate_key_count, 0) > 0) ||
+    (safe(log.parser_warning, "") contains "duplicate key") ||
+    (safe(log.parser_warning, "") contains "key collision") ||
+    (safe(log.validation_error, "") contains "duplicate property") ||
+    (safe(log.json_anomaly, "") contains "multiple keys") ||
+    (safe(log.key_count, 0) > 0 && safe(log.unique_key_count, 0) > 0 && log.key_count != log.unique_key_count) ||
+    (safe(log.parser_behavior, "") contains "last-key-wins" || safe(log.parser_behavior, "") contains "first-key-wins")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.duplicate_key_name

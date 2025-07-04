@@ -1,0 +1,28 @@
+- id: 1016
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Compliance Monitoring Alerts
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Compliance
+  technique: Security Software Discovery
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/aix/7.2?topic=subsystem-compliance-monitoring
+    - https://attack.mitre.org/techniques/T1518/001/
+  description: Detects compliance monitoring events and security policy violations in IBM AIX systems, including failed security checks, policy exceptions, and compliance scan failures
+  where: (safe(log.eventType, "") == "COMPLIANCE_FAIL" || safe(log.eventType, "") == "POLICY_VIOLATION") || (safe(log.msg, "").contains("compliance") && (safe(log.msg, "").contains("failed") || safe(log.msg, "").contains("violation"))) || (safe(action, "").contains("AUDIT") && safe(log.returnCode, "") != "0") || (safe(log.commandType, "") == "audit" && safe(log.returnCode, "") != "0")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.eventType
+    - origin.ip

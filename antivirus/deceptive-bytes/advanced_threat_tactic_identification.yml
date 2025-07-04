@@ -1,0 +1,36 @@
+- id: 1016
+  dataTypes:
+    - deceptive-bytes
+  name: Advanced Threat Tactic Identification
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Advanced Persistent Threat
+  technique: Multiple Tactics
+  adversary: origin
+  references:
+    - https://attack.mitre.org/tactics/TA0001/
+    - https://attack.mitre.org/tactics/TA0002/
+    - https://attack.mitre.org/tactics/TA0003/
+  description: Detects advanced threat tactics including initial access, execution, and persistence techniques by monitoring deception environment interactions and behavioral patterns
+  where: >
+    safe(log.eventType, "") == "advanced_threat_detected" &&
+    safe(log.threatLevel, "") == "critical" &&
+    (safe(log.tacticName, "") in ["initial_access", "execution", "persistence", "privilege_escalation", "defense_evasion"]) &&
+    safe(log.deceptionTriggered, false) == true &&
+    safe(log.behaviorScore, 0) >= 80
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.tacticName.keyword
+          operator: filter_term
+          value: '{{log.tacticName}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.tacticName

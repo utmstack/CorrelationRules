@@ -1,0 +1,47 @@
+- id: 1014
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Firewall Policy Violation
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 4
+  category: Network Security
+  technique: Exploitation of Remote Services
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/aix/7.2?topic=security-ip-security-firewall
+    - https://attack.mitre.org/techniques/T1210/
+  description: Detects firewall policy violations on IBM AIX systems, including blocked connections, unauthorized access attempts, and potential security breach attempts through the firewall
+  where: >
+    (
+      safe(log.eventType, "") == "ipfwall" ||
+      safe(log.eventType, "") == "ipf" ||
+      safe(log.eventType, "") == "firewall" ||
+      safe(action, "").contains("DENY") ||
+      safe(action, "").contains("BLOCK") ||
+      safe(action, "").contains("REJECT")
+    ) && 
+    (
+      safe(log.msg, "").contains("denied") ||
+      safe(log.msg, "").contains("blocked") ||
+      safe(log.msg, "").contains("rejected") ||
+      safe(log.msg, "").contains("policy violation") ||
+      safe(log.msg, "").contains("unauthorized access") ||
+      safe(log.msg, "").contains("firewall rule") ||
+      safe(origin.port, 0) > 0
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: origin.port
+          operator: filter_term
+          value: '{{origin.port}}'
+      within: now-5m
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - origin.port

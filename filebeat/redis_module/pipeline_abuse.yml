@@ -1,0 +1,37 @@
+- id: 1013
+  dataTypes:
+    - redis
+  name: Redis Pipeline Command Abuse
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 5
+  category: Resource Exhaustion
+  technique: Endpoint Denial of Service
+  adversary: origin
+  references:
+    - https://redis.io/docs/latest/develop/use/pipelining/
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects potential abuse of Redis pipeline functionality that could lead to memory exhaustion or performance degradation. Attackers may send large batches of pipelined commands to overwhelm the server's memory or processing capacity.
+  where: >
+    safe(log.msg, "") != "" && 
+    (
+      (log.msg.contains("pipeline") && (log.msg.contains("memory") || log.msg.contains("OOM"))) ||
+      (log.msg.contains("Client") && log.msg.contains("output buffer limit")) ||
+      (log.msg.contains("closing connection") && log.msg.contains("query buffer")) ||
+      (log.msg.contains("Protocol error") && log.msg.contains("bulk")) ||
+      (safe(log.severity, "") == "warning" && log.msg.contains("client-output-buffer-limit"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: severity.keyword
+          operator: filter_term
+          value: 'medium'
+      within: now-5m
+      count: 5
+  deduplicateBy:
+    - origin.host

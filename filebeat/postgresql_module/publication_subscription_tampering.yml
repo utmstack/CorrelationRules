@@ -1,0 +1,34 @@
+- id: 1006
+  dataTypes:
+    - postgresql
+  name: PostgreSQL Publication/Subscription Tampering
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Data Replication Attack
+  technique: Replication Manipulation
+  adversary: origin
+  references:
+    - https://www.postgresql.org/docs/current/logical-replication-publication.html
+    - https://attack.mitre.org/techniques/T1565/001/
+  description: Detects suspicious activities related to PostgreSQL publication/subscription modifications that could lead to data tampering or unauthorized data replication. This includes CREATE, ALTER, or DROP operations on publications and subscriptions.
+  where: >
+    safe(log.messageType, "") in ["ERROR", "WARNING", "FATAL", "PANIC"] &&
+    safe(log.msg, "") != "" &&
+    (log.msg =~ "(?i)(CREATE|ALTER|DROP)\\s+(PUBLICATION|SUBSCRIPTION)" ||
+     log.msg =~ "(?i)publication.*does not exist" ||
+     log.msg =~ "(?i)subscription.*conflict" ||
+     log.msg =~ "(?i)could not connect to publisher" ||
+     log.msg =~ "(?i)logical replication.*error")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.sessionId

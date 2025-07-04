@@ -1,0 +1,38 @@
+- id: 1007
+  dataTypes:
+    - traefik_module
+  name: Rate Limiter Bypass Attempt Detected
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 5
+  category: Application Security
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/middlewares/http/ratelimit/
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects attempts to bypass rate limiting controls through rapid requests, header manipulation, or distributed attacks in Traefik
+  where: |
+    (safe(log.DownstreamStatus, 0) == 429 || 
+     safe(log.DownstreamStatus, 0) == 503) && 
+    safe(log.Duration, 0) < 1000000 &&
+    (contains(safe(log.RequestPath, ""), "/api/") ||
+     contains(safe(log.RequestPath, ""), "/auth/") ||
+     contains(safe(log.RequestPath, ""), "/login") ||
+     contains(safe(log.RequestPath, ""), "/token") ||
+     safe(log.RequestMethod, "") == "POST")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.ClientHost.keyword
+          operator: filter_term
+          value: '{{log.ClientHost}}'
+        - field: log.RequestPath.keyword
+          operator: filter_term
+          value: '{{log.RequestPath}}'
+      within: now-1m
+      count: 50
+  deduplicateBy:
+    - log.ClientHost
+    - log.RequestPath

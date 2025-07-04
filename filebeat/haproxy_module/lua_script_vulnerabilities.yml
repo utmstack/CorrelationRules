@@ -1,0 +1,37 @@
+- id: 1014
+  dataTypes:
+    - haproxy
+  name: HAProxy Lua Script Exploitation Attempts
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 4
+  category: Execution
+  technique: T1203 - Exploitation for Client Execution
+  adversary: origin
+  references:
+    - https://www.stackhawk.com/blog/lua-command-injection-examples-and-prevention/
+    - https://docs.haproxy.org/2.8/configuration.html
+    - https://attack.mitre.org/techniques/T1203/
+  description: Detects potential exploitation attempts targeting HAProxy Lua scripting functionality, including command injection attempts, suspicious Lua function calls, or attempts to execute system commands through Lua scripts.
+  where: |
+    safe(action, "") == "haproxy.log" && 
+    (safe(log.message, "") matches ".*lua.*\\b(os\\.execute|io\\.popen|loadstring|dofile|require|debug\\.).*" || 
+     safe(log.message, "") contains "lua-load" || 
+     safe(log.message, "") matches ".*lua.*error.*" || 
+     safe(log.message, "") matches ".*lua.*(fork|exec|system|spawn).*" || 
+     safe(origin.url, "") matches ".*lua.*[;<>&|`$(){}\\[\\]].*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.message
+          operator: wildcard
+          value: '*lua*'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.host

@@ -1,0 +1,29 @@
+- id: 1006
+  dataTypes:
+    - antivirus-sentinel-one
+  name: Kernel-Level Threat Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Kernel Protection
+  technique: Kernel Exploitation
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1068/
+    - https://attack.mitre.org/techniques/T1014/
+  description: Detects kernel-level threats including rootkits, kernel exploits, driver manipulation, and other low-level system attacks that attempt to compromise the operating system kernel
+  where: |
+    safe(log.eventDescription, "") =~ "(?i)(kernel|rootkit|driver|ring.?0|system.?level)" &&
+    safe(log.msg, "") =~ "(?i)(threat|malicious|exploit|compromise)" &&
+    safe(log.act, "") =~ "(?i)(block|prevent|detect|isolate)"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-1m
+      count: 1
+  deduplicateBy:
+    - log.syslogHost

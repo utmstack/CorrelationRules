@@ -1,0 +1,36 @@
+- id: 1003
+  dataTypes:
+    - cs_switch
+  name: ARP Poisoning Attack Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Network Attack
+  technique: ARP Cache Poisoning
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst4500/12-2/25ew/configuration/guide/conf/dynarp.html
+    - https://attack.mitre.org/techniques/T1557/002/
+  description: Detects potential ARP poisoning attacks by monitoring for invalid ARP packets, DHCP snooping violations, and gratuitous ARP abuse. These attacks can enable man-in-the-middle attacks by corrupting the ARP cache of network devices.
+  where: |
+    (safe(log.facility, "") == "SW_DAI" && safe(log.mnemonic, "") in ["INVALID_ARP", "DHCP_SNOOPING_DENY", "ACL_DENY"]) ||
+    (safe(log.facility, "") == "IP" && safe(log.mnemonic, "") in ["DUPADDR", "SOURCEGUARD"]) ||
+    (safe(log.message, "") =~ "(?i)(invalid arp|arp.*inspection.*drop|dhcp.*snooping.*deny)") ||
+    (safe(log.message, "") =~ "(?i)(gratuitous.*arp|arp.*reply.*not.*request|duplicate.*ip.*address)") ||
+    (safe(log.message, "") =~ "(?i)(IP.*source.*guard.*deny|arp.*packet.*validation.*failed)") ||
+    (safe(log.severity, 999) <= 3 && safe(log.message, "") =~ "(?i)(arp.*spoofing|arp.*poison|man.*in.*the.*middle)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.facility.keyword
+          operator: filter_term
+          value: 'SW_DAI'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.interface

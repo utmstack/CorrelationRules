@@ -1,0 +1,26 @@
+- id: 1029
+  dataTypes:
+    - aws
+  name: AWS SSO Suspicious Activities
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Authentication
+  technique: Single Sign-On Compromise
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/singlesignon/latest/userguide/what-is.html
+    - https://attack.mitre.org/techniques/T1556/006/
+  description: Detects suspicious AWS SSO activities including multiple failed login attempts, unusual permission set assignments, or SSO configuration changes
+  where: safe(log.eventSource, "") == "sso.amazonaws.com" && (safe(log.eventName, "") == "AssumeRoleWithSAML" || safe(log.eventName, "") == "CreatePermissionSet" || safe(log.eventName, "") == "AttachManagedPolicyToPermissionSet" || safe(log.errorCode, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.sourceIPAddress.keyword
+          operator: filter_term
+          value: '{{log.sourceIPAddress}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - log.sourceIPAddress

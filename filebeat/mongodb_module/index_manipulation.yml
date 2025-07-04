@@ -1,0 +1,30 @@
+- id: 1012
+  dataTypes:
+    - mongodb
+  name: MongoDB Suspicious Index Manipulation
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Database Security
+  technique: T1485 - Data Destruction
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/indexes/
+    - https://attack.mitre.org/techniques/T1485/
+  description: Detects suspicious index creation, modification, or deletion operations that could impact database performance or hide malicious activity
+  where: safe(log.component, "") == "INDEX" && (safe(log.msg, "") contains("dropIndexes") || safe(log.msg, "") contains("createIndexes") || safe(log.msg, "") contains("reIndex")) && safe(severity, "") == "high"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'INDEX'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.ns

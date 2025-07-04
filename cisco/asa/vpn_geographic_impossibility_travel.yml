@@ -1,0 +1,34 @@
+- id: 1001
+  dataTypes:
+    - asa
+  name: VPN Geographic Impossibility Travel
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Initial Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1078/
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog.html
+  description: Detects when a user authenticates from two geographically distant locations within a short time frame, which is physically impossible. This could indicate compromised VPN credentials being used by an attacker.
+  where: |
+    safe(log.message_id, "") == "113039" && 
+    safe(origin.user, "") != "" && 
+    safe(origin.ip, "") != "" &&
+    safe(log.action, "") == "connected"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: origin.ip.keyword
+          operator: not_filter_term
+          value: '{{origin.ip}}'
+      within: now-2h
+      count: 1
+  deduplicateBy:
+    - origin.user
+    - origin.ip

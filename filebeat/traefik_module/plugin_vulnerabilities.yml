@@ -1,0 +1,46 @@
+- id: 1005
+  dataTypes:
+    - traefik
+  name: Plugin Vulnerability Exploitation Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Plugin Security
+  technique: Third-Party Software Exploitation
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/plugins/
+    - https://attack.mitre.org/techniques/T1203/
+  description: Detects attempts to exploit vulnerabilities in Traefik plugins including code injection, path traversal, or unauthorized plugin installation attempts.
+  where: |
+    (safe(origin.url, "") contains("/plugins/") ||
+     safe(log.RequestPath, "") contains("/api/plugins") ||
+     safe(log.RequestPath, "") contains("/.traefik/") ||
+     safe(log.RequestPath, "") contains("/pilot/")) &&
+    (safe(log.RequestPath, "") contains("../") ||
+     safe(log.RequestPath, "") contains("..\\") ||
+     safe(log.RequestPath, "") contains("%2e%2e") ||
+     safe(log.RequestPath, "") contains("/etc/") ||
+     safe(log.RequestPath, "") contains("\\windows\\") ||
+     safe(log.RequestBody, "") contains("<script>") ||
+     safe(log.RequestBody, "") contains("javascript:") ||
+     safe(log.RequestBody, "") contains("eval(") ||
+     safe(log.RequestBody, "") contains("exec(") ||
+     safe(log.RequestBody, "") contains("system(") ||
+     safe(log.RequestBody, "") contains("__import__") ||
+     (safe(log.RequestMethod, "") == "POST" && 
+      (safe(log.RequestBody, "") contains(".zip") ||
+       safe(log.RequestBody, "") contains(".tar") ||
+       safe(log.RequestBody, "") contains("github.com"))))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-20m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.PluginName

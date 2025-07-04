@@ -1,0 +1,43 @@
+- id: 1011
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Ransomware Behavior Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Malware
+  technique: Data Encrypted for Impact
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/techniques/T1486/
+  description: Detects ransomware behavior patterns including file encryption attempts, mass file modifications, and ransomware-specific malware types detected by Bitdefender GravityZone
+  where: |
+    (safe(log.BitdefenderGZModule, "") == "av" || safe(log.BitdefenderGZModule, "") == "avc" || safe(log.BitdefenderGZModule, "") == "hd") &&
+    (
+      safe(log.BitdefenderGZMalwareType, "") == "ransomware" ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "ransom") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "crypt") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "locky") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "cerber") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "wannacry") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "petya") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "ryuk") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "sodinokibi") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "maze") ||
+      safe(log.BitdefenderGZAttackType, "") == "ransomware" ||
+      (safe(log.BitdefenderGZModule, "") == "dp" && contains(safe(log.BitdefenderGZBlockingRuleName, ""), "encrypt"))
+    ) &&
+    safe(log.act, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.dvchost.keyword
+          operator: filter_term
+          value: '{{log.dvchost}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - log.dvchost
+    - log.BitdefenderGZMalwareName

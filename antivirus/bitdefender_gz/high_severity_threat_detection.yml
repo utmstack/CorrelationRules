@@ -1,0 +1,31 @@
+- id: 1009
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Bitdefender GravityZone High Severity Threat Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Malware Activity
+  technique: Malware Execution
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/techniques/T1204/
+  description: Detects high-severity malware threats identified by Bitdefender GravityZone that require immediate attention
+  where: (safe(log.severity, "") == "10" || safe(log.severity, "") == "9" || safe(log.severity, "") == "8") && (safe(log.eventType, "") == "avc" || safe(log.eventType, "") == "malware_detected" || safe(log.eventType, "") == "av")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.dvchost.keyword
+          operator: filter_term
+          value: '{{log.dvchost}}'
+        - field: log.severity.keyword
+          operator: filter_match
+          value: '{{log.severity}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - log.dvchost
+    - log.cs7
+    - log.fname

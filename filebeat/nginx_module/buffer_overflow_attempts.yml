@@ -1,0 +1,40 @@
+- id: 1002
+  dataTypes:
+    - nginx
+  name: Nginx Buffer Overflow Attack
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: System Exploitation
+  technique: Buffer Overflow
+  adversary: origin
+  references:
+    - https://www.acunetix.com/vulnerabilities/web/nginx-stack-based-buffer-overflow/
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects potential buffer overflow attacks against nginx including chunked transfer encoding exploits, range header attacks, and excessive hexadecimal payloads. Monitors for abnormally large headers, malformed chunked requests, and suspicious hex patterns.
+  where: |
+    safe(origin.ip, "") != "" &&
+    (
+      (safe(log.request, "") != "" && log.request.length() > 8192) ||
+      (safe(log.userAgent, "") != "" && log.userAgent.length() > 1024) ||
+      (safe(log.referrer, "") != "" && log.referrer.length() > 1024) ||
+      (safe(origin.path, "") != "" && origin.path.matches(".*[0-9a-fA-F]{200,}.*")) ||
+      (safe(log.message, "") != "" && (
+        log.message.contains("client intended to send too large body") ||
+        log.message.contains("recv() failed") ||
+        log.message.contains("upstream sent too big header") ||
+        log.message.contains("worker process") && log.message.contains("exited on signal")
+      )) ||
+      (safe(log.severityLabel, "") == "error" && safe(log.message, "") != "" && log.message.contains("buffer"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 5
+  deduplicateBy:
+    - origin.ip

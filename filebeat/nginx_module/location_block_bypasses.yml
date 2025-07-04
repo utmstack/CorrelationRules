@@ -1,0 +1,42 @@
+- id: 1019
+  dataTypes:
+    - nginx
+  name: Location Block Security Bypass
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Privilege Escalation
+  technique: Exploitation for Privilege Escalation
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1068/
+    - https://nginx.org/en/docs/http/ngx_http_core_module.html#location
+  description: Detects attempts to bypass nginx location block security restrictions through path traversal, case sensitivity exploits, or Unicode normalization attacks to access protected directories or resources
+  where: |
+    safe(origin.ip, "") != "" && safe(origin.path, "") != "" && (
+      (origin.path matches ".*/[Aa][Dd][Mm][Ii][Nn].*" && safe(statusCode, 0) == 200 && origin.path != "/admin") ||
+      (origin.path matches ".*\\.\\.[/\\\\]private.*" && safe(actionResult, "") == "accepted") ||
+      origin.path matches ".*%[Cc]0%[Aa][Ff].*" ||
+      origin.path matches ".*%[Ee]0%80%[Aa][Ff].*" ||
+      origin.path matches ".*\\\\[uU][0-9a-fA-F]{4}.*" ||
+      (origin.path matches ".*/api/v[0-9]/internal.*" && safe(log.referrer, "") == "-") ||
+      (origin.path matches ".*/\\.ht.*" && safe(statusCode, 0) < 400) ||
+      (origin.path matches ".*[/\\\\]\\$.*" && safe(statusCode, 0) == 200) ||
+      (safe(log.request, "") matches ".*[Pp][Uu][Tt].*" && origin.path matches ".*/config.*") ||
+      (origin.path matches ".*/\\.git.*" && safe(statusCode, 0) != 404)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: actionResult.keyword
+          operator: filter_term
+          value: "accepted"
+      within: now-20m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.path

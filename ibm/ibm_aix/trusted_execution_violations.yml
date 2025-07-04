@@ -1,0 +1,31 @@
+- id: 1005
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Trusted Execution Violation
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Defense Evasion
+  technique: Masquerading
+  adversary: origin
+  references:
+    - https://www.ibm.com/support/pages/trusted-execution-enablement
+    - https://attack.mitre.org/techniques/T1036/
+  description: Detects violations of Trusted Execution (TE) policies in IBM AIX, including execution of untrusted binaries, signature verification failures, or attempts to bypass trusted execution controls
+  where: (safe(log.eventType, "") == "trustchk" && safe(log.returnCode, "") != "0") || (safe(log.msg, "").contains("Trusted Execution") && (safe(log.msg, "").contains("fail") || safe(log.msg, "").contains("violat"))) || (safe(log.eventType, "") == "PROC_Execute" && safe(log.msg, "").contains("untrusted")) || (safe(action, "") == "EXEC" && safe(log.objName, "").matches("/tmp/.*") && safe(origin.user, "") == "root")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.msg.keyword
+          operator: filter_wildcard
+          value: '*trust*'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - origin.user
+    - log.objName
+    - origin.ip

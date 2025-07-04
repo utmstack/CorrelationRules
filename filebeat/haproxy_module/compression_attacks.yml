@@ -1,0 +1,41 @@
+- id: 1019
+  dataTypes:
+    - haproxy
+  name: Compression-Based Attack Detection
+  impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 3
+  category: Information Disclosure
+  technique: Compression Ratio Attack
+  adversary: origin
+  references:
+    - https://www.haproxy.com/documentation/haproxy-configuration-tutorials/performance/compression/
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects compression-based attacks including CRIME, BREACH, and compression ratio attacks that attempt to extract sensitive information by analyzing compression ratios and response sizes
+  where: |
+    (safe(log.http_request_headers, "") =~ "(?i)accept-encoding.*(gzip|deflate|br)" ||
+     safe(log.compression_algo, "") != "") && (
+      safe(log.http_request_headers, "") =~ "(?i)(cookie|authorization|bearer)" && 
+      safe(log.request_body_size, 0) > 1000 ||
+      safe(log.compression_ratio, 0.0) < 0.3 ||
+      safe(log.error_message, "") =~ "(?i)(compression.*error|deflate.*fail|gzip.*corrupt)" ||
+      (safe(log.response_size_compressed, 0) > 0 && 
+       safe(log.response_size_uncompressed, 0) / safe(log.response_size_compressed, 1) > 50) ||
+      safe(log.http_request_headers, "") =~ "(?i)range.*bytes.*[0-9]+-[0-9]+" ||
+      (safe(log.request_count_per_second, 0) > 100 && 
+       safe(log.unique_payload_variations, 0) > 50)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.compression_algo.keyword
+          operator: exists
+      within: now-10m
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - log.session_id

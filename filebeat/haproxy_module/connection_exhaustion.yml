@@ -1,0 +1,32 @@
+- id: 1009
+  dataTypes:
+    - haproxy
+  name: Connection Exhaustion Attack
+  impact:
+    confidentiality: 1
+    integrity: 1
+    availability: 5
+  category: Denial of Service
+  technique: Network Denial of Service
+  adversary: origin
+  references:
+    - https://docs.haproxy.org/1.8/configuration.html#4-maxconn
+    - https://attack.mitre.org/techniques/T1498/
+  description: Detects connection exhaustion attacks including slowloris, connection flooding, and resource starvation attempts against HAProxy
+  where: |
+    (safe(log.actconn, 0) > 10000) ||
+    (safe(log.feconn, 0) > 5000 && safe(log.beconn, 0) < 100) ||
+    (safe(log.termination_state, "") != "" && (contains(safe(log.termination_state, ""), "cR") || contains(safe(log.termination_state, ""), "cL"))) ||
+    (safe(log.time_request, 0) > 30000 && safe(log.http_request_size, 0) < 100) ||
+    (safe(log.srv_queue, 0) > 500 || safe(log.backend_queue, 0) > 500) ||
+    (safe(log.retries, 0) > 5)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 100
+  deduplicateBy:
+    - origin.ip

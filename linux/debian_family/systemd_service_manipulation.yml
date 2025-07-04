@@ -1,0 +1,40 @@
+- id: 1004
+  dataTypes:
+    - debian_family
+  name: SystemD Service Manipulation
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 4
+  category: Persistence
+  technique: Create or Modify System Process
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1543/002/
+    - https://www.freedesktop.org/software/systemd/man/systemd.service.html
+  description: Detects suspicious systemd service manipulations including creation of new services, modification of existing services, or attempts to mask/disable critical system services which could indicate persistence mechanisms or system sabotage
+  where: |
+    (safe(log.process, "") contains "systemctl" || safe(log.process, "") contains "systemd") &&
+    (safe(log.message, "") contains "Created symlink" && safe(log.message, "") contains "/etc/systemd" ||
+     safe(log.message, "") contains "Removed symlink" && safe(log.message, "") contains "/etc/systemd" ||
+     safe(log.message, "") contains "enable" && safe(log.message, "") contains ".service" ||
+     safe(log.message, "") contains "disable" && safe(log.message, "") contains ".service" ||
+     safe(log.message, "") contains "mask" && safe(log.message, "") contains ".service" ||
+     safe(log.message, "") contains "unmask" && safe(log.message, "") contains ".service" ||
+     safe(log.message, "") contains "daemon-reload" ||
+     safe(log.message, "") contains "Failed to start" && safe(log.message, "") contains ".service" ||
+     safe(log.message, "") contains "Reloading" && safe(log.message, "") contains ".service")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.hostname
+    - origin.user

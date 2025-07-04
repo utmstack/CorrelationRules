@@ -1,0 +1,34 @@
+- id: 1006
+  dataTypes:
+    - firewall-fortigate-traffic
+  name: Fortinet Application Control Policy Violations
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 3
+  category: Policy Violation
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortigate/7.4.1/administration-guide/618581/application-control
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects multiple application control policy violations from the same source, indicating potential attempts to bypass security controls or use of prohibited applications
+  where: |
+    safe(log.type, "") == "utm" && 
+    safe(log.subtype, "") == "app-ctrl" && 
+    safe(action, "") == "blocked" &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.subtype.keyword
+          operator: filter_term
+          value: app-ctrl
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.app

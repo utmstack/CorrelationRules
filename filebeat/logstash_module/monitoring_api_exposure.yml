@@ -1,0 +1,30 @@
+- id: 1016
+  dataTypes:
+    - logstash_module
+  name: Logstash Monitoring API Unauthorized Access Attempt
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Unauthorized Access
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/monitoring-logstash.html
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects unauthorized access attempts to Logstash monitoring API endpoints, which could expose sensitive system information including JVM stats, pipeline configurations, and plugin details
+  where: |
+    safe(log.component, "") == "logstash.api" && 
+    safe(log.msg, "") != "" &&
+    (log.msg contains "401" || log.msg contains "403" || log.msg contains "unauthorized" || log.msg contains "forbidden") &&
+    safe(log.level, "") == "ERROR"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host

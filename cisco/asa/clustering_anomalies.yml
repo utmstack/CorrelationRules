@@ -1,0 +1,36 @@
+- id: 1024
+  dataTypes:
+    - asa
+  name: ASA Clustering Anomalies Detected
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 5
+  category: Infrastructure Security
+  technique: Service Stop
+  adversary: system
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog.html
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects anomalies in ASA clustering operations including replication failures, health check failures, and cluster member state changes. These could indicate network issues, hardware problems, or potential attacks on cluster infrastructure.
+  where: |
+    safe(log.dataType, "") == "asa" && 
+    (
+      safe(log.messageId, "") in ["747001", "747009", "747010", "747011", "747012", "747013", "747014", "747018", "747021", "747022", "747039", "747040"] ||
+      safe(log.severity, 0) <= 3 &&
+      (safe(log.message, "") =~ ".*[Cc]luster.*fail.*" ||
+       safe(log.message, "") =~ ".*[Cc]luster.*error.*" ||
+       safe(log.message, "") =~ ".*[Cc]luster.*quit.*" ||
+       safe(log.message, "") =~ ".*health check fail.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: device.hostname.keyword
+          operator: filter_term
+          value: '{{device.hostname}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - device.hostname
+    - log.messageId

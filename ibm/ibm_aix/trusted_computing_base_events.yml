@@ -1,0 +1,30 @@
+- id: 1002
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Trusted Computing Base Violation
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/aix/7.2?topic=configuration-trusted-computing-base
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects violations of the Trusted Computing Base (TCB) in IBM AIX, including unauthorized modifications to critical system files, security database tampering, or attempts to modify files protected by TCB
+  where: (safe(log.eventType, "") == "tcbck" && safe(log.msg, "").contains("FAIL")) || (safe(log.msg, "").contains("TCB") && (safe(log.msg, "").contains("violation") || safe(log.msg, "").contains("modified"))) || (safe(log.eventType, "") == "FILE_Mode" && safe(log.objName, "").matches("/etc/security/.*")) || (safe(action, "") == "FILE_MODIFY" && safe(log.objName, "").matches("^(/usr/bin|/usr/sbin|/etc/security)/.*"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: 'tcbck'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.objName

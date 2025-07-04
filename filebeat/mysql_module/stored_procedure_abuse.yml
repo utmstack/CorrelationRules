@@ -1,0 +1,51 @@
+- id: 1005
+  dataTypes:
+    - mysql
+  name: MySQL Stored Procedure Abuse
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Execution
+  technique: Command and Scripting Interpreter
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/stored-programs-defining.html
+    - https://attack.mitre.org/techniques/T1059/
+    - https://www.mysql.com/products/enterprise/audit.html
+  description: Detects potential abuse of stored procedures and functions including creation of malicious procedures, execution of system commands, or unauthorized procedure modifications
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      log.msg.contains("CREATE PROCEDURE") && (log.msg.contains("xp_cmdshell") || log.msg.contains("sys_exec") || log.msg.contains("sys_eval")) ||
+      log.msg.contains("CREATE FUNCTION") && (log.msg.contains("SONAME") || log.msg.contains(".so") || log.msg.contains(".dll")) ||
+      log.msg.contains("ALTER PROCEDURE") ||
+      log.msg.contains("ALTER FUNCTION") ||
+      log.msg.contains("DROP PROCEDURE") && !log.msg.contains("IF EXISTS") ||
+      log.msg.contains("DROP FUNCTION") && !log.msg.contains("IF EXISTS") ||
+      log.msg.contains("CALL") && (log.msg.contains("sys.") || log.msg.contains("mysql.")) ||
+      log.msg.contains("EXECUTE") && log.msg.contains("PREPARE") ||
+      log.msg.contains("DEFINER") && (log.msg.contains("root@") || log.msg.contains("SUPER")) ||
+      log.msg.contains("CREATE DEFINER") ||
+      log.msg.contains("SQL SECURITY DEFINER") ||
+      log.msg.contains("mysql.proc") && (log.msg.contains("INSERT") || log.msg.contains("UPDATE") || log.msg.contains("DELETE")) ||
+      log.msg.contains("mysql.func") && (log.msg.contains("INSERT") || log.msg.contains("UPDATE")) ||
+      log.msg.contains("lib_mysqludf") ||
+      log.errorCode == "ER_SP_ALREADY_EXISTS" ||
+      log.errorCode == "ER_SP_DOES_NOT_EXIST" ||
+      log.errorCode == "ER_PROCACCESS_DENIED_ERROR"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.subsystem.keyword
+          operator: filter_term
+          value: '{{log.subsystem}}'
+      within: now-20m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.thread

@@ -1,0 +1,31 @@
+- id: 1020
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX System Configuration Changes
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: System Configuration
+  technique: System Configuration Discovery
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/aix/7.2?topic=management-system-configuration
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects system configuration changes and modifications in IBM AIX systems, including kernel parameter changes, system file modifications, and critical configuration updates
+  where: (safe(log.eventType, "") == "CONFIG_CHANGE" || safe(log.eventType, "") == "SYSTEM_MOD") || (safe(action, "").contains("CONFIG") && (safe(action, "").contains("CHANGE") || safe(action, "").contains("MODIFY"))) || (safe(origin.command, "").contains("chdev") || safe(origin.command, "").contains("chfs") || safe(origin.command, "").contains("chsys")) || (safe(log.commandType, "") == "config" || safe(log.commandType, "") == "kernel") || (safe(log.msg, "").contains("configuration") && (safe(log.msg, "").contains("changed") || safe(log.msg, "").contains("modified"))) || (safe(log.pwd, "") == "/etc" && (safe(origin.command, "").contains("vi") || safe(origin.command, "").contains("edit")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_match
+          value: 'CONFIG'
+      within: now-2h
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.command
+    - log.pwd

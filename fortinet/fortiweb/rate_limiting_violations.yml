@@ -1,0 +1,37 @@
+- id: 1012
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb Rate Limiting Violation
+  impact:
+    confidentiality: 1
+    integrity: 1
+    availability: 4
+  category: Resource Exhaustion
+  technique: Endpoint Denial of Service
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.6.0/administration-guide
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects when FortiWeb rate limiting policies are violated, indicating potential DoS attempts or abusive behavior. Rate limiting helps protect against resource exhaustion and ensures fair usage of web applications.
+  where: |
+    safe(log.type, "") == "attack" && 
+    (contains(safe(log.msg, ""), "rate limit") || 
+     contains(safe(log.msg, ""), "rate-limit") ||
+     contains(safe(log.msg, ""), "exceeded rate") ||
+     contains(safe(log.attack_type, ""), "rate_limit") ||
+     safe(log.subtype, "") == "rate_limit") &&
+    safe(action, "") == "blocked" &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'blocked'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip

@@ -1,0 +1,38 @@
+- id: 1007
+  dataTypes:
+    - aws
+  name: AWS Cross-Account Access Anomalies
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Unauthorized Access
+  technique: T1550.001 - Use Alternate Authentication Material: Application Access Token
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-user-identity.html
+    - https://attack.mitre.org/techniques/T1550/001/
+  description: Detects anomalous cross-account access patterns in AWS that may indicate account compromise or privilege escalation. Monitors for AssumeRole activities across different accounts.
+  where: |
+    safe(log.eventSource, "") == "sts.amazonaws.com" && 
+    safe(log.eventName, "") == "AssumeRole" &&
+    safe(log.userIdentityAccountId, "") != "" &&
+    safe(log.responseElementsAssumedRoleUserArn, "") != "" &&
+    safe(log.sourceIPAddress, "") != "" &&
+    safe(log.errorCode, "") == "" &&
+    !contains(safe(log.responseElementsAssumedRoleUserArn, ""), safe(log.userIdentityAccountId, ""))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.sourceIPAddress.keyword
+          operator: filter_term
+          value: '{{log.sourceIPAddress}}'
+        - field: log.eventName.keyword
+          operator: filter_term
+          value: 'AssumeRole'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - log.sourceIPAddress
+    - log.userIdentityAccountId
+    - log.responseElementsAssumedRoleUserArn

@@ -1,0 +1,35 @@
+- id: 1001
+  dataTypes:
+    - github
+  name: GitHub Repository Permission Changes
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Access Control
+  technique: Permission Groups Discovery
+  adversary: origin
+  references:
+    - https://docs.github.com/en/webhooks/webhook-events-and-payloads#member
+    - https://attack.mitre.org/techniques/T1069/
+  description: Detects changes to repository permissions including collaborator additions, role changes, or permission modifications. This could indicate unauthorized access attempts or privilege escalation.
+  where: >
+    (safe(log.action, "") == "member_added" || 
+     safe(log.action, "") == "member_edited" || 
+     safe(log.action, "") == "member_removed" ||
+     safe(log.action, "") == "added" ||
+     safe(log.action, "") == "edited" ||
+     safe(log.action, "") == "removed") &&
+    safe(log.repositoryName, "") != "" &&
+    safe(log.senderLogin, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.repositoryName.keyword
+          operator: filter_term
+          value: '{{log.repositoryName}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - log.repositoryName
+    - log.senderLogin

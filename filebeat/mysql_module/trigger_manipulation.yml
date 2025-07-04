@@ -1,0 +1,41 @@
+- id: 1006
+  dataTypes:
+    - mysql
+  name: MySQL Trigger Manipulation Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Database Security
+  technique: T1505.001 - SQL Stored Procedures
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/trigger-syntax.html
+    - https://dev.mysql.com/doc/refman/8.0/en/audit-log-reference.html
+    - https://attack.mitre.org/techniques/T1505/001/
+  description: Detects attempts to create, alter, or drop database triggers which could be used for persistence, data tampering, or privilege escalation. Triggers can execute malicious code automatically on data changes.
+  where: >
+    safe(log.msg, "") != "" && 
+    (
+      log.msg.contains("CREATE TRIGGER") ||
+      log.msg.contains("create trigger") ||
+      log.msg.contains("ALTER TRIGGER") ||
+      log.msg.contains("alter trigger") ||
+      log.msg.contains("DROP TRIGGER") ||
+      log.msg.contains("drop trigger") ||
+      (log.msg.contains("trigger") && log.msg.contains("definer"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: dataType.keyword
+          operator: filter_term
+          value: mysql
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.msg

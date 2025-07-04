@@ -1,0 +1,50 @@
+- id: 1024
+  dataTypes:
+    - nginx
+  name: Memory Exhaustion Attack
+  impact:
+    confidentiality: 0
+    integrity: 1
+    availability: 5
+  category: Denial of Service
+  technique: Endpoint Denial of Service
+  adversary: origin
+  references:
+    - https://www.nginx.com/blog/avoiding-top-10-nginx-configuration-mistakes/
+    - https://attack.mitre.org/techniques/T1499/002/
+  description: Detects potential memory exhaustion attacks against nginx through patterns such as large request headers, excessive POST data, or attacks targeting buffer allocation. These attacks attempt to consume server memory resources leading to service degradation or crashes.
+  where: |
+    safe(origin.ip, "") != "" &&
+    (
+      (safe(log.severityLabel, "") == "error" && 
+       safe(log.message, "") != "" &&
+       (
+         log.message.contains("client request body is buffered to a temporary file") ||
+         log.message.contains("a client request body is too large") ||
+         log.message.contains("request header is too large") ||
+         log.message.contains("could not allocate memory") ||
+         log.message.contains("malloc() failed") ||
+         log.message.contains("worker process") && log.message.contains("exited on signal")
+       )
+      ) ||
+      (safe(statusCode, 0) == 413 || safe(statusCode, 0) == 414) ||
+      (safe(log.request, "") != "" && 
+       len(log.request) > 8192
+      ) ||
+      (safe(log.userAgent, "") != "" && 
+       len(log.userAgent) > 1024
+      )
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.severityLabel.keyword
+          operator: filter_term
+          value: error
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip

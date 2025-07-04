@@ -1,0 +1,45 @@
+- id: 1008
+  dataTypes:
+    - apache
+  name: Reverse Proxy Abuse Detection
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+  category: Web Application Attack
+  technique: Proxy
+  adversary: origin
+  references:
+    - https://httpd.apache.org/docs/2.4/mod/mod_proxy.html
+    - https://attack.mitre.org/techniques/T1090/
+  description: Detects potential reverse proxy abuse including Server Side Request Forgery (SSRF) attempts, proxy smuggling, unauthorized proxy usage, or attempts to access internal resources through proxy misconfiguration.
+  where: |
+    (
+      safe(origin.path, "").contains("@") && 
+      (safe(origin.path, "").contains("http://") || safe(origin.path, "").contains("https://") || safe(origin.path, "").contains("gopher://") || safe(origin.path, "").contains("file://"))
+    ) ||
+    (
+      safe(log.userAgent, "").contains("Proxy-") || 
+      safe(log.referer, "").contains("unix://") || 
+      safe(log.referer, "").contains("dict://")
+    ) ||
+    (
+      safe(origin.path, "").matches(".*%[0-9a-fA-F]{2}.*") && 
+      (safe(origin.path, "").contains("%2e%2e") || safe(origin.path, "").contains("%252e") || safe(origin.path, "").contains("%c0%ae"))
+    ) ||
+    (
+      safe(action, "") == "post" && 
+      safe(origin.path, "").contains("proxy") && 
+      safe(origin.bytesReceived, 0) > 10000
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - origin.path

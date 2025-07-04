@@ -1,0 +1,47 @@
+- id: 1007
+  dataTypes:
+    - generic
+  name: Encoding Detection Issues
+  impact:
+    confidentiality: 1
+    integrity: 4
+    availability: 2
+  category: Data Integrity
+  technique: Encoding Manipulation
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/Unicode_Encoding
+    - https://attack.mitre.org/techniques/T1132/
+  description: Detects encoding-related issues that could indicate data corruption, encoding attacks, or attempts to bypass security filters through encoding manipulation.
+  where: |
+    (safe(log.error, "") != "" && (
+      log.error.contains("encoding error") ||
+      log.error.contains("charset error") ||
+      log.error.contains("decode error") ||
+      log.error.contains("unicode error") ||
+      log.error.contains("utf-8 error") ||
+      log.error.contains("invalid encoding") ||
+      log.error.contains("character encoding")
+    )) ||
+    (safe(log.message, "") != "" && (
+      log.message.contains("encoding error") ||
+      log.message.contains("charset error") ||
+      log.message.contains("decode error") ||
+      log.message.contains("unicode error") ||
+      log.message.contains("utf-8 error") ||
+      log.message.contains("invalid encoding") ||
+      log.message.contains("character encoding")
+    )) ||
+    (safe(log.event_type, "") == "encoding_error") ||
+    (safe(log.encoding_type, "") != "" && safe(log.status, "") == "failed")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.encoding_type

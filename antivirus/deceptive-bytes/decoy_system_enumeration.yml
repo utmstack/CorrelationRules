@@ -1,0 +1,30 @@
+- id: 1010
+  dataTypes:
+    - deceptive-bytes
+  name: Decoy System Enumeration
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Discovery
+  technique: System Information Discovery
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1082/
+    - https://deceptivebytes.com/solution/
+  description: Detects when an attacker performs system enumeration activities on decoy systems or services. This includes port scanning, service discovery, or system information gathering on deception assets.
+  where: safe(log.eventType, "") == "system_enumeration" && safe(log.isDecoy, "") == "true" && (safe(log.action, "") == "port_scan" || safe(log.action, "") == "service_discovery" || safe(log.action, "") == "system_info") && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.targetHost.keyword
+          operator: filter_term
+          value: '{{log.targetHost}}'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - log.targetHost

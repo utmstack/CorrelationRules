@@ -1,0 +1,30 @@
+- id: 1002
+  dataTypes:
+    - elasticsearch
+  name: Suspicious Cluster State Modifications
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: System Integrity
+  technique: Configuration Manipulation
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/audit-event-types.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects unauthorized or suspicious modifications to the Elasticsearch cluster state, which could indicate attempts to compromise cluster integrity or availability.
+  where: safe(action, "") == "security_config_change" && safe(origin.user, "") != "" && safe(log.clusterName, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'security_config_change'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.clusterName

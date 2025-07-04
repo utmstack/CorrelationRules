@@ -1,0 +1,39 @@
+- id: 1018
+  dataTypes:
+    - haproxy
+  name: HTTP Cache Manipulation and Poisoning
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Cache Poisoning
+  technique: Web Service Manipulation
+  adversary: origin
+  references:
+    - https://www.haproxy.com/documentation/haproxy-configuration-tutorials/performance/caching/
+    - https://attack.mitre.org/techniques/T1499/002/
+  description: Detects cache manipulation attempts including cache poisoning, cache key injection, Vary header attacks, and attempts to bypass cache controls that could lead to serving malicious content
+  where: |
+    safe(log.http_method, "") =~ "(?i)(GET|HEAD)" && (
+      safe(log.http_request_headers, "") =~ "(?i)(x-forwarded-(host|proto|for).*[\\r\\n])" ||
+      safe(log.http_request_headers, "") =~ "(?i)(cache-control.*(no-cache.*max-age|max-age.*no-cache))" ||
+      safe(log.http_request_headers, "") =~ "(?i)(pragma.*no-cache.*cache-control)" ||
+      safe(log.http_request_headers, "") =~ "(?i)(vary.*[\\r\\n\\x00-\\x1f])" ||
+      safe(origin.url, "") =~ "[\\x00-\\x1f\\x7f-\\x9f]" ||
+      safe(log.cache_status, "") =~ "(?i)(poisoned|corrupted|invalid)" ||
+      (safe(log.response_headers, "") =~ "(?i)x-cache.*hit" && 
+       safe(log.response_headers, "") =~ "(?i)(content-type.*text/html)" &&
+       safe(log.response_body_hash, "") != safe(log.expected_body_hash, ""))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.url.keyword
+          operator: filter_term
+          value: '{{origin.url}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - origin.url
+    - log.cache_key

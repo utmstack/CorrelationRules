@@ -1,0 +1,38 @@
+- id: 1001
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky Critical Object Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Malware Detection
+  technique: Malicious Code Execution
+  adversary: origin
+  references:
+    - https://support.kaspersky.com/ScanEngine/1.0/en-US/186767.htm
+    - https://attack.mitre.org/techniques/T1204/
+  description: Detects when Kaspersky identifies critical threats including malware, trojans, or other dangerous objects that require immediate attention. High severity detections often indicate active threats.
+  where: |
+    safe(log.signatureID, "") != "" && 
+    safe(log.cefDeviceSeverity, "") == "High" && 
+    (
+      contains(safe(log.cs1, ""), "INFECTED") || 
+      contains(safe(log.cs1, ""), "MALWARE") || 
+      contains(safe(log.cs1, ""), "TROJAN") ||
+      contains(safe(log.cs2, ""), "Trojan") ||
+      contains(safe(log.cs4, ""), "Trojan") ||
+      contains(safe(log.msg, ""), "infected") ||
+      contains(safe(log.msg, ""), "malicious")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.cs1

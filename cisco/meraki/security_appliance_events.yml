@@ -1,0 +1,36 @@
+- id: 1015
+  dataTypes:
+    - meraki
+  name: Security Appliance Critical Events
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Security Monitoring
+  technique: Exploitation for Defense Evasion
+  adversary: origin
+  references:
+    - https://documentation.meraki.com/General_Administration/Monitoring_and_Reporting/Syslog_Event_Types_and_Log_Samples
+    - https://attack.mitre.org/techniques/T1211/
+  description: Detects critical security events from Meraki security appliances including IDS/IPS alerts, content filtering violations, and advanced threat protection triggers
+  where: |
+    safe(log.priority, 5) <= 2 ||
+    safe(log.eventType, "") == "ids_alert" ||
+    safe(log.eventType, "") == "security_event" ||
+    safe(log.eventType, "") == "content_filtering_block" ||
+    safe(log.eventType, "") == "threat_detected" ||
+    safe(log.eventType, "") == "malware_detected" ||
+    safe(log.eventType, "") == "amp_alert" ||
+    (safe(log.message, "") =~ ".*(security|threat|malware|attack|exploit).*detected.*") ||
+    (safe(log.eventType, "") == "urls" && safe(log.action, "") == "blocked" && safe(log.category, "") =~ ".*(malware|phishing|botnet).*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.signature

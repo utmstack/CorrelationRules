@@ -1,0 +1,30 @@
+- id: 1016
+  dataTypes:
+    - antivirus-esmc-eset
+  name: Device Control Policy Violation
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: Policy Violation
+  technique: Hardware Additions
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1200/
+    - https://help.eset.com/protect_admin/10.1/en-US/events-exported-to-json-format.html
+  description: Detects when a user violates device control policies by attempting to use blocked devices such as USB drives, CD/DVD, or other external storage devices
+  where: safe(log.event_type, "") == "DeviceControl_Event" && safe(actionResult, "") == "blocked" && safe(log.detail, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.host.keyword
+          operator: filter_term
+          value: '{{target.host}}'
+        - field: log.event_type.keyword
+          operator: filter_term
+          value: 'DeviceControl_Event'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - target.host
+    - log.device_type

@@ -1,0 +1,39 @@
+- id: 1018
+  dataTypes:
+    - mongodb
+  name: MongoDB LDAP Injection Attempts
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 1
+  category: Injection Attack
+  technique: LDAP Injection
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/core/security-ldap-external/
+    - https://owasp.org/www-community/attacks/LDAP_Injection
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential LDAP injection attempts in MongoDB authentication. Monitors for malformed LDAP queries, special characters in authentication requests, and suspicious patterns that could indicate attempts to bypass authentication or extract unauthorized information.
+  where: |
+    safe(log.component, "") == "ACCESS" && 
+    (
+      safe(log.message, "") matches ".*LDAP.*query.*error.*" ||
+      safe(log.message, "") matches ".*LDAP.*authentication.*failed.*" ||
+      safe(log.message, "") matches ".*invalid.*DN.*" ||
+      safe(log.message, "") matches ".*LDAP.*bind.*failed.*" ||
+      safe(log.message, "") matches ".*queryTemplate.*error.*" ||
+      (safe(log.message, "") matches ".*LDAP.*" && safe(log.message, "") matches ".*(\\(|\\)|\\*|\\\\|\\=).*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'ACCESS'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.host

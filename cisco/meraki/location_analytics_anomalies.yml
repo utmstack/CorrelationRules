@@ -1,0 +1,33 @@
+- id: 1010
+  dataTypes:
+    - meraki
+  name: Location Analytics Anomaly Detection
+  impact:
+    confidentiality: 3
+    integrity: 1
+    availability: 2
+  category: Physical Security
+  technique: T1428
+  adversary: origin
+  references:
+    - https://documentation.meraki.com/MR/Monitoring_and_Reporting/Location_Analytics
+    - https://attack.mitre.org/techniques/T1428/
+  description: Detects anomalous patterns in location analytics data that could indicate unauthorized physical access, device spoofing, or abnormal movement patterns. Monitors for devices appearing in unexpected locations or exhibiting suspicious movement behavior.
+  where: |
+    safe(log.eventType, "") contains "location" && 
+    safe(log.client_mac, "") != "" &&
+    (safe(log.message, "") contains "anomaly" || 
+     safe(log.zone_violation, false) == true ||
+     safe(log.unexpected_location, false) == true ||
+     (safe(log.dwell_time, 0) > 14400 && safe(log.location, "") contains "restricted"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.client_mac.keyword
+          operator: filter_term
+          value: '{{log.client_mac}}'
+      within: now-6h
+      count: 15
+  deduplicateBy:
+    - log.client_mac
+    - log.location

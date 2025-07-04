@@ -1,0 +1,36 @@
+- id: 1004
+  dataTypes:
+    - github
+  name: GitHub Branch Protection Bypass Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://docs.github.com/en/webhooks/webhook-events-and-payloads#branch_protection_rule
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects attempts to bypass, disable, or modify branch protection rules which could allow unauthorized code changes to critical branches.
+  where: >
+    (safe(log.action, "") == "deleted" || 
+     safe(log.action, "") == "edited" ||
+     safe(log.action, "") == "disabled" ||
+     safe(log.action, "") == "branch_protection_rule.deleted" ||
+     safe(log.action, "") == "branch_protection_rule.edited") &&
+    (safe(log.repositoryDefaultBranch, "") != "" ||
+     safe(log.repositoryMasterBranch, "") != "" ||
+     safe(log.baseRef, "") =~ "(?i)(main|master|prod|production|release)") &&
+    safe(log.senderLogin, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.repositoryName.keyword
+          operator: filter_term
+          value: '{{log.repositoryName}}'
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - log.repositoryName
+    - log.action

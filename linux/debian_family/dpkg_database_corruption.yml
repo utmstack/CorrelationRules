@@ -1,0 +1,36 @@
+- id: 1003
+  dataTypes:
+    - debian_family
+  name: DPKG Database Corruption Detected
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 5
+  category: System Integrity
+  technique: Data Destruction
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1485/
+    - https://wiki.debian.org/Teams/Dpkg
+  description: Detects signs of DPKG database corruption or manipulation which could prevent package management, system updates, or indicate system compromise attempts through package database tampering
+  where: |
+    safe(log.process, "") contains "dpkg" &&
+    (safe(log.message, "") contains "database is locked" ||
+     safe(log.message, "") contains "corrupted database" ||
+     safe(log.message, "") contains "status database area is locked" ||
+     safe(log.message, "") contains "failed to open package info file" ||
+     safe(log.message, "") contains "failed to read package info" ||
+     safe(log.message, "") contains "parse error" && safe(log.message, "") contains "/var/lib/dpkg" ||
+     safe(log.message, "") contains "unable to access dpkg status area" ||
+     safe(log.message, "") contains "dpkg was interrupted" ||
+     safe(log.message, "") contains "triggers file contains unknown directive")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.hostname

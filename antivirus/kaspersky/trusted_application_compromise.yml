@@ -1,0 +1,40 @@
+- id: 1007
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky Trusted Application Compromise Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Application Security
+  technique: Signed Binary Proxy Execution
+  adversary: origin
+  references:
+    - https://www.kaspersky.com/enterprise-security/wiki-section/products/kaspersky-anti-targeted-attack-platform
+    - https://attack.mitre.org/techniques/T1218/
+    - https://attack.mitre.org/techniques/T1574/
+  description: Identifies when legitimate or trusted applications exhibit malicious behavior, potentially indicating compromise or exploitation. This includes detecting when signed binaries are used for malicious purposes or when trusted processes perform suspicious activities.
+  where: |
+    safe(log.signatureID, "") != "" && 
+    (
+      contains(safe(log.msg, ""), "trusted application") ||
+      contains(safe(log.msg, ""), "signed binary") ||
+      contains(safe(log.msg, ""), "legitimate program") ||
+      contains(safe(log.cs1, ""), "TRUSTED_COMP") ||
+      contains(safe(log.cs4, ""), "TrustedApp") ||
+      contains(safe(log.descMsg, ""), "whitelisted") ||
+      (safe(log.cat, "") == "Exploit Prevention" && contains(safe(log.msg, ""), "exploit")) ||
+      (contains(safe(log.msg, ""), "behavior") && contains(safe(log.msg, ""), "trusted"))
+    ) &&
+    (safe(log.cefDeviceSeverity, "") == "High" || safe(log.cefDeviceSeverity, "") == "Medium")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-2h
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.cs1

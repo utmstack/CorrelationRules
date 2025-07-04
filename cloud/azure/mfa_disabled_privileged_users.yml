@@ -1,0 +1,27 @@
+- id: 1003
+  dataTypes:
+    - azure
+  name: MFA Disabled for Privileged Azure AD User
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 1
+  category: Defense Evasion
+  technique: Modify Authentication Process
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/entra/identity/authentication/howto-mfa-reporting
+    - https://attack.mitre.org/techniques/T1556/
+  description: Detects when Multi-Factor Authentication (MFA) is disabled for privileged users in Azure AD. This could indicate an attempt to weaken security controls for unauthorized access.
+  where: (safe(log.operationName, "") == "Disable Strong Authentication" || safe(log.operationName, "") == "Update user") && safe(log.service, "") == "Authentication Methods" && (safe(log.targetUserPrincipalName, "").contains("admin") || safe(log.targetUserPrincipalName, "").contains("globaladmin") || safe(log.targetDisplayName, "").contains("Administrator"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.targetUserPrincipalName.keyword
+          operator: filter_term
+          value: '{{log.targetUserPrincipalName}}'
+      within: now-7d
+      count: 1
+  deduplicateBy:
+    - log.targetUserPrincipalName
+    - log.correlationId

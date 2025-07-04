@@ -1,0 +1,32 @@
+- id: 1002
+  dataTypes:
+    - cs_switch
+  name: MAC Address Spoofing Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Network Attack
+  technique: MAC Spoofing
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/support/docs/switches/catalyst-3750-series-switches/72846-layer2-secftrs-catl3fixed.html
+    - https://attack.mitre.org/techniques/T1200/
+  description: Detects potential MAC address spoofing attempts by monitoring for MAC address flapping between ports, duplicate MAC addresses, or MAC addresses appearing on unexpected ports. This could indicate an attacker attempting to impersonate legitimate devices.
+  where: |
+    (safe(log.facility, "") == "SW_MATM" && safe(log.mnemonic, "") == "MACFLAP_NOTIF") ||
+    (safe(log.facility, "") == "SW_DAI" && safe(log.mnemonic, "") in ["INVALID_ARP", "DHCP_SNOOPING_DENY"]) ||
+    (safe(log.message, "") =~ "(?i)(mac.*flap|duplicate.*mac|mac.*move.*between.*port)") ||
+    (safe(log.message, "") =~ "(?i)(Host [0-9a-fA-F:.]+.*is flapping between port)") ||
+    (safe(log.severity, 999) <= 4 && safe(log.message, "") =~ "(?i)(mac.*address.*conflict|duplicate.*address.*detected)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.mac_address.keyword
+          operator: filter_term
+          value: '{{log.mac_address}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - log.mac_address
+    - origin.ip

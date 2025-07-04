@@ -1,0 +1,27 @@
+- id: 1020
+  dataTypes:
+    - elasticsearch
+  name: Elasticsearch Transform Abuse Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 4
+  category: Resource Development
+  technique: Develop Capabilities
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/transforms.html
+    - https://attack.mitre.org/techniques/T1587/
+  description: Detects suspicious usage of Elasticsearch transforms that could be used for unauthorized data aggregation, exfiltration preparation, or resource exhaustion attacks
+  where: (safe(log.auditRestRequestPath, "").contains("_transform") || safe(origin.url, "").contains("_transform")) && (safe(log.method, "") == "PUT" || safe(log.method, "") == "POST" || (safe(action, "") == "access_granted" && safe(log.auditRestRequestPath, "").contains("_start"))) && (safe(log.auditRequestBody, "").contains("script") || safe(log.auditRestRequestParams, "").contains("continuous"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-4h
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.ip

@@ -1,0 +1,30 @@
+- id: 1018
+  dataTypes:
+    - aws
+  name: AWS Config Compliance Violation
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 2
+  category: Policy Violation
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/config/latest/developerguide/evaluate-config.html
+    - https://attack.mitre.org/techniques/T1078/004/
+  description: Detects AWS Config compliance violations indicating resources that are non-compliant with defined configuration rules and security policies
+  where: safe(log.eventSource, "") == "config.amazonaws.com" && (safe(log.eventName, "") == "PutEvaluations" || safe(log.eventName, "") == "PutComplianceItems") && contains(safe(log.compliance, ""), "NON_COMPLIANT")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityAccountId.keyword
+          operator: filter_term
+          value: '{{log.userIdentityAccountId}}'
+        - field: log.eventSource.keyword
+          operator: filter_term
+          value: 'config.amazonaws.com'
+      within: now-6h
+      count: 10
+  deduplicateBy:
+    - log.userIdentityAccountId
+    - log.resourceType

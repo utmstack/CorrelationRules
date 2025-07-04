@@ -1,0 +1,36 @@
+- id: 1019
+  dataTypes:
+    - meraki
+  name: API Access Anomalies
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: API Security
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://documentation.meraki.com/General_Administration/Other_Topics/Cisco_Meraki_Dashboard_API
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects anomalous API access patterns that could indicate compromised API keys, unauthorized automation, or reconnaissance activities
+  where: |
+    safe(log.eventType, "") in ["api_request", "api_error", "api_rate_limit"] &&
+    (safe(log.apiRequestRate, 0) > 100 ||
+     safe(log.apiErrorRate, 0) > 0.5 ||
+     safe(log.unusualEndpoint, false) == true ||
+     safe(log.requestMethod, "") in ["DELETE", "PUT"] && safe(log.bulkOperation, false) == true)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.apiKey.keyword
+          operator: filter_term
+          value: '{{log.apiKey}}'
+      within: now-10m
+      count: 50
+  deduplicateBy:
+    - origin.ip
+    - log.apiKey
+    - log.endpoint

@@ -1,0 +1,45 @@
+- id: 1002
+  dataTypes:
+    - postgresql
+  name: PostgreSQL Privilege Escalation Attempt Detected
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Privilege Escalation
+  technique: Exploitation for Privilege Escalation
+  adversary: origin
+  references:
+    - https://www.postgresql.org/docs/current/sql-grant.html
+    - https://attack.mitre.org/techniques/T1068/
+    - https://github.com/Aiven-Open/pghostile
+    - https://www.enterprisedb.com/blog/postgresql-extensions-impacted-cve-2022-2625-privilege-escalation
+  description: Detects attempts to escalate privileges in PostgreSQL through role manipulation, grant statements, security definer functions, or configuration changes
+  where: |
+    (safe(log.messageType, "") == "LOG" || safe(log.messageType, "") == "ERROR") && (
+      safe(log.msg, "") matches ".*(ALTER\\s+(USER|ROLE)\\s+.*\\s+(SUPERUSER|CREATEROLE|CREATEDB|REPLICATION|BYPASSRLS)).*" ||
+      safe(log.msg, "") matches ".*(GRANT\\s+(ALL|SUPERUSER|pg_execute_server_program|pg_read_server_files|pg_write_server_files)).*" ||
+      safe(log.msg, "") matches ".*(CREATE\\s+(OR\\s+REPLACE\\s+)?FUNCTION.*SECURITY\\s+DEFINER).*" ||
+      safe(log.msg, "") matches ".*(ALTER\\s+SYSTEM\\s+SET\\s+(archive_command|session_preload_libraries)).*" ||
+      safe(log.msg, "") matches ".*(SET\\s+ROLE\\s+(postgres|pg_)).*" ||
+      safe(log.msg, "") matches ".*(CREATE\\s+EXTENSION\\s+(adminpack|file_fdw|dblink)).*" ||
+      safe(log.msg, "") matches ".*(lo_import|lo_export).*" ||
+      safe(log.msg, "") matches ".*(ALTER\\s+TABLE.*OWNER\\s+TO).*" ||
+      safe(log.msg, "") matches ".*(CREATE\\s+(USER|ROLE)\\s+.*\\s+IN\\s+ROLE\\s+pg_).*" ||
+      safe(log.errorCode, "") == "42501" ||
+      safe(log.errorCode, "") == "0LP01"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.messageType.keyword
+          operator: filter_term
+          value: 'ERROR'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.sessionId

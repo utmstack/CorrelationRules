@@ -1,0 +1,33 @@
+- id: 1003
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne EDR Alert
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 4
+  category: Endpoint Detection and Response
+  technique: Endpoint Monitoring
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/platform/endpoint-detection-response/
+    - https://attack.mitre.org/techniques/T1543/
+  description: Detects endpoint detection and response alerts from SentinelOne, including process injection, credential dumping, lateral movement attempts, and persistence mechanisms
+  where: |
+    safe(log.eventDescription, "") =~ "(?i)(edr|endpoint detection|endpoint response|endpoint alert)" &&
+    safe(log.act, "") =~ "(?i)(block|quarantine|isolate|alert|detect)" &&
+    safe(log.syslogHost, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+        - field: log.act.keyword
+          operator: filter_term
+          value: '{{log.act}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - log.syslogHost
+    - log.destinationUser

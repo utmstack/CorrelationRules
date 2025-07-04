@@ -1,0 +1,42 @@
+- id: 1027
+  dataTypes:
+    - google
+  name: Anthos Security Policy Violations
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Security Control Bypass
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://cloud.google.com/anthos/docs/concepts/overview
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects security-related events in Google Anthos environments including policy violations, authentication failures, and suspicious container activities. Monitors Anthos Service Mesh, Config Management, and Policy Controller events.
+  where: |
+    (
+      safe(log.protoPayload.serviceName, "") in ["anthos.googleapis.com", "anthospolicycontroller.googleapis.com", "anthosservicemesh.googleapis.com"] ||
+      safe(log.resourceType, "") in ["k8s_cluster", "gke_cluster"]
+    ) && 
+    (
+      safe(log.protoPayload.methodName, "") contains "Policy" ||
+      safe(log.jsonPayloadType, "") in ["admission.k8s.io/violation", "policy.violation", "security.alert"] ||
+      safe(severity, "") in ["high", "medium"]
+    ) &&
+    (
+      safe(log.protoPayload.response.status, "") == "PERMISSION_DENIED" ||
+      safe(log.protoPayload.status.message, "") contains "violation" ||
+      safe(log.protoPayload.status.message, "") contains "denied" ||
+      safe(log.jsonPayloadStatusDetails, "") contains "policy"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.resourceLabelsProjectId

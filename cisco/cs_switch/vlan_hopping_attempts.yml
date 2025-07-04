@@ -1,0 +1,31 @@
+- id: 1001
+  dataTypes:
+    - cs_switch
+  name: VLAN Hopping Attack Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Network Attack
+  technique: VLAN Hopping
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/support/docs/switches/catalyst-3750-series-switches/72846-layer2-secftrs-catl3fixed.html
+    - https://attack.mitre.org/techniques/T1599/
+  description: Detects potential VLAN hopping attacks through switch spoofing or double tagging. Monitors for DTP negotiation attempts, trunk port changes, or multiple VLAN tags that could indicate an attacker trying to gain unauthorized access to other VLANs.
+  where: |
+    (safe(log.facility, "") == "SW_VLAN" && safe(log.mnemonic, "") in ["VLAN_INCONSISTENCY", "MACFLAP_NOTIF", "TRUNK_MODE_CHANGE"]) ||
+    (safe(log.facility, "") == "DTP" && safe(log.mnemonic, "") in ["NONTRUNKPORTON", "DOMAINMISMATCH", "TRUNKPORTON"]) ||
+    (safe(log.message, "") =~ "(?i)(received 802.1Q BPDU on non trunk|native vlan mismatch|inconsistent vlan|double tag)") ||
+    (safe(log.severity, 999) <= 4 && safe(log.message, "") =~ "(?i)(vlan.*tag.*tag|switch.*spoofing|dtp.*negotiation)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.interface

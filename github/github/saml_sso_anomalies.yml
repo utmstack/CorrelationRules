@@ -1,0 +1,27 @@
+- id: 1018
+  dataTypes:
+    - github
+  name: GitHub SAML SSO Authentication Anomaly
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Initial Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://docs.github.com/en/organizations/managing-saml-single-sign-on-for-your-organization
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects anomalous SAML SSO authentication events including failures, bypass attempts, or configuration changes. This could indicate unauthorized access attempts or compromise of SAML identity provider.
+  where: safe(log.action, "") in ["saml_sso_auth.failure", "saml_sso_auth.bypass", "saml_sso.update", "saml_sso.disable", "saml_sso.enable", "org.saml_sso_response_auth_failure"] || (safe(log.action, "") contains "saml" && (safe(log.action, "") contains "fail" || safe(log.action, "") contains "error"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.senderLogin.keyword
+          operator: filter_term
+          value: '{{log.senderLogin}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - log.senderLogin
+    - origin.ip

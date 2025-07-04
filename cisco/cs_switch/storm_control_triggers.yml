@@ -1,0 +1,36 @@
+- id: 1009
+  dataTypes:
+    - cs_switch
+  name: Storm Control Triggered
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Network Security
+  technique: Network Denial of Service
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst6500/ios/15-0SY/configuration/guide/15_0_sy_swcg/storm_control.html
+    - https://attack.mitre.org/techniques/T1498/
+  description: Detects storm control triggers which may indicate broadcast, multicast, or unicast storms that could be part of a DoS attack or network misconfiguration.
+  where: |
+    (safe(log.eventType, "") == "STORM_CONTROL" || 
+     contains(safe(log.facility, ""), "STORM")) && 
+    (safe(log.action, "") == "shutdown" || 
+     safe(log.action, "") == "trap" ||
+     safe(log.status, "") == "exceeded" ||
+     contains(safe(log.message, ""), "storm control") && 
+     (contains(safe(log.message, ""), "exceeded") || 
+      contains(safe(log.message, ""), "shutdown") ||
+      contains(safe(log.message, ""), "threshold")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.interface.keyword
+          operator: filter_term
+          value: '{{log.interface}}'
+      within: now-5m
+      count: 1
+  deduplicateBy:
+    - log.interface
+    - log.stormType

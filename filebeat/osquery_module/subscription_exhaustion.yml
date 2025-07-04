@@ -1,0 +1,31 @@
+- id: 1012
+  dataTypes:
+    - osquery
+  name: Osquery Subscription Exhaustion Attack
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Resource Exhaustion
+  technique: Endpoint Denial of Service
+  adversary: origin
+  references:
+    - https://github.com/osquery/osquery/pull/6325
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects potential subscription exhaustion attacks through excessive event subscriptions, memory exhaustion patterns, or configuration-based resource consumption attempts
+  where: |
+    (contains(safe(log.message, ""), "memory exhaustion") && contains(safe(log.message, ""), "osquery")) ||
+    (contains(safe(log.message, ""), "subscription") && contains(safe(log.message, ""), "limit exceeded")) ||
+    (safe(log.eventName, "") == "osquery_info" && contains(safe(log.message, ""), "out of memory")) ||
+    (contains(safe(log.message, ""), "config size") && contains(safe(log.message, ""), "exceeds limit")) ||
+    (contains(safe(log.message, ""), "Maximum config size reached"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host

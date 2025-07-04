@@ -1,0 +1,28 @@
+- id: 1024
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Critical Error Log Patterns
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: System Errors
+  technique: Exploitation for Defense Evasion
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/db2/11.5?topic=logs-enabling-system-error-event-log-aix
+    - https://attack.mitre.org/techniques/T1211/
+  description: Analyzes critical error patterns in IBM AIX logs including system crashes, kernel panics, critical service failures, and suspicious error patterns that could indicate exploitation attempts or system compromise
+  where: (safe(log.eventType, "") != "" && (safe(log.eventType, "").toLowerCase().contains("error") || safe(log.eventType, "").toLowerCase().contains("critical") || safe(log.eventType, "").toLowerCase().contains("fatal") || safe(log.eventType, "").toLowerCase().contains("panic") || safe(log.eventType, "").toLowerCase().contains("crash"))) || (safe(log.msg, "") != "" && (safe(log.msg, "").toLowerCase().contains("kernel panic") || safe(log.msg, "").toLowerCase().contains("system crash") || safe(log.msg, "").toLowerCase().contains("critical error") || safe(log.msg, "").toLowerCase().contains("fatal exception"))) || safe(log.returnCode, "") == "1"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: from.host.keyword
+          operator: filter_term
+          value: '{{from.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - from.host
+    - log.eventType
+    - log.msg

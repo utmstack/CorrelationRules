@@ -1,0 +1,38 @@
+- id: 1014
+  dataTypes:
+    - github
+  name: Critical Dependency Vulnerability Detected
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Initial Access
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://docs.github.com/en/code-security/dependabot/dependabot-alerts/about-dependabot-alerts
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects high-severity dependency vulnerabilities identified by Dependabot or dependency scanning. These vulnerabilities could be exploited by attackers to compromise applications or gain unauthorized access to systems.
+  where: >
+    (safe(log.action, "") == "dependabot_alert.created" ||
+     safe(log.action, "") == "dependabot_alert.reintroduced" ||
+     safe(log.action, "") == "vulnerability_alert.create") &&
+    (safe(log.alert.severity, "") == "critical" ||
+     safe(log.alert.severity, "") == "high" ||
+     safe(log.severity, "") == "critical" ||
+     safe(log.severity, "") == "high") &&
+    safe(log.repositoryName, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.repositoryName.keyword
+          operator: filter_term
+          value: '{{log.repositoryName}}'
+        - field: log.action.keyword
+          operator: filter_term
+          value: dependabot_alert.created
+      within: now-7d
+      count: 5
+  deduplicateBy:
+    - log.repositoryName
+    - log.alert.ghsa_id

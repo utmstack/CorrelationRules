@@ -1,0 +1,26 @@
+- id: 1002
+  dataTypes:
+    - linux
+  name: Sudo Privilege Escalation Attempts
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Privilege Escalation
+  technique: Sudo and Sudo Caching
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+    - https://attack.mitre.org/techniques/T1548/003/
+  description: Detects unauthorized sudo usage attempts and privilege escalation through sudo command execution
+  where: safe(log.message, "") contains "sudo" && (safe(log.message, "") contains "NOT in sudoers" || safe(log.message, "") contains "authentication failure" || safe(log.message, "") contains "command not allowed") && safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.host

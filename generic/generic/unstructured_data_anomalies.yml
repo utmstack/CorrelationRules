@@ -1,0 +1,31 @@
+- id: 1002
+  dataTypes:
+    - generic
+  name: Unstructured Data Anomalies
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 2
+  category: Data Anomaly
+  technique: Log Injection
+  adversary: origin
+  references:
+    - https://betterstack.com/community/guides/logging/json-logging/
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects anomalies in unstructured log data such as unusually large messages, non-printable characters, or potential log injection attempts
+  where: |
+    (safe(log.message, "") != "" && size(safe(log.message, "")) > 10000) ||
+    (safe(log.message, "") contains "\x00") ||
+    (safe(log.message, "") contains "\r\n" && safe(log.message, "") contains "HTTP/") ||
+    (safe(log.message, "") matches ".*[\\x00-\\x08\\x0B-\\x0C\\x0E-\\x1F].*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.program

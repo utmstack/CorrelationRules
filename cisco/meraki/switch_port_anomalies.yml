@@ -1,0 +1,38 @@
+- id: 1014
+  dataTypes:
+    - meraki
+  name: Switch Port Anomalies
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 4
+  category: Network Security
+  technique: Hardware Additions
+  adversary: origin
+  references:
+    - https://documentation.meraki.com/General_Administration/Monitoring_and_Reporting/Syslog_Event_Types_and_Log_Samples
+    - https://attack.mitre.org/techniques/T1200/
+  description: Detects anomalous switch port behavior including excessive link state changes, unauthorized device connections, or potential port security violations
+  where: |
+    safe(log.eventType, "") == "port_flapping" ||
+    safe(log.eventType, "") == "port_security_violation" ||
+    safe(log.eventType, "") == "unauthorized_device_connected" ||
+    safe(log.eventType, "") == "port_down" ||
+    safe(log.eventType, "") == "excessive_errors" ||
+    (safe(log.message, "") =~ ".*port.*(flap|security|violation|anomaly).*") ||
+    (safe(log.eventType, "") == "switch_event" && safe(log.portErrors, 0) > 1000) ||
+    (safe(log.eventType, "") == "link_state_change" && safe(log.changeCount, 0) > 10)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: device.mac.keyword
+          operator: filter_term
+          value: '{{device.mac}}'
+        - field: switch.port.keyword
+          operator: filter_term
+          value: '{{switch.port}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - device.mac
+    - switch.port

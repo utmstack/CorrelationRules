@@ -1,0 +1,27 @@
+- id: 1026
+  dataTypes:
+    - azure
+  name: ExpressRoute Configuration Changes
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Network Security
+  technique: Network Service Discovery
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/expressroute/monitor-expressroute
+    - https://attack.mitre.org/techniques/T1046/
+  description: Detects configuration changes to Azure ExpressRoute circuits which could indicate unauthorized network modifications or attempts to bypass security controls
+  where: safe(log.operationName, "") == "Microsoft.Network/expressRouteCircuits/write" || safe(log.operationName, "") == "Microsoft.Network/expressRouteCircuits/delete" || (safe(log.resourceId, "").contains("/expressRouteCircuits/") && safe(log.operationName, "").contains("write"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.resourceId
+    - origin.ip

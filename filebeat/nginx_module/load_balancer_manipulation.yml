@@ -1,0 +1,36 @@
+- id: 1008
+  dataTypes:
+    - nginx
+  name: Nginx Load Balancer Manipulation Attack
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Impact
+  technique: Endpoint Denial of Service
+  adversary: origin
+  references:
+    - https://docs.nginx.com/nginx/admin-guide/load-balancer/http-health-check/
+    - https://attack.mitre.org/techniques/T1499/002/
+  description: Detects attempts to manipulate nginx load balancer behavior through upstream health check bypass, false positive responses, or timing exploitation
+  where: |
+    (safe(log.message, "") contains "upstream" && safe(log.message, "") matches ".*(failed|timeout|unavailable).*") ||
+    (safe(statusCode, 0) == 504 && safe(log.message, "") contains "upstream") ||
+    (safe(log.message, "") contains "no live upstreams" && safe(log.severityLabel, "") == "error") ||
+    (safe(log.message, "") contains "upstream server temporarily disabled") ||
+    (safe(log.message, "") contains "upstream prematurely closed connection") ||
+    (safe(origin.path, "") == "/" && safe(log.userAgent, "") matches ".*(health.*check|monitor|probe).*" && safe(statusCode, 0) == 200)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.message.keyword
+          operator: filter_wildcard
+          value: '*upstream*'
+      within: now-10m
+      count: 15
+  deduplicateBy:
+    - origin.ip
+    - target.ip

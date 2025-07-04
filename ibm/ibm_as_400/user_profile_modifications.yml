@@ -1,0 +1,43 @@
+- id: 1005
+  dataTypes:
+    - ibm-as400
+  name: IBM AS/400 User Profile Modification Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Account Management
+  technique: Account Manipulation
+  adversary: internal
+  references:
+    - https://www.ibm.com/docs/en/i/7.3.0?topic=ios-cp-user-profile-change-security-audit-journal-entry
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects user profile modifications in IBM AS/400 systems including creation, changes, deletion, and restoration of user profiles
+  where: |
+    safe(log.message, "") != "" && 
+    (
+      (contains(safe(log.message, ""), "CP") && contains(safe(log.message, ""), "user profile")) ||
+      contains(safe(log.message, ""), "CRTUSRPRF") ||
+      contains(safe(log.message, ""), "CHGUSRPRF") ||
+      contains(safe(log.message, ""), "DLTUSRPRF") ||
+      contains(safe(log.message, ""), "RSTUSRPRF") ||
+      contains(safe(log.message, ""), "profile created") ||
+      contains(safe(log.message, ""), "profile changed") ||
+      contains(safe(log.message, ""), "profile deleted") ||
+      contains(safe(log.message, ""), "profile restored") ||
+      contains(safe(log.message, ""), "user profile change") ||
+      contains(safe(log.message, ""), "password changed") ||
+      contains(safe(log.message, ""), "PWDCHG") ||
+      contains(safe(log.message, ""), "special authority assigned") ||
+      contains(safe(log.message, ""), "group profile")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.message
+          operator: wildcard
+          value: '*profile*'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - log.message

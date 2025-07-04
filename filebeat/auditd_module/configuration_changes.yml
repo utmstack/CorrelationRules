@@ -1,0 +1,45 @@
+- id: 1008
+  dataTypes:
+    - auditd_module
+  name: System Configuration Changes
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Defense Evasion
+  technique: Modify System Image
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1601/
+    - https://attack.mitre.org/techniques/T1562/
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-auditd.html
+  description: Detects modifications to critical system configuration files and security settings through audit logs
+  where: |
+    safe(action, "") == "auditd.log" && 
+    (safe(log.auditd.record_type, "") == "CONFIG_CHANGE" ||
+     safe(log.auditd.record_type, "") == "MAC_CONFIG_CHANGE" ||
+     safe(log.auditd.record_type, "") == "PATH") &&
+    (safe(log.auditd.name, "") contains "/etc/" ||
+     safe(log.auditd.name, "") contains "/boot/" ||
+     safe(log.auditd.name, "") contains "/lib/systemd/" ||
+     safe(log.auditd.name, "") contains "/usr/lib/systemd/" ||
+     safe(log.auditd.name, "") contains "passwd" ||
+     safe(log.auditd.name, "") contains "shadow" ||
+     safe(log.auditd.name, "") contains "sudoers" ||
+     safe(log.auditd.name, "") contains "sshd_config" ||
+     safe(log.auditd.name, "") contains "audit.rules" ||
+     safe(log.auditd.name, "") contains "auditd.conf")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.auditd.name.keyword
+          operator: filter_term
+          value: '{{log.auditd.name}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - log.auditd.name
+    - origin.host

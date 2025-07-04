@@ -1,0 +1,32 @@
+- id: 1022
+  dataTypes:
+    - cs_switch
+  name: MAC Authentication Bypass Suspicious Attempts
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 1
+  category: Credential Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst9300/software/release/16-6/configuration_guide/sec/b_166_sec_9300_cg/configuring_ieee_802_1x_port_based_authentication.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects suspicious MAC Authentication Bypass (MAB) attempts including rapid authentication requests or unusual patterns that could indicate MAC spoofing or unauthorized device connection attempts
+  where: |
+    (safe(log.facility, "") == "MAB" || safe(log.facility, "") == "AUTHMGR") && 
+    safe(log.mnemonic, "") contains_cs "START" &&
+    safe(log.message, "") contains_cs "mab" &&
+    safe(origin.mac, "") != "" &&
+    safe(destination.interface, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: destination.interface.keyword
+          operator: filter_term
+          value: '{{destination.interface}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.mac
+    - destination.interface

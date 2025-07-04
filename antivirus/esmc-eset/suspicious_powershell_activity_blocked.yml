@@ -1,0 +1,30 @@
+- id: 1008
+  dataTypes:
+    - antivirus-esmc-eset
+  name: ESET Blocked Suspicious PowerShell Activity
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 1
+  category: Exploit Detection
+  technique: PowerShell
+  adversary: origin
+  references:
+    - https://help.eset.com/ees/8/en-US/idh_hips_main.html
+    - https://attack.mitre.org/techniques/T1059/001/
+  description: Detects when ESET blocks suspicious PowerShell commands or scripts that exhibit malicious behavior patterns, including obfuscated scripts, encoded commands, or attempts to bypass execution policies.
+  where: (safe(log.processname, "") in ["powershell.exe", "pwsh.exe"] || safe(log.rulename, "") contains "PowerShell") && safe(action, "") == "blocked" && safe(log.event_type, "") in ["HIPS_Event", "Exploit_Event"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.host.keyword
+          operator: filter_term
+          value: '{{target.host}}'
+        - field: log.username.keyword
+          operator: filter_term
+          value: '{{log.username}}'
+      within: now-15m
+      count: 2
+  deduplicateBy:
+    - target.host
+    - log.username

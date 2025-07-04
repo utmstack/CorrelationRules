@@ -1,0 +1,43 @@
+- id: 1015
+  dataTypes:
+    - cs_switch
+  name: Power over Ethernet Anomaly Detected
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Power Management
+  technique: System Shutdown/Reboot
+  adversary: destination
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst9300/software/release/17-16/configuration_guide/sys_mgmt/b_1716_sys_mgmt_9300_cg/configuring_system_message_logs.html
+    - https://attack.mitre.org/techniques/T1529/
+  description: Detects Power over Ethernet (PoE) anomalies including power budget exceeded, device power faults, or unusual power consumption patterns that may indicate hardware issues or malicious devices
+  where: |
+    (safe(log.facility, "") == "ILPOWER" || 
+     safe(log.facility, "") == "POE" ||
+     safe(log.facility, "") == "POWER") &&
+    (contains(safe(log.message, ""), "power budget exceeded") ||
+     contains(safe(log.message, ""), "power denied") ||
+     contains(safe(log.message, ""), "power fault") ||
+     contains(safe(log.message, ""), "overload condition") ||
+     contains(safe(log.message, ""), "PoE fault") ||
+     contains(safe(log.message, ""), "inline power") ||
+     safe(log.mnemonic, "") == "POWER_BUDGET_EXCEEDED" ||
+     safe(log.mnemonic, "") == "POWER_DENIED" ||
+     safe(log.mnemonic, "") == "FAULT_DETECT" ||
+     safe(log.mnemonic, "") == "OVERLOAD")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: destination.device.keyword
+          operator: filter_term
+          value: '{{destination.device}}'
+        - field: log.interface.keyword
+          operator: filter_term
+          value: '{{log.interface}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - destination.device
+    - log.interface

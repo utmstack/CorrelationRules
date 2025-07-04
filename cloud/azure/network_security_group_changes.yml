@@ -1,0 +1,31 @@
+- id: 1007
+  dataTypes:
+    - azure
+  name: Network Security Group Modifications
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Network Security Configuration Change
+  technique: Security Control Bypass
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-nsg-manage-log
+    - https://attack.mitre.org/techniques/T1562/007/
+  description: Detects modifications to Azure Network Security Groups which could indicate attempts to bypass network security controls or create backdoor access
+  where: |
+    safe(log.operationName, "").contains("Microsoft.Network/networkSecurityGroups") &&
+    (safe(log.operationName, "").contains("/write") || safe(log.operationName, "").contains("/delete") || safe(log.operationName, "").contains("/securityRules/write")) &&
+    safe(log.category, "") == "Administrative" &&
+    safe(actionResult, "") == "accepted"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.resourceId

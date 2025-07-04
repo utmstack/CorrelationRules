@@ -1,0 +1,26 @@
+- id: 1014
+  dataTypes:
+    - nginx
+  name: Nginx Variable Extraction and Information Disclosure
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Information Disclosure
+  technique: System Information Discovery
+  adversary: origin
+  references:
+    - https://nginx.org/en/docs/varindex.html
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects attempts to extract sensitive Nginx variables or server information through crafted requests, potentially exposing configuration details, internal paths, or environment variables
+  where: (contains(safe(origin.path, ""), "$") || contains(safe(log.request, ""), "${") || contains(safe(log.userAgent, ""), "$server_") || contains(safe(log.userAgent, ""), "$upstream_") || contains(safe(log.referrer, ""), "$document_root") || contains(safe(log.request, ""), "$request_filename") || contains(safe(origin.path, ""), "%24"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.ip

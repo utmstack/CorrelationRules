@@ -1,0 +1,27 @@
+- id: 1019
+  dataTypes:
+    - aws
+  name: AWS CloudWatch Alarm Deletion
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 4
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_DeleteAlarms.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects deletion of CloudWatch alarms which could indicate attempts to disable monitoring and alerting mechanisms before conducting malicious activities
+  where: safe(log.eventSource, "") == "monitoring.amazonaws.com" && safe(log.eventName, "") == "DeleteAlarms" && safe(log.errorCode, "") == ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityPrincipalId.keyword
+          operator: filter_term
+          value: '{{log.userIdentityPrincipalId}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - log.userIdentityPrincipalId
+    - log.sourceIPAddress

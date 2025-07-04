@@ -1,0 +1,41 @@
+- id: 1007
+  dataTypes:
+    - logstash
+  name: Ruby Filter Code Execution Attack
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Code Execution
+  technique: T1059.004
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/plugins-filters-ruby.html
+    - https://attack.mitre.org/techniques/T1059/004/
+  description: Detects malicious Ruby code execution attempts through the Ruby filter plugin that could lead to system compromise, data theft, or unauthorized access
+  where: >
+    (safe(log.component, "") == "logstash.filters.ruby" || 
+     safe(log.component, "") == "logstash.filters" ||
+     safe(log.component, "") == "logstash.pipeline") && 
+    safe(log.msg, "") != "" && 
+    (
+      (log.msg.contains("ruby") && (log.msg.contains("exec") || log.msg.contains("system") || log.msg.contains("eval") || log.msg.contains("`"))) ||
+      (log.msg.contains("ruby") && (log.msg.contains("File.") || log.msg.contains("IO.") || log.msg.contains("Open3") || log.msg.contains("Kernel."))) ||
+      (log.msg.contains("ruby") && (log.msg.contains("require") || log.msg.contains("load")) && (log.msg.contains("/tmp/") || log.msg.contains("http://") || log.msg.contains("https://"))) ||
+      (log.msg.contains("ruby") && log.msg.contains("exception") && (log.msg.contains("SecurityError") || log.msg.contains("LoadError"))) ||
+      (log.msg.contains("ruby") && (log.msg.contains("socket") || log.msg.contains("net/http") || log.msg.contains("open-uri"))) ||
+      (log.msg.contains("ruby") && log.msg.contains("code") && (log.msg.contains("ENV[") || log.msg.contains("@@") || log.msg.contains("$"))) ||
+      (log.msg.contains("script_error") && log.msg.contains("ruby")) ||
+      (log.msg.contains("ruby") && log.msg.contains("thread") && log.msg.contains("unsafe"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.msg

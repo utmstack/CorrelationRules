@@ -1,0 +1,56 @@
+- id: 1015
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Rootkit Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Malware
+  technique: Rootkit
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/techniques/T1014/
+  description: Detects rootkit infections and kernel-level threats that attempt to hide malicious activity at the system level using Bitdefender GravityZone's advanced detection capabilities
+  where: |
+    (safe(log.BitdefenderGZModule, "") == "av" || safe(log.BitdefenderGZModule, "") == "avc" || safe(log.BitdefenderGZModule, "") == "hd") &&
+    (
+      safe(log.BitdefenderGZMalwareType, "") == "rootkit" ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "rootkit") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "kernel") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "tdss") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "zeroaccess") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "necurs") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "bootkit") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "alureon") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "rustock") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "sinowal") ||
+      (safe(log.BitdefenderGZScanEngineType, "") == "kernel" && safe(log.act, "") == "blocked") ||
+      (safe(log.BitdefenderGZModule, "") == "hd" && safe(log.BitdefenderGZDetectionLevel, "") == "high" && contains(safe(origin.path, ""), "\\system32\\"))
+    ) &&
+    safe(log.act, "") == "blocked"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.dvchost.keyword
+          operator: filter_term
+          value: '{{log.dvchost}}'
+        - field: log.BitdefenderGZModule.keyword
+          operator: filter_term
+          value: 'av'
+      within: now-1h
+      count: 2
+    - indexPattern: v11-log-*
+      with:
+        - field: log.deviceExternalId.keyword
+          operator: filter_term
+          value: '{{log.deviceExternalId}}'
+        - field: log.act.keyword
+          operator: filter_term
+          value: 'blocked'
+      within: now-24h
+      count: 10
+  deduplicateBy:
+    - log.dvchost
+    - log.BitdefenderGZMalwareName

@@ -1,0 +1,42 @@
+- id: 1015
+  dataTypes:
+    - github
+  name: Critical Code Scanning Security Alert
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Execution
+  technique: Command and Scripting Interpreter
+  adversary: origin
+  references:
+    - https://docs.github.com/en/code-security/code-scanning/managing-code-scanning-alerts/about-code-scanning-alerts
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects critical security vulnerabilities identified by GitHub code scanning. These alerts indicate potential security flaws such as SQL injection, XSS, command injection, or other vulnerabilities that could be exploited by attackers.
+  where: >
+    (safe(log.action, "") == "code_scanning_alert.created" ||
+     safe(log.action, "") == "code_scanning_alert.appeared_in_branch" ||
+     safe(log.action, "") == "code_scanning_alert.reopened") &&
+    (safe(log.alert.rule.severity, "") == "error" ||
+     safe(log.alert.rule.severity, "") == "critical" ||
+     safe(log.alert.rule.security_severity_level, "") == "critical" ||
+     safe(log.alert.rule.security_severity_level, "") == "high" ||
+     contains(safe(log.alert.rule.tags, []), "security") ||
+     contains(safe(log.alert.rule.description, ""), "injection") ||
+     contains(safe(log.alert.rule.description, ""), "command execution") ||
+     contains(safe(log.alert.rule.description, ""), "XSS")) &&
+    safe(log.repositoryName, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.repositoryName.keyword
+          operator: filter_term
+          value: '{{log.repositoryName}}'
+        - field: log.action.keyword
+          operator: filter_term
+          value: code_scanning_alert.created
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - log.repositoryName
+    - log.alert.number

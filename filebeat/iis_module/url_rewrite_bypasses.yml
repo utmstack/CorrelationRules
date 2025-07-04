@@ -1,0 +1,39 @@
+- id: 1008
+  dataTypes:
+    - iis
+  name: IIS URL Rewrite Rule Bypass Attempt
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Web Application Attack
+  technique: Exploitation for Defense Evasion
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/iis/configuration/system.webserver/rewrite/
+    - https://attack.mitre.org/techniques/T1211/
+  description: Detects attempts to bypass URL rewrite rules in IIS through encoding tricks, double encoding, or path manipulation techniques
+  where: |
+    safe(target.path, "") != "" &&
+    (
+      (safe(target.path, "").contains("%252e") || safe(target.path, "").contains("%252f")) ||
+      (safe(target.path, "").contains("..%5c") || safe(target.path, "").contains("..%2f")) ||
+      (safe(target.path, "").contains("/.%2e/") || safe(target.path, "").contains("/%2e./")) ||
+      (safe(target.path, "").matches(".*\\\\x[0-9a-fA-F]{2}.*")) ||
+      (safe(target.path, "").contains("%u002e") || safe(target.path, "").contains("%u002f")) ||
+      (safe(target.path, "").contains("::$DATA") || safe(target.path, "").contains(":$DATA")) ||
+      (safe(target.path, "").matches(".*/[^/]+\\.[^/]+/\\.\\..*")) ||
+      (safe(target.path, "").contains("?") && safe(target.path, "").matches(".*[?&][^=]+=[^&]*(%00|%0d|%0a).*")) ||
+      (safe(log.referrer, "").contains("javascript:") || safe(log.referrer, "").contains("data:"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - target.path

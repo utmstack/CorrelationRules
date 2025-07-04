@@ -1,0 +1,43 @@
+- id: 1009
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky Sandbox Evasion Attempts Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Evasion Techniques
+  technique: Virtualization/Sandbox Evasion
+  adversary: origin
+  references:
+    - https://www.kaspersky.com/enterprise-security/malware-sandbox
+    - https://attack.mitre.org/techniques/T1497/
+    - https://attack.mitre.org/techniques/T1497/001/
+  description: Identifies malware attempting to detect and evade sandbox environments. This includes time-based evasion, environment checks, anti-VM techniques, and other behaviors designed to avoid analysis in controlled environments.
+  where: |
+    safe(log.signatureID, "") != "" && 
+    (
+      contains(safe(log.msg, ""), "sandbox") ||
+      contains(safe(log.msg, ""), "evasion") ||
+      contains(safe(log.msg, ""), "anti-VM") ||
+      contains(safe(log.msg, ""), "virtualization") ||
+      contains(safe(log.cs1, ""), "SANDBOX_") ||
+      contains(safe(log.cs4, ""), "Evasion") ||
+      contains(safe(log.cs4, ""), "AntiVM") ||
+      contains(safe(log.descMsg, ""), "environment check") ||
+      contains(safe(log.descMsg, ""), "time delay") ||
+      contains(safe(log.descMsg, ""), "VM detection") ||
+      (safe(log.cat, "") == "Behavior Detection" && 
+        (contains(safe(log.msg, ""), "delay") || contains(safe(log.msg, ""), "sleep")))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - log.cs4

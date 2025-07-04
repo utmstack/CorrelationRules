@@ -1,0 +1,50 @@
+- id: 1001
+  dataTypes:
+    - mysql
+  name: SQL Injection Attempts Detected
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Web Application Attack
+  technique: SQL Injection
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/error-log-format.html
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential SQL injection attempts through error messages indicating syntax errors, unauthorized access attempts, or suspicious SQL patterns in MySQL logs
+  where: |
+    safe(log.msg, "") != "" && 
+    safe(severity, "") == "high" &&
+    (
+      log.msg.contains("syntax error") ||
+      log.msg.contains("Access denied") ||
+      log.msg.contains("UNION") ||
+      log.msg.contains("SELECT") && log.msg.contains("FROM") && log.msg.contains("WHERE") ||
+      log.msg.contains("1=1") ||
+      log.msg.contains("' OR '") ||
+      log.msg.contains("\" OR \"") ||
+      log.msg.contains("/*") && log.msg.contains("*/") ||
+      log.msg.contains("xp_cmdshell") ||
+      log.msg.contains("EXEC(") ||
+      log.msg.contains("EXECUTE(") ||
+      log.msg.contains("CAST(") ||
+      log.msg.contains("CONVERT(") ||
+      log.msg.contains("CHAR(") ||
+      log.msg.contains("CONCAT(") ||
+      log.msg.contains("INFORMATION_SCHEMA") ||
+      log.msg.contains("mysql.user") ||
+      log.msg.contains("INTO OUTFILE") ||
+      log.msg.contains("INTO DUMPFILE")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.msg

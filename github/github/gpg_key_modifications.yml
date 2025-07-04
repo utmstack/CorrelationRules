@@ -1,0 +1,33 @@
+- id: 1009
+  dataTypes:
+    - github
+  name: GitHub GPG Key Modification Activity
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 1
+  category: Defense Evasion
+  technique: Subvert Trust Controls
+  adversary: origin
+  references:
+    - https://docs.github.com/en/authentication/managing-commit-signature-verification
+    - https://attack.mitre.org/techniques/T1553/
+  description: Detects GPG key additions, deletions, or modifications which could indicate attempts to impersonate commits or bypass signature verification. This is critical for maintaining code integrity and preventing supply chain attacks.
+  where: |
+    safe(log.action, "") in ["gpg_key.create", "gpg_key.delete", "gpg_key.update", "gpg_key.verify"] ||
+    (safe(log.event, "") == "gpg_key" && safe(log.action, "") in ["create", "delete"]) ||
+    safe(log.action, "") == "commit.verify_signature"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.senderLogin.keyword
+          operator: filter_term
+          value: '{{log.senderLogin}}'
+        - field: log.action.keyword
+          operator: filter_term
+          value: gpg_key
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - log.senderLogin
+    - log.repositoryName

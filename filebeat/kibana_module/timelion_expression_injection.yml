@@ -1,0 +1,34 @@
+- id: 1006
+  dataTypes:
+    - kibana
+  name: Timelion Expression Injection Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Code Injection
+  technique: Command and Scripting Interpreter
+  adversary: origin
+  references:
+    - https://nvd.nist.gov/vuln/detail/CVE-2019-7609
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects attempts to exploit Timelion expression injection vulnerability (CVE-2019-7609) that could lead to arbitrary code execution. This vulnerability allows attackers with access to Timelion to execute JavaScript code with Kibana process permissions.
+  where: |
+    safe(log.component, "") == "plugins.timelion" && 
+    safe(log.severityLabel, "") == "error" &&
+    (safe(log.actionMessage, "") =~ ".*eval.*" || 
+     safe(log.actionMessage, "") =~ ".*Function.*" ||
+     safe(log.actionMessage, "") =~ ".*javascript:.*" ||
+     safe(log.actionMessage, "") =~ ".*script.*" ||
+     safe(log.action, "") == "timelion_sheet_query")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - origin.user

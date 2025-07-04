@@ -1,0 +1,34 @@
+- id: 1017
+  dataTypes:
+    - kibana
+  name: SAML Authentication Security Issue
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 1
+  category: Authentication Attack
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/saml-guide-stack.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects SAML authentication failures and security issues that may indicate authentication bypass attempts, SAML assertion tampering, or configuration vulnerabilities.
+  where: |
+    (safe(log.action, "") == "authentication_failed" || 
+     safe(log.action, "") == "realm_authentication_failed") &&
+    safe(log.message, "") =~ ".*saml.*" &&
+    safe(actionResult, "") == "failure"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.action.keyword
+          operator: filter_term
+          value: 'authentication_failed'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.host

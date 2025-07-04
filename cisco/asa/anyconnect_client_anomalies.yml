@@ -1,0 +1,33 @@
+- id: 1020
+  dataTypes:
+    - asa
+  name: AnyConnect Client Connection Anomalies
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 3
+  category: Command and Control
+  technique: Application Layer Protocol
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1071/
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog/syslogs9.html
+  description: Detects AnyConnect VPN client anomalies including connection failures, session drops, IPv6 assignment issues, and suspicious reconnection patterns that may indicate compromised credentials or network attacks.
+  where: |
+    (safe(log.message_id, "") =~ "^722" || 
+     safe(log.message_id, "") == "716058") &&
+    (safe(log.message, "") =~ "(?i)(anyconnect.*lost.*connection|no.*ipv6.*address.*available|svc.*connection.*fail|anyconnect.*session.*inactive|ssl.*tunnel.*drop)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-4h
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.ip

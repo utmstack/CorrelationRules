@@ -1,0 +1,36 @@
+- id: 1014
+  dataTypes:
+    - traefik
+  name: Access Log Injection Attack
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Log Manipulation
+  technique: Indicator Removal on Host
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/observability/access-logs/
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects attempts to inject malicious content into access logs through request fields, potentially corrupting log integrity or executing log parser exploits
+  where: |
+    (safe(log.http.request_headers.user_agent, "") contains "\\n" ||
+     safe(log.http.request_headers.user_agent, "") contains "\\r" ||
+     safe(log.http.request_headers.user_agent, "") contains "\\x" ||
+     safe(log.http.request_headers.referer, "") contains "\\n" ||
+     safe(log.http.request_headers.referer, "") contains "\\r" ||
+     safe(origin.url, "") contains "%0a" ||
+     safe(origin.url, "") contains "%0d" ||
+     safe(origin.url, "") contains "${" ||
+     safe(log.http.request_headers.user_agent, "") contains "${" ||
+     safe(log.http.request_headers.user_agent, "").length() > 500)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip

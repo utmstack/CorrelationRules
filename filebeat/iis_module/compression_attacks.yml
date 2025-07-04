@@ -1,0 +1,29 @@
+- id: 1017
+  dataTypes:
+    - iis
+  name: IIS Compression Attack - Potential BREACH/Zip Bomb
+  impact:
+    confidentiality: 3
+    integrity: 1
+    availability: 5
+  category: Denial of Service
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://www.breachattack.com/
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects potential compression-based attacks including BREACH attacks targeting HTTPS compression or zip bomb attempts that could cause resource exhaustion.
+  where: |
+    (safe(log.userAgent, "") contains "gzip" || safe(log.userAgent, "") contains "deflate") &&
+    (safe(log.responseTime, 0) > 10000 || safe(log.win32Status, 0) == 64 || safe(log.win32Status, 0) == 121) &&
+    (safe(statusCode, 0) == 500 || safe(statusCode, 0) == 503 || safe(statusCode, 0) == 408)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - target.ip

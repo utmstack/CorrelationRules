@@ -1,0 +1,33 @@
+- id: 1008
+  dataTypes:
+    - antivirus-sentinel-one
+  name: Storyline Correlation Event
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Attack Chain Detection
+  technique: Attack Chain Analysis
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/platform/storyline-active-response/
+    - https://attack.mitre.org/tactics/enterprise/
+  description: Detects correlated attack patterns identified by SentinelOne's Storyline feature, which connects related events to reveal complete attack chains and multi-stage threats
+  where: |
+    safe(log.eventDescription, "") =~ "(?i)(storyline|attack chain|correlated|multi.?stage|campaign)" &&
+    safe(log.msg, "") =~ "(?i)(threat|attack|compromise|breach)" &&
+    (safe(log.cnt, 0) > 1 || safe(log.eventCount, 0) > 1)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+        - field: log.sourceUser.keyword
+          operator: filter_term
+          value: '{{log.sourceUser}}'
+      within: now-4h
+      count: 5
+  deduplicateBy:
+    - log.syslogHost
+    - log.eventDescription

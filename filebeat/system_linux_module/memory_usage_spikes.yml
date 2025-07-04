@@ -1,0 +1,26 @@
+- id: 1018
+  dataTypes:
+    - linux
+  name: Memory Usage Spike Detection
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 4
+  category: Resource Monitoring
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects sudden memory usage spikes and memory pressure events that could indicate memory leaks or resource exhaustion attacks
+  where: safe(log.message, "") != "" && (safe(log.message, "") contains "oom-killer" || safe(log.message, "") contains "Out of memory: Kill process" || safe(log.message, "") contains "Memory cgroup out of memory" || safe(log.message, "") contains "page allocation failure" || safe(log.message, "") contains "swapfile" && safe(log.message, "") contains "full" || safe(log.message, "") contains "memory pressure" || safe(log.message, "") contains "low on memory") && safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.host

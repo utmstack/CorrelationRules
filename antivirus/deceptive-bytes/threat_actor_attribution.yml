@@ -1,0 +1,38 @@
+- id: 1023
+  dataTypes:
+    - deceptive-bytes
+  name: Threat Actor Attribution
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Threat Intelligence
+  technique: Actor Attribution Analysis
+  adversary: origin
+  references:
+    - https://attack.mitre.org/groups/
+    - https://malpedia.caad.fkie.fraunhofer.de/
+  description: Correlates observed attack patterns, tools, techniques, and infrastructure with known threat actor profiles to provide attribution intelligence and identify potential threat actors
+  where: >
+    safe(log.eventType, "") == "threat_attribution" &&
+    safe(log.attributionConfidence, 0) >= 70 &&
+    safe(log.actorProfile, "") != "" &&
+    safe(log.deceptionTriggered, false) == true &&
+    (safe(log.ttpsMatched, 0) >= 3 ||
+     safe(log.infrastructureMatch, false) == true ||
+     safe(log.toolingFingerprint, "") != "") &&
+    safe(log.historicalCampaignMatch, false) == true
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.actorProfile.keyword
+          operator: filter_term
+          value: '{{log.actorProfile}}'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-72h
+      count: 10
+  deduplicateBy:
+    - log.actorProfile
+    - log.campaignId

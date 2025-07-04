@@ -1,0 +1,37 @@
+- id: 1024
+  dataTypes:
+    - haproxy
+  name: HAProxy Server State File Tampering Detection
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 4
+  category: File Integrity
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://www.haproxy.com/documentation/haproxy-runtime-api/reference/show-servers-state/
+    - https://attack.mitre.org/techniques/T1565/001/
+  description: Detects potential tampering with HAProxy server state files which could be used to manipulate server weights, drain modes, or maintenance states. This could lead to traffic redirection or service disruption.
+  where: |
+    safe(action, "") == "haproxy.log" && 
+    (safe(log.message, "") contains "state file" || 
+     safe(log.message, "") contains "server-state-file" ||
+     safe(log.message, "") contains "load server state") &&
+    (safe(log.message, "") contains "corrupt" ||
+     safe(log.message, "") contains "invalid format" ||
+     safe(log.message, "") contains "checksum mismatch" ||
+     safe(log.message, "") contains "unexpected value" ||
+     safe(log.message, "") contains "state file error" ||
+     safe(log.message, "") contains "failed to load")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - origin.file

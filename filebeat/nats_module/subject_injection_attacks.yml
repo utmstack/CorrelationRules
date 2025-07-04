@@ -1,0 +1,40 @@
+- id: 1001
+  dataTypes:
+    - nats
+  name: NATS Subject Injection Attack Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Application Attack
+  technique: Injection
+  adversary: origin
+  references:
+    - https://docs.nats.io/nats-concepts/subjects
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential subject injection attacks in NATS messaging system where malicious patterns are injected into subject names to bypass authorization or access unauthorized topics
+  where: |
+    safe(log.subject, "") != "" && (
+      log.subject.contains("../") ||
+      log.subject.contains("..\\") ||
+      log.subject.contains("%2e%2e") ||
+      log.subject.contains("%252e%252e") ||
+      log.subject.contains("*>") ||
+      log.subject.contains(">*") ||
+      log.subject.matches(".*[\\x00-\\x1f\\x7f-\\x9f].*") ||
+      log.subject.contains("${") ||
+      log.subject.contains("{{") ||
+      log.subject.contains("%00") ||
+      log.subject.contains("\\u0000")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.subject

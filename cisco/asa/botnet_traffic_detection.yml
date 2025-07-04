@@ -1,0 +1,27 @@
+- id: 1009
+  dataTypes:
+    - asa
+  name: Botnet Command and Control Traffic Detected
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Malware
+  technique: Application Layer Protocol
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/special/botnet/asa-botnet.pdf
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects botnet command and control traffic identified by Cisco ASA's dynamic filter/botnet database. Message IDs 338001-338002 indicate blacklisted traffic from/to malicious addresses. This could indicate compromised hosts communicating with known botnet infrastructure.
+  where: safe(log.messageId, "") in ["338001", "338002"] || (safe(log.message, "") =~ ".*botnet.*" && safe(log.message, "") =~ ".*(detected|blocked|dropped).*") || (safe(log.message, "") =~ ".*dynamic.*filter.*" && safe(log.message, "") =~ ".*blacklisted.*") || (safe(log.message, "") =~ ".*malicious.*address.*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - destination.ip

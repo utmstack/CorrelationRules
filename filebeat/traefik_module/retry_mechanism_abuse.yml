@@ -1,0 +1,36 @@
+- id: 1009
+  dataTypes:
+    - traefik_module
+  name: Retry Mechanism Abuse Detected
+  impact:
+    confidentiality: 1
+    integrity: 1
+    availability: 4
+  category: Resource Abuse
+  technique: Endpoint Denial of Service
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/middlewares/http/retry/
+    - https://attack.mitre.org/techniques/T1499/002/
+  description: Detects abuse of retry mechanisms through excessive retry attempts, retry amplification attacks, or retry configuration exploitation in Traefik
+  where: |
+    safe(log.Retries, 0) > 3 &&
+    (safe(log.OriginStatus, 0) >= 500 || 
+     safe(log.OriginStatus, 0) == 0 ||
+     contains(safe(log.error, ""), "retry") ||
+     contains(safe(log.error, ""), "attempt")) &&
+    safe(log.Duration, 0) > 5000000000
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.ClientHost.keyword
+          operator: filter_term
+          value: '{{log.ClientHost}}'
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 30
+  deduplicateBy:
+    - log.ClientHost
+    - origin.host

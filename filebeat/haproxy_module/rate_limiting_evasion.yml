@@ -1,0 +1,47 @@
+- id: 1005
+  dataTypes:
+    - haproxy
+  name: HAProxy Rate Limiting Evasion Detection
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Impact
+  technique: Network Denial of Service
+  adversary: origin
+  references:
+    - https://www.haproxy.com/documentation/haproxy-configuration-tutorials/core-concepts/stick-tables/
+    - https://attack.mitre.org/techniques/T1498/
+  description: Detects attempts to evade HAProxy rate limiting controls through distributed attacks, session rotation, header manipulation, or other techniques designed to bypass request rate restrictions
+  where: |
+    (safe(action, "") == "haproxy.log" &&
+     ((safe(log.message, "") contains "rate" &&
+       (safe(log.message, "") contains "limit exceeded" ||
+        safe(log.message, "") contains "too many requests" ||
+        safe(log.message, "") contains "throttled")) ||
+      (safe(log.haproxy.http.response.status_code, 0) == 429 &&
+       safe(log.haproxy.time_queue, 0) < 100) ||
+      (safe(log.haproxy.http.response.status_code, 0) == 503 &&
+       safe(log.haproxy.queue.current, 0) > 100) ||
+      (safe(log.haproxy.connections.frontend, 0) > 1000 &&
+       safe(log.haproxy.time_backend_connect, 0) < 10 &&
+       safe(log.haproxy.http.request.body_size, 0) < 100))) ||
+    (safe(log.haproxy.source, "") != "" &&
+     safe(log.haproxy.http.request.captured_headers, "") != "" &&
+     (count(split(safe(log.haproxy.http.request.captured_headers, ""), "User-Agent:")) > 3 ||
+      safe(log.haproxy.http.request.captured_headers, "") contains "X-Real-IP" ||
+      safe(log.haproxy.http.request.captured_headers, "") contains "X-Originating-IP")) ||
+    (safe(log.haproxy.termination_state, "") contains "SC" &&
+     safe(log.haproxy.http.request.time_wait, 0) < 1000 &&
+     safe(log.haproxy.connections.retries, 0) > 2)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1m
+      count: 100
+  deduplicateBy:
+    - origin.host
+    - log.haproxy.backend_name

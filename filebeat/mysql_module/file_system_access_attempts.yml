@@ -1,0 +1,38 @@
+- id: 1014
+  dataTypes:
+    - mysql
+  name: MySQL File System Access Attempts
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Collection
+  technique: Data from Local System (T1005)
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/load-data.html
+    - https://attack.mitre.org/techniques/T1005/
+  description: Detects attempts to access the file system through MySQL commands which could be used for data exfiltration or to read sensitive files
+  where: >
+    safe(log.msg, "") != "" && 
+    (log.msg.contains("LOAD DATA") && log.msg.contains("INFILE") ||
+     log.msg.contains("SELECT") && log.msg.contains("INTO OUTFILE") ||
+     log.msg.contains("SELECT") && log.msg.contains("INTO DUMPFILE") ||
+     log.msg.contains("LOAD_FILE") ||
+     log.msg.contains("secure_file_priv") ||
+     log.msg.contains("FILE privilege") ||
+     log.msg.contains("/etc/passwd") ||
+     log.msg.contains("/proc/") ||
+     log.msg.contains("\\windows\\") ||
+     log.msg.contains("\\system32\\") ||
+     log.errorCode == "ER_OPTION_PREVENTS_STATEMENT")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host

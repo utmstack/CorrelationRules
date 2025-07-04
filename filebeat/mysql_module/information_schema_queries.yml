@@ -1,0 +1,40 @@
+- id: 1015
+  dataTypes:
+    - mysql
+  name: MySQL Information Schema Enumeration
+  impact:
+    confidentiality: 3
+    integrity: 0
+    availability: 0
+  category: Discovery
+  technique: System Information Discovery (T1082)
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/information-schema.html
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects excessive queries to MySQL information_schema tables which could indicate reconnaissance activities or preparation for attacks
+  where: >
+    safe(log.msg, "") != "" && 
+    (log.msg.contains("information_schema") ||
+     log.msg.contains("INFORMATION_SCHEMA") ||
+     log.msg.contains("mysql.user") ||
+     log.msg.contains("mysql.db") ||
+     log.msg.contains("performance_schema") ||
+     log.msg.contains("SHOW DATABASES") ||
+     log.msg.contains("SHOW TABLES") ||
+     log.msg.contains("SHOW COLUMNS") ||
+     log.msg.contains("SHOW GRANTS") ||
+     log.msg.contains("SHOW PRIVILEGES") ||
+     log.msg.contains("SHOW PROCESSLIST") ||
+     log.msg.contains("SHOW VARIABLES") ||
+     log.msg.contains("SHOW STATUS"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 20
+  deduplicateBy:
+    - origin.host

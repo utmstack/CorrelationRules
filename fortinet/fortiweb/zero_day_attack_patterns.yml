@@ -1,0 +1,42 @@
+- id: 1021
+  dataTypes:
+    - firewall-fortiweb
+  name: Zero-Day Attack Pattern Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Web Application Security
+  technique: Zero-Day Exploit
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.2.2/log-message-reference/252057/event
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential zero-day attack patterns through anomalous behavior, unknown attack signatures, and suspicious payload characteristics that deviate from normal web traffic patterns.
+  where: |
+    safe(log.type, "") == "attack" && 
+    safe(log.subtype, "") == "waf_signature_detection" &&
+    safe(log.severity_level, "") in ["High", "Critical"] &&
+    (
+      safe(log.msg, "").contains("unknown") ||
+      safe(log.msg, "").contains("anomaly") ||
+      safe(log.msg, "").contains("suspicious") ||
+      safe(log.msg, "").contains("0day") ||
+      safe(log.attack_type, "").contains("custom") ||
+      safe(log.attack_type, "").contains("generic")
+    ) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'attack'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.attack_type

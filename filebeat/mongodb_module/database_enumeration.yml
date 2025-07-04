@@ -1,0 +1,41 @@
+- id: 1003
+  dataTypes:
+    - mongodb
+  name: MongoDB Database Enumeration
+  impact:
+    confidentiality: 4
+    integrity: 1
+    availability: 1
+  category: Discovery
+  technique: System Information Discovery
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/reference/log-messages/
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects enumeration activities such as listing databases, collections, or excessive metadata queries that may indicate reconnaissance activities
+  where: |
+    safe(log.component, "") in ["COMMAND", "QUERY", "ACCESS"] &&
+    (safe(log.msg, "") contains "listDatabases" ||
+     safe(log.msg, "") contains "listCollections" ||
+     safe(log.msg, "") contains "getCollectionInfos" ||
+     safe(log.msg, "") contains "show dbs" ||
+     safe(log.msg, "") contains "show collections" ||
+     safe(log.msg, "") contains "db.getCollectionNames" ||
+     safe(log.msg, "") contains "db.getMongo" ||
+     safe(log.msg, "") contains "db.adminCommand" ||
+     safe(log.msg, "") contains "serverStatus" ||
+     safe(log.msg, "") contains "buildInfo" ||
+     safe(log.msg, "") contains "hostInfo")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.msg.keyword
+          operator: wildcard
+          value: '*list*'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.host

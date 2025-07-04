@@ -1,0 +1,41 @@
+- id: 1007
+  dataTypes:
+    - apache
+  name: SSL Certificate Validation Bypass Attempts
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 1
+  category: Network Security
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://httpd.apache.org/docs/2.4/ssl/ssl_howto.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects potential SSL certificate validation bypass attempts including access to SSL-protected resources without proper authentication, suspicious SSL renegotiation patterns, or attempts to exploit SSL configuration weaknesses.
+  where: |
+    (
+      safe(log.statusCode, 0) == 200 && 
+      safe(origin.path, "").contains("/secure/") || safe(origin.path, "").contains("/admin/") || safe(origin.path, "").contains("/private/") 
+    ) && 
+    (
+      safe(protocol, "") == "HTTP" || 
+      safe(log.protoVersion, "") == "1.0" ||
+      (safe(log.userAgent, "").contains("SSLv2") || safe(log.userAgent, "").contains("SSLv3"))
+    ) ||
+    (
+      safe(log.statusCode, 0) == 403 && 
+      safe(actionResult, "") == "denied" && 
+      safe(origin.path, "").contains("ssl-cert") || safe(origin.path, "").contains("certificate")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.path

@@ -1,0 +1,37 @@
+- id: 1016
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne Policy Violation Detected
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 1
+  category: Policy Violation
+  technique: T1078 - Valid Accounts
+  adversary: insider
+  references:
+    - https://www.sentinelone.com/platform/singularity-cloud-workload-security/
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects policy violations in SentinelOne including unauthorized access attempts, prohibited application usage, or configuration changes that violate security policies
+  where: |
+    safe(log.eventDescription, "") != "" && 
+    (
+      contains(lower(safe(log.eventDescription, "")), "policy violation") ||
+      contains(lower(safe(log.eventDescription, "")), "policy breach") ||
+      contains(lower(safe(log.eventDescription, "")), "unauthorized access") ||
+      contains(lower(safe(log.eventDescription, "")), "prohibited") ||
+      contains(lower(safe(log.eventDescription, "")), "compliance violation") ||
+      contains(lower(safe(log.eventDescription, "")), "configuration change")
+    ) &&
+    safe(log.sourceUser, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.sourceUser.keyword
+          operator: filter_term
+          value: '{{log.sourceUser}}'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - log.sourceUser
+    - log.syslogHost

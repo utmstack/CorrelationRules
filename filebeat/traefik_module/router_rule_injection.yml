@@ -1,0 +1,38 @@
+- id: 1001
+  dataTypes:
+    - traefik
+  name: Router Rule Injection Attempt
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Web Application Security
+  technique: Configuration Injection
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/routing/routers/
+    - https://attack.mitre.org/techniques/T1505/003/
+  description: Detects attempts to inject malicious routing rules into Traefik configuration. This could allow attackers to redirect traffic, bypass security controls, or expose internal services.
+  where: |
+    safe(log.RequestMethod, "") in ["POST", "PUT", "PATCH"] &&
+    safe(origin.url, "") contains("/api/http/routers") &&
+    (safe(log.RequestPath, "") contains("../") ||
+     safe(log.RequestPath, "") contains("..\\") ||
+     safe(log.RequestPath, "") contains("%2e%2e") ||
+     safe(log.RequestPath, "") contains("${") ||
+     safe(log.RequestPath, "") contains("{{") ||
+     safe(log.RequestBody, "") contains("rule:") && 
+     (safe(log.RequestBody, "") contains("PathPrefix(`/") ||
+      safe(log.RequestBody, "") contains("Host(`") ||
+      safe(log.RequestBody, "") contains("Headers(`")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.RequestPath

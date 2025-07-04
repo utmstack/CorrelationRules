@@ -1,0 +1,40 @@
+- id: 1009
+  dataTypes:
+    - iis
+  name: IIS Request Filtering Evasion Attempt
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Web Application Attack
+  technique: Exploitation for Defense Evasion
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/iis/configuration/system.webserver/security/requestfiltering/
+    - https://attack.mitre.org/techniques/T1027/
+  description: Detects attempts to evade IIS request filtering through various encoding, padding, and obfuscation techniques
+  where: |
+    safe(target.path, "") != "" &&
+    (
+      (safe(statusCode, 0) == 404 && safe(log.subStatusCode, 0) >= 5 && safe(log.subStatusCode, 0) <= 19) ||
+      (safe(target.path, "").length() > 2048) ||
+      (safe(log.userAgent, "").length() > 1024) ||
+      (safe(target.path, "").matches(".*(%20){10,}.*")) ||
+      (safe(target.path, "").contains("+.htr") || safe(target.path, "").contains("+.hta")) ||
+      (safe(target.path, "").matches(".*\\.(exe|dll|cmd|bat|ps1|vbs).*") && safe(statusCode, 0) != 404) ||
+      (safe(target.path, "").contains("/.") && safe(target.path, "").matches(".*/\\.[^/]*$")) ||
+      (safe(log.method, "").length() > 10) ||
+      (safe(target.path, "").matches(".*[\\x00-\\x1f\\x7f].*")) ||
+      (safe(target.path, "").contains("%") && safe(target.path, "").matches(".*%[^0-9a-fA-F].*"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-20m
+      count: 15
+  deduplicateBy:
+    - origin.ip
+    - statusCode

@@ -1,0 +1,30 @@
+- id: 1003
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Security Audit Subsystem Alert
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://www.ibm.com/support/pages/aix-audit-audit-subsystem-aix
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects critical security events from the IBM AIX audit subsystem, including audit configuration changes, audit service disruptions, or attempts to tamper with audit logs
+  where: (safe(log.eventType, "").matches("^audit.*") && safe(log.returnCode, "") != "0") || (safe(log.msg, "").contains("audit") && (safe(log.msg, "").contains("stop") || safe(log.msg, "").contains("disable") || safe(log.msg, "").contains("fail"))) || (safe(action, "") == "FILE_MODIFY" && safe(log.objName, "").matches("/etc/security/audit/.*")) || (safe(log.commandType, "") == "audit" && safe(origin.command, "").contains("stop"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.msg.keyword
+          operator: filter_wildcard
+          value: '*audit*'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.eventType

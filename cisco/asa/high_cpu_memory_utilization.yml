@@ -1,0 +1,33 @@
+- id: 1011
+  dataTypes:
+    - asa
+  name: High CPU/Memory Utilization
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 4
+  category: System Performance
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog/syslogs2.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects high CPU or memory utilization on Cisco ASA devices which could indicate a DoS attack, resource exhaustion, or system malfunction. High resource usage can impact firewall performance and availability.
+  where: |
+    safe(log.dataType, "") == "asa" && (
+      (safe(log.messageId, "") == "211001" && safe(log.message, "") contains "Memory allocation Error") ||
+      (safe(log.messageId, "") == "211003" && safe(log.message, "") contains "Error in computed percentage CPU usage value") ||
+      (safe(log.message, "") contains "CPU usage" && safe(log.message, "") matches ".*([8-9][0-9]|100)%.*") ||
+      (safe(log.message, "") contains "memory usage" && safe(log.message, "") matches ".*([8-9][0-9]|100)%.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.messageId

@@ -1,0 +1,39 @@
+- id: 1014
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb IP Reputation Block
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Malicious Source
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://help.fortinet.com/fweb/580/Content/FortiWeb/fortiweb-admin/device_reputation.htm
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects when FortiWeb blocks access based on IP reputation or device reputation scoring. This indicates connection attempts from known malicious sources or devices with poor reputation due to previous security violations.
+  where: |
+    safe(log.type, "") == "attack" && 
+    (contains(safe(log.msg, ""), "reputation") || 
+     contains(safe(log.msg, ""), "bad IP") ||
+     contains(safe(log.msg, ""), "blacklist") ||
+     contains(safe(log.msg, ""), "blocklist") ||
+     contains(safe(log.attack_type, ""), "reputation") ||
+     safe(log.subtype, "") == "ip_reputation" ||
+     safe(log.subtype, "") == "device_reputation") &&
+    safe(action, "") == "blocked" &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'attack'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - origin.ip

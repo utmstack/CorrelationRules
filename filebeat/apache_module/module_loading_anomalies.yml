@@ -1,0 +1,52 @@
+- id: 1005
+  dataTypes:
+    - apache
+  name: Suspicious Apache Module Loading Activity
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Module Load
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1129/
+    - https://httpd.apache.org/docs/2.4/mod/
+  description: Detects suspicious access patterns to Apache module files and directories that could indicate attempts to load malicious modules or enumerate server capabilities
+  where: |
+    safe(origin.path, "") != "" &&
+    (
+      origin.path.contains("/modules/") ||
+      origin.path.contains("/mods-enabled/") ||
+      origin.path.contains("/mods-available/") ||
+      origin.path.contains(".so") ||
+      origin.path.contains("mod_") ||
+      origin.path.contains("LoadModule") ||
+      (origin.path.contains("/cgi-bin/") && safe(log.statusCode, 0) == 200) ||
+      origin.path.contains("/server-status") ||
+      origin.path.contains("/server-info") ||
+      origin.path.contains("httpd.conf") ||
+      origin.path.contains("apache2.conf")
+    ) &&
+    safe(actionResult, "") == "accepted"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-2h
+      count: 10
+      or:
+        - indexPattern: v11-log-*
+          with:
+            - field: origin.ip.keyword
+              operator: filter_term
+              value: '{{origin.ip}}'
+            - field: origin.path.keyword
+              operator: filter_match
+              value: 'mod_'
+          within: now-24h
+          count: 5
+  deduplicateBy:
+    - origin.ip

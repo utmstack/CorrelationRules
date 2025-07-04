@@ -1,0 +1,31 @@
+- id: 1019
+  dataTypes:
+    - kafka
+  name: Exactly-Once Semantics Violation Detected
+  impact:
+    confidentiality: 1
+    integrity: 5
+    availability: 2
+  category: Data Integrity
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://www.confluent.io/blog/simplified-robust-exactly-one-semantics-in-kafka-2-5/
+    - https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging
+    - https://attack.mitre.org/techniques/T1565/001/
+  description: Detects violations of exactly-once semantics in Kafka that could lead to message loss or duplication. This includes transaction failures, producer fencing issues, and coordinator state inconsistencies.
+  where: safe(log.severity, "") == "ERROR" && safe(log.msg, "") != "" && (log.msg.contains("exactly-once") || log.msg.contains("exactly once") || log.msg.contains("transaction") || log.msg.contains("fencing") || log.msg.contains("zombie")) && (log.msg.contains("violation") || log.msg.contains("failed") || log.msg.contains("inconsistent") || log.msg.contains("abort"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: action.keyword
+          operator: filter_term
+          value: '{{action}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.component

@@ -1,0 +1,39 @@
+- id: 1018
+  dataTypes:
+    - redis_module
+  name: Redis Sorted Set Score Manipulation Attack
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: Impact
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://redis.io/docs/latest/develop/data-types/sorted-sets/
+    - https://redis.io/docs/latest/commands/zincrby/
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects potential attacks on Redis sorted sets including score overflow attempts, excessive ZINCRBY operations for resource exhaustion, or large ZRANGE queries that could cause performance degradation
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      (safe(log.msg, "").contains("ZINCRBY") && safe(log.msg, "").matches(".*ZINCRBY\\s+\\w+\\s+\\w+\\s+[0-9]{10,}.*")) ||
+      (safe(log.msg, "").contains("ZADD") && safe(log.msg, "").matches(".*ZADD\\s+\\w+\\s+[0-9]{16,}.*")) ||
+      (safe(log.msg, "").contains("ZRANGE") && safe(log.msg, "").matches(".*ZRANGE\\s+\\w+\\s+[0-9]+\\s+[0-9]{4,}.*")) ||
+      (safe(log.msg, "").contains("score overflow")) ||
+      (safe(log.severity, "") == "warning" && safe(log.msg, "").contains("sorted set"))
+    ) &&
+    safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.msg
+          operator: filter_regex
+          value: '.*(ZINCRBY|ZADD|ZRANGE).*'
+      within: now-5m
+      count: 50
+  deduplicateBy:
+    - origin.host

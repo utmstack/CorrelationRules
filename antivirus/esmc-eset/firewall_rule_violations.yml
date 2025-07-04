@@ -1,0 +1,37 @@
+- id: 1015
+  dataTypes:
+    - antivirus-esmc-eset
+  name: Firewall Rule Violations
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 4
+  category: Network Security
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://help.eset.com/protect_cloud/en-US/events-exported-to-json-format.html
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects firewall rule violations and suspicious network connection attempts blocked by ESET Firewall, including potential command and control communications or data exfiltration attempts.
+  where: |
+    safe(log.event_type, "") == "FirewallAggregated_Event" &&
+    safe(action, "") in ["blocked", "denied", "dropped"] &&
+    safe(origin.ip, "") != "" &&
+    safe(target.ip, "") != "" &&
+    (
+      safe(target.port, 0) in [22, 23, 445, 3389, 4444, 8080, 8443] ||
+      safe(log.inbound, false) == false ||
+      safe(severity, "") in ["high", "medium"]
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - target.ip
+    - target.port

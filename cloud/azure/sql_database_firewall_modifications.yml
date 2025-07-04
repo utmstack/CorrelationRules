@@ -1,0 +1,34 @@
+- id: 1009
+  dataTypes:
+    - azure
+  name: SQL Database Firewall Rule Modifications
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Database Security Configuration
+  technique: Remote Services
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/activity-log-schema
+    - https://attack.mitre.org/techniques/T1021/
+  description: Detects modifications to Azure SQL Database firewall rules which could allow unauthorized access to sensitive data
+  where: |
+    safe(log.operationName, "").contains("Microsoft.Sql/servers") &&
+    (safe(log.operationName, "").contains("/firewallRules/write") || safe(log.operationName, "").contains("/firewallRules/delete")) &&
+    safe(log.category, "") == "Administrative" &&
+    safe(actionResult, "") == "accepted"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.aadObjectId.keyword
+          operator: filter_term
+          value: '{{log.aadObjectId}}'
+      within: now-45m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.resourceId

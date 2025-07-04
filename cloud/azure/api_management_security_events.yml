@@ -1,0 +1,27 @@
+- id: 1028
+  dataTypes:
+    - azure
+  name: API Management Security Events
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: API Security
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/api-management/api-management-howto-use-azure-monitor
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects suspicious API Management activities including authentication failures, unauthorized access attempts, or API policy violations
+  where: (safe(log.operationName, "").contains("Microsoft.ApiManagement") || safe(log.type, "") == "ApiManagementGatewayLogs") && (safe(statusCode, 0) == 401 || safe(statusCode, 0) == 403 || safe(log.responseCode, 0) == 401 || safe(log.responseCode, 0) == 403 || safe(actionResult, "") == "denied" || safe(log.lastError, "") != "" || safe(log.errors, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.aadClientId

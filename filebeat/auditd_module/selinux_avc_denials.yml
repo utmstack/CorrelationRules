@@ -1,0 +1,47 @@
+- id: 1023
+  dataTypes:
+    - auditd
+  name: SELinux AVC Access Denials
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Access Control Violations
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://selinuxproject.org/page/NB_AL
+    - https://www.redhat.com/en/blog/selinux-denial2
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects SELinux Access Vector Cache (AVC) denials which indicate attempts to access resources in violation of the SELinux policy. This could indicate legitimate misconfigurations or malicious attempts to bypass security controls.
+  where: >
+    safe(action, "") == "auditd.log" && 
+    safe(log.record_type, "") == "AVC" &&
+    safe(log.selinux_denied, "") == "denied" &&
+    (
+      strings.contains(safe(log.selinux_perm, ""), "execute") ||
+      strings.contains(safe(log.selinux_perm, ""), "write") ||
+      strings.contains(safe(log.selinux_perm, ""), "read") ||
+      strings.contains(safe(log.selinux_perm, ""), "create") ||
+      strings.contains(safe(log.selinux_perm, ""), "unlink") ||
+      strings.contains(safe(log.selinux_perm, ""), "setattr") ||
+      strings.contains(safe(log.selinux_perm, ""), "transition")
+    ) &&
+    !strings.contains(safe(log.comm, ""), "systemd") &&
+    !strings.contains(safe(log.comm, ""), "NetworkManager")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.scontext.keyword
+          operator: filter_term
+          value: '{{log.scontext}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.scontext
+    - log.tcontext
+    - log.selinux_perm

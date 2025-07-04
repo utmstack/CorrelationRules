@@ -1,0 +1,39 @@
+- id: 1012
+  dataTypes:
+    - apache
+  name: HTTP Request Smuggling Attempt
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Web Application Attack
+  technique: Web Service API Exploitation
+  adversary: origin
+  references:
+    - https://portswigger.net/web-security/request-smuggling
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential HTTP request smuggling attempts by identifying malformed requests with multiple Content-Length headers, Transfer-Encoding anomalies, or suspicious protocol versions that may bypass security controls.
+  where: |
+    (safe(log.request, "").contains("Content-Length") && 
+     safe(log.request, "").contains("Transfer-Encoding")) ||
+    (safe(log.request, "").contains("\\r\\n\\r\\n") && 
+     safe(log.request, "").contains("HTTP/")) ||
+    (safe(log.protoVersion, "") != "" && 
+     safe(log.protoVersion, "") != "1.0" && 
+     safe(log.protoVersion, "") != "1.1" && 
+     safe(log.protoVersion, "") != "2.0") ||
+    (safe(origin.path, "").contains("%0d%0a") || 
+     safe(origin.path, "").contains("%0D%0A")) ||
+    (safe(log.request, "").contains(" HTTP/1.1 ") && 
+     safe(log.request, "").contains(" HTTP/"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.path

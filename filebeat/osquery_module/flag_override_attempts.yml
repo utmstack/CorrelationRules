@@ -1,0 +1,36 @@
+- id: 1015
+  dataTypes:
+    - osquery
+  name: Osquery Flag Override Attempt Detected
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+  category: Security Control Bypass
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/configuration/
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects attempts to override osquery security flags, disable critical monitoring features, or modify runtime flags to bypass security controls
+  where: |
+    (contains(safe(log.message, ""), "flag") && contains(safe(log.message, ""), "override")) ||
+    (contains(safe(log.message, ""), "disable") && contains(safe(log.message, ""), "monitoring")) ||
+    (safe(log.eventName, "") == "osquery_flags" && contains(safe(log.message, ""), "changed")) ||
+    (contains(safe(log.message, ""), "security") && contains(safe(log.message, ""), "disabled")) ||
+    (contains(safe(log.message, ""), "--disable") && safe(action, "") == "osquery.result") ||
+    (contains(safe(log.message, ""), "Flag validation failed"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - origin.user

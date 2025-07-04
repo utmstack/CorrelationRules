@@ -1,0 +1,36 @@
+- id: 1013
+  dataTypes:
+    - json-input
+  name: JSON Hijacking Attempt Detected
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Information Disclosure
+  technique: JSON Hijacking
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/JSON_Hijacking
+    - https://attack.mitre.org/techniques/T1059/007/
+  description: Detects attempts to hijack JSON data through malicious script tags, Array constructor overrides, or cross-domain data theft patterns
+  where: |
+    (contains(safe(raw, ""), "<script") ||
+     contains(safe(raw, ""), "Array.prototype") ||
+     contains(safe(raw, ""), "Object.defineProperty") ||
+     contains(safe(raw, ""), "window.location") ||
+     contains(safe(raw, ""), "document.domain") ||
+     contains(safe(raw, ""), "postMessage") ||
+     (safe(log.callback, "") != "" && contains(safe(log.callback, ""), "eval")) ||
+     (safe(origin.referer, "") != "" && safe(destination.domain, "") != "" && 
+      !contains(safe(origin.referer, ""), safe(destination.domain, ""))))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.referer

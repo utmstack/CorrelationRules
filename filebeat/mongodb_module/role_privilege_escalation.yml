@@ -1,0 +1,45 @@
+- id: 1005
+  dataTypes:
+    - mongodb
+  name: MongoDB Role Privilege Escalation
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Privilege Escalation
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/reference/log-messages/
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects attempts to escalate privileges through role modifications, user creation with elevated privileges, or grant operations that may indicate unauthorized privilege escalation
+  where: |
+    safe(log.component, "") in ["ACCESS", "COMMAND"] &&
+    (safe(log.msg, "") contains "createRole" ||
+     safe(log.msg, "") contains "updateRole" ||
+     safe(log.msg, "") contains "grantPrivilegesToRole" ||
+     safe(log.msg, "") contains "grantRolesToRole" ||
+     safe(log.msg, "") contains "grantRolesToUser" ||
+     safe(log.msg, "") contains "createUser" ||
+     safe(log.msg, "") contains "updateUser" ||
+     safe(log.msg, "") contains "db.grantRolesToUser" ||
+     safe(log.msg, "") contains "db.createUser" ||
+     safe(log.msg, "") contains "db.updateUser" ||
+     safe(log.msg, "") contains "roles:" ||
+     safe(log.msg, "") contains "root" ||
+     safe(log.msg, "") contains "dbOwner" ||
+     safe(log.msg, "") contains "userAdmin" ||
+     safe(log.msg, "") contains "dbAdmin")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'ACCESS'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host

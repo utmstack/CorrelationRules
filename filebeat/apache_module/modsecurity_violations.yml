@@ -1,0 +1,32 @@
+- id: 1021
+  dataTypes:
+    - apache
+  name: ModSecurity Rule Violations Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Web Application Attack
+  technique: Exploitation for Client Execution
+  adversary: origin
+  references:
+    - https://www.feistyduck.com/library/modsecurity-handbook-free/online/ch04-logging.html
+    - https://attack.mitre.org/techniques/T1203/
+  description: Detects when ModSecurity Web Application Firewall rules are triggered, indicating potential web application attacks or policy violations. This could include SQL injection, XSS, path traversal, or other OWASP Top 10 attack attempts.
+  where: >
+    safe(log.message, "") != "" && 
+    (log.message.contains("ModSecurity: Warning") || 
+     log.message.contains("ModSecurity: Access denied") ||
+     log.message.contains("[id \"") ||
+     safe(log.statusCode, 0) == 403 && log.message.contains("mod_security"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.path

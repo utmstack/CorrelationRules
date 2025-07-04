@@ -1,0 +1,51 @@
+- id: 1010
+  dataTypes:
+    - debian_family
+  name: Init System Tampering Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 5
+  category: Persistence
+  technique: Boot or Logon Initialization Scripts
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1037/
+    - https://www.freedesktop.org/wiki/Software/systemd/
+    - https://wiki.debian.org/Init
+  description: Detects tampering with init system components including systemd, SysV init scripts, and upstart configurations which could indicate persistence mechanisms, rootkit installation, or system-level backdoors
+  where: |
+    (safe(log.path, "") contains "/etc/init.d/" ||
+     safe(log.path, "") contains "/etc/systemd/" ||
+     safe(log.path, "") contains "/lib/systemd/" ||
+     safe(log.path, "") contains "/etc/init/" ||
+     safe(log.message, "") contains "/etc/init.d/" ||
+     safe(log.message, "") contains "/etc/systemd/" ||
+     safe(log.message, "") contains "/lib/systemd/") &&
+    (safe(log.message, "") contains "modified" ||
+     safe(log.message, "") contains "created" ||
+     safe(log.message, "") contains "deleted" ||
+     safe(log.message, "") contains "chmod" ||
+     safe(log.message, "") contains "chown" ||
+     safe(log.message, "") contains "update-rc.d" ||
+     safe(log.message, "") contains "insserv" ||
+     safe(log.message, "") contains "systemctl preset" ||
+     safe(log.message, "") contains "systemctl set-default" ||
+     safe(log.message, "") contains "Failed to validate unit file" ||
+     safe(log.message, "") contains "Invalid unit file" ||
+     safe(log.message, "") contains "Suspicious" ||
+     safe(log.message, "") contains "generator" && safe(log.message, "") contains "failed")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-15m
+      count: 2
+  deduplicateBy:
+    - origin.hostname
+    - log.path

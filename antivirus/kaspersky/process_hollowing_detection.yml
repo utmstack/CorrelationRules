@@ -1,0 +1,32 @@
+- id: 1013
+  dataTypes:
+    - antivirus-kaspersky
+  name: Process Hollowing Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Defense Evasion
+  technique: Process Injection - Process Hollowing
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1055/012/
+    - https://www.kaspersky.com/enterprise-security/wiki-section/products/behavior-based-protection
+  description: Detects process hollowing attempts where malware creates a new process in suspended state, unmaps its memory, and replaces it with malicious code. This advanced technique is used to evade detection by hiding malicious code within legitimate processes.
+  where: |
+    (safe(log.signatureID, "") == "3" || safe(log.cs1, "") == "DETECT") &&
+    (safe(log.msg, "").matches("(?i).*(hollow|RunPE|process.{0,20}suspend|NtUnmapViewOfSection|ZwUnmapViewOfSection).*") ||
+     safe(log.cs4, "").matches("(?i).*(hollow|RunPE|process.{0,20}replace).*") ||
+     safe(log.descMsg, "").matches("(?i).*(hollow|suspended.{0,20}process|memory.{0,20}unmap).*")) &&
+    safe(log.cefDeviceSeverity, "") >= "3"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 1
+  deduplicateBy:
+    - origin.ip
+    - log.cs5

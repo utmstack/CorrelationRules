@@ -1,0 +1,45 @@
+- id: 1003
+  dataTypes:
+    - nginx
+  name: HTTP Request Smuggling Attack
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Web Application Attack
+  technique: HTTP Request Smuggling
+  adversary: origin
+  references:
+    - https://portswigger.net/web-security/request-smuggling
+    - https://attack.mitre.org/techniques/T1090/
+  description: Detects HTTP request smuggling attempts including mixed Transfer-Encoding and Content-Length headers, chunked encoding anomalies, and invalid request methods. Monitors for suspicious header combinations and abnormal request patterns.
+  where: |
+    safe(origin.ip, "") != "" &&
+    (
+      (safe(log.request, "") != "" && (
+        log.request.contains("Transfer-Encoding") && log.request.contains("Content-Length") ||
+        log.request.contains("transfer-encoding") && log.request.contains("content-length") ||
+        log.request.matches(".*Transfer-Encoding:.*chunked.*") ||
+        log.request.contains("Transfer-Encoding: xchunked") ||
+        log.request.contains("Transfer-Encoding : chunked") ||
+        log.request.contains("Transfer-Encoding:chunked") ||
+        log.request.contains("GGET ") ||
+        log.request.contains("PPOST ") ||
+        log.request.contains("\\x00") ||
+        log.request.contains("\\r\\n\\r\\n")
+      )) ||
+      (safe(statusCode, 0) == 400 && safe(log.message, "") != "" && log.message.contains("client sent invalid")) ||
+      (safe(log.method, "") != "" && !log.method.matches("^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH|CONNECT|TRACE)$")) ||
+      (safe(actionResult, "") == "denied" && safe(statusCode, 0) == 405)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.request

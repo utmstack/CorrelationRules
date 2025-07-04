@@ -1,0 +1,38 @@
+- id: 1020
+  dataTypes:
+    - nginx
+  name: Server Block Confusion Attack
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Lateral Movement
+  technique: Exploitation of Remote Services
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1210/
+    - https://nginx.org/en/docs/http/server_names.html
+  description: Detects server block confusion attacks where attackers manipulate Host headers, SNI fields, or request routing to access unintended virtual hosts or bypass security controls between different server blocks
+  where: |
+    safe(origin.ip, "") != "" && (
+      (safe(log.request, "") matches ".*[Hh][Oo][Ss][Tt]:.*[\\r\\n].*[Hh][Oo][Ss][Tt]:.*") ||
+      (safe(log.userAgent, "") matches ".*[Hh][Oo][Ss][Tt]:.*") ||
+      (safe(log.request, "") matches ".*@.*@.*" && safe(origin.path, "") != "") ||
+      (safe(log.request, "") matches ".*[Hh][Oo][Ss][Tt]:\\s*[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}.*") ||
+      (safe(log.request, "") matches ".*[Hh][Oo][Ss][Tt]:\\s*localhost.*" && safe(origin.ip, "") != "127.0.0.1" && safe(origin.ip, "") != "::1") ||
+      (safe(log.request, "") matches ".*[Hh][Oo][Ss][Tt]:\\s*\\[.*\\].*") ||
+      (safe(log.severityLabel, "") == "error" && safe(log.message, "") matches ".*no \"Host\" header.*") ||
+      (safe(log.message, "") matches ".*invalid host in.*upstream.*") ||
+      (safe(statusCode, 0) == 421 || safe(statusCode, 0) == 444) ||
+      (safe(log.request, "") matches ".*[Hh][Oo][Ss][Tt]:\\s*[^\\s]*\\s+[^\\s]*.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.ip

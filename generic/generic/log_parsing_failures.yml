@@ -1,0 +1,27 @@
+- id: 1001
+  dataTypes:
+    - generic
+  name: Generic Log Parsing Failures
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 3
+  category: Data Quality
+  technique: Log Processing Error
+  adversary: origin
+  references:
+    - https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.24/administration-guide/71
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects when generic log parsing fails, which could indicate malformed logs, corrupted data, or attempts to evade detection by sending malformed log entries
+  where: safe(log.parse_error, "") != "" || (safe(log.message, "") != "" && safe(log.raw, "") != "" && size(safe(log.message, "")) == 0)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.source

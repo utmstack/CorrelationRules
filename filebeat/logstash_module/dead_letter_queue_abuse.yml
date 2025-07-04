@@ -1,0 +1,30 @@
+- id: 1014
+  dataTypes:
+    - logstash
+  name: Logstash Dead Letter Queue Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 3
+  category: Data Manipulation
+  technique: T1565 - Data Manipulation
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/dead-letter-queues.html
+    - https://attack.mitre.org/techniques/T1565/
+  description: Detects abnormal patterns in dead letter queue operations that could indicate attempts to hide malicious data or bypass security monitoring
+  where: safe(log.component, "") != "" && log.component.contains("dead_letter_queue") && safe(log.msg, "") != "" && (log.msg.contains("max_bytes") || log.msg.contains("overflow") || log.msg.contains("flush")) && safe(log.level, "") != "INFO"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: '{{log.component}}'
+      within: now-2h
+      count: 20
+  deduplicateBy:
+    - origin.host
+    - log.pipelineName

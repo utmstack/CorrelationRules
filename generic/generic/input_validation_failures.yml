@@ -1,0 +1,43 @@
+- id: 1006
+  dataTypes:
+    - generic
+  name: Input Validation Failures Detection
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 2
+  category: Data Quality
+  technique: Input Validation Bypass
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/Input_Validation_Attacks
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects events indicating input validation failures, which could indicate attempts to inject malicious data or bypass security controls.
+  where: |
+    (safe(log.error, "") != "" && (
+      log.error.contains("validation failed") ||
+      log.error.contains("invalid input") ||
+      log.error.contains("validation error") ||
+      log.error.contains("input rejected") ||
+      log.error.contains("format error")
+    )) ||
+    (safe(log.message, "") != "" && (
+      log.message.contains("validation failed") ||
+      log.message.contains("invalid input") ||
+      log.message.contains("validation error") ||
+      log.message.contains("input rejected") ||
+      log.message.contains("format error")
+    )) ||
+    (safe(log.event_type, "") == "validation_error") ||
+    (safe(log.status, "") == "validation_failed")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.error

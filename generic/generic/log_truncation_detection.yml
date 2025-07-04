@@ -1,0 +1,35 @@
+- id: 1018
+  dataTypes:
+    - generic
+  name: Log Truncation Detection
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 3
+  category: System
+  technique: Data Destruction
+  adversary: origin
+  references:
+    - https://www.ibm.com/support/pages/qradar-truncation-tls-syslog-log-source-events
+    - https://github.com/rsyslog/rsyslog/issues/3249
+    - https://attack.mitre.org/techniques/T1485/
+  description: Detects potential log truncation issues where messages appear to be cut off, potentially indicating UDP packet size limits, buffer overflows, or attempts to hide malicious activity
+  where: |
+    (safe(log.message, "") ends_with "...") ||
+    (safe(log.message, "") ends_with "..") ||
+    (len(safe(log.message, "")) == 1024) ||
+    (len(safe(log.message, "")) == 2048) ||
+    (len(safe(log.message, "")) == 4096) ||
+    (safe(log.message, "") matches ".*[^\\s]$" && 
+     !safe(log.message, "") matches ".*[.!?;)]$")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - log.source

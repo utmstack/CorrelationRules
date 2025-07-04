@@ -1,0 +1,42 @@
+- id: 1008
+  dataTypes:
+    - redis
+  name: Redis Lua Script Injection Attack
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Code Injection
+  technique: Script Injection
+  adversary: origin
+  references:
+    - https://antirez.com/news/119
+    - https://redis.io/docs/latest/develop/interact/programmability/lua-debugging/
+    - https://attack.mitre.org/techniques/T1059/007/
+  description: Detects potential Lua script injection attacks in Redis including malicious EVAL/EVALSHA commands, script-based exploitation attempts, or suspicious scripting activity
+  where: |
+    safe(log.msg, "") != "" && (
+      log.msg.contains("EVAL") ||
+      log.msg.contains("EVALSHA") ||
+      log.msg.contains("SCRIPT LOAD") ||
+      log.msg.contains("SCRIPT KILL") ||
+      log.msg.contains("SCRIPT FLUSH") ||
+      log.msg.contains("Cross Protocol Scripting") ||
+      log.msg.contains("POST") && log.msg.contains("Host:") ||
+      log.msg.contains("cmsgpack") ||
+      log.msg.contains("lua") && (log.msg.contains("error") || log.msg.contains("attack")) ||
+      log.msg.contains("script") && log.msg.contains("timeout") ||
+      log.msg.contains("Lua script attempted to access") ||
+      (safe(log.severity, "") == "warning" && log.msg.contains("script"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.msg

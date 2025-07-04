@@ -1,0 +1,42 @@
+- id: 1018
+  dataTypes:
+    - firepower
+  name: Endpoint Security Integration Event Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Endpoint Security
+  technique: Execution
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/620/configuration/guide/fpmc-config-guide-v62/file_malware_events_and_network_file_trajectory.html
+    - https://attack.mitre.org/techniques/T1204/
+  description: Detects endpoint security integration events from AMP for Endpoints including file execution alerts, process anomalies, and endpoint compromise indicators
+  where: |
+    (safe(log.eventType, "") == "AMP_EVENT" ||
+     safe(log.eventType, "") == "ENDPOINT_EVENT" ||
+     safe(log.source, "") contains "AMP for Endpoints" ||
+     safe(log.detectionEngine, "") == "AMP") &&
+    (safe(log.disposition, "") == "MALWARE" ||
+     safe(log.disposition, "") == "CUSTOM_DETECTION" ||
+     safe(log.disposition, "") == "RETROSPECTIVE_MALWARE" ||
+     safe(log.eventSubtype, "") == "THREAT_DETECTED" ||
+     safe(log.eventSubtype, "") == "THREAT_QUARANTINED" ||
+     safe(log.eventSubtype, "") == "BLOCKED_EXECUTION" ||
+     safe(log.threatScore, 0) >= 70)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.fileHash.keyword
+          operator: filter_term
+          value: '{{log.fileHash}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.fileHash
+    - log.processName

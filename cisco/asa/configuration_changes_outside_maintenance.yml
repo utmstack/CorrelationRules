@@ -1,0 +1,38 @@
+- id: 1004
+  dataTypes:
+    - asa
+  name: Configuration Changes Outside Maintenance Window
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1070/
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog/syslogs1.html
+  description: Detects configuration changes made to ASA devices outside of normal business hours or maintenance windows. This could indicate unauthorized configuration modifications or insider threat activity.
+  where: |
+    safe(log.message_id, "") == "111008" && 
+    safe(origin.user, "") != "" &&
+    (safe(log.command, "") =~ "(?i)(config|write|copy|delete|clear|no )" ||
+     safe(log.message, "") =~ "(?i)(configuration|config.*changed)") &&
+    (date(safe(log.timestamp, now())) | getHours() < 6 || 
+     date(safe(log.timestamp, now())) | getHours() > 22 ||
+     date(safe(log.timestamp, now())) | getDayOfWeek() == 0 ||
+     date(safe(log.timestamp, now())) | getDayOfWeek() == 6)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.message_id.keyword
+          operator: filter_term
+          value: '111008'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.ip

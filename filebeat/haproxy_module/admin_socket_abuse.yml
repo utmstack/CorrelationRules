@@ -1,0 +1,40 @@
+- id: 1012
+  dataTypes:
+    - haproxy
+  name: HAProxy Admin Socket Abuse Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Execution
+  technique: T1059 - Command and Scripting Interpreter
+  adversary: origin
+  references:
+    - https://www.haproxy.com/blog/haproxy-log-customization
+    - https://discourse.haproxy.org/t/how-to-enable-haproxy-stats-log/1738
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects potential abuse of HAProxy admin socket commands, including attempts to disable servers, modify configurations, or clear counters. Such activities could indicate an attacker attempting to manipulate load balancing or disrupt services.
+  where: |
+    safe(action, "") == "haproxy.log" && 
+    (safe(log.message, "") contains "disable server" || 
+     safe(log.message, "") contains "enable server" || 
+     safe(log.message, "") contains "disable frontend" || 
+     safe(log.message, "") contains "enable frontend" || 
+     safe(log.message, "") contains "clear counters" || 
+     safe(log.message, "") contains "set weight" || 
+     safe(log.message, "") contains "set maxconn" || 
+     safe(log.message, "") contains "admin.sock")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.message
+          operator: wildcard
+          value: '*admin.sock*'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - origin.ip

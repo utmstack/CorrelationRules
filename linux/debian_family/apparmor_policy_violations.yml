@@ -1,0 +1,35 @@
+- id: 1005
+  dataTypes:
+    - debian_family
+  name: AppArmor Policy Violation
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1562/001/
+    - https://wiki.ubuntu.com/AppArmor
+  description: Detects AppArmor policy violations and denied operations which may indicate unauthorized access attempts, privilege escalation, or malicious processes trying to bypass security restrictions
+  where: |
+    (safe(log.process, "") contains "kernel" || safe(log.process, "") contains "audit" || safe(log.facility, "") == "kern") &&
+    safe(log.message, "") contains "apparmor" &&
+    (safe(log.message, "") contains "DENIED" ||
+     safe(log.message, "") contains "ALLOWED" && safe(log.message, "") contains "requested_mask" ||
+     safe(log.message, "") contains "profile" && safe(log.message, "") contains "denied_mask" ||
+     safe(log.message, "") contains "operation" && safe(log.message, "") contains "name=" ||
+     safe(log.message, "") contains "info=\"Failed name lookup\"" ||
+     safe(log.message, "") contains "error=-13")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.hostname
+    - log.apparmor_profile

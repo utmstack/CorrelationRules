@@ -1,0 +1,44 @@
+- id: 1008
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb File Upload Security Violation Detected
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Web Application Security
+  technique: Malicious File Upload
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.2.2/log-message-reference/252057/event
+    - https://attack.mitre.org/techniques/T1608/
+    - https://attack.mitre.org/techniques/T1505/003/
+  description: Detects file upload security violations including malicious file uploads, oversized files, restricted file types, and potential web shell upload attempts on FortiWeb protected applications
+  where: |
+    safe(origin.ip, "") != "" && 
+    safe(log.type, "") == "attack" &&
+    (
+      safe(log.subtype, "") == "anti-virus-detection" ||
+      safe(log.msg, "") contains "file upload" ||
+      safe(log.msg, "") contains "File upload" ||
+      safe(log.msg, "") contains "malicious file" ||
+      safe(log.msg, "") contains "file type" ||
+      safe(log.msg, "") contains "file size" ||
+      safe(log.attack_type, "") == "file_upload" ||
+      safe(log.trigger_policy, "") contains "upload"
+    ) &&
+    safe(action, "") in ["deny", "alert", "block", "quarantine"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'attack'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.file_name

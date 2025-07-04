@@ -1,0 +1,41 @@
+- id: 1007
+  dataTypes:
+    - auditd_module
+  name: Privilege Escalation Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Privilege Escalation
+  technique: Abuse Elevation Control Mechanism
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1548/
+    - https://attack.mitre.org/techniques/T1068/
+    - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/security_guide/sec-understanding_audit_log_files
+  description: Detects privilege escalation attempts including sudo usage, setuid/setgid operations, and capability changes in audit logs
+  where: |
+    safe(action, "") == "auditd.log" && 
+    (safe(log.auditd.record_type, "") == "USER_CMD" ||
+     safe(log.auditd.record_type, "") == "EXECVE" ||
+     safe(log.auditd.record_type, "") == "SYSCALL" ||
+     safe(log.auditd.record_type, "") == "CAPSET") &&
+    (safe(log.auditd.exe, "") contains "sudo" ||
+     safe(log.auditd.exe, "") contains "su" ||
+     safe(log.auditd.comm, "") contains "sudo" ||
+     safe(log.auditd.comm, "") contains "su" ||
+     safe(log.auditd.syscall, "") == "setuid" ||
+     safe(log.auditd.syscall, "") == "setgid" ||
+     safe(log.auditd.syscall, "") == "setreuid" ||
+     safe(log.auditd.syscall, "") == "setregid")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.auditd.uid.keyword
+          operator: filter_term
+          value: '{{log.auditd.uid}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - log.auditd.uid
+    - origin.host

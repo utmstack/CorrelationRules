@@ -1,0 +1,55 @@
+- id: 1013
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Advanced Persistent Threat (APT) Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Intrusion
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/tactics/TA0011/
+  description: Detects indicators of Advanced Persistent Threats including targeted attacks, sophisticated malware, and persistent threats detected by Bitdefender GravityZone's HyperDetect
+  where: |
+    safe(log.BitdefenderGZModule, "") == "hd" &&
+    (
+      safe(log.BitdefenderGZAttackType, "") == "targeted_attack" ||
+      safe(log.BitdefenderGZAttackType, "") == "apt" ||
+      safe(log.BitdefenderGZDetectionLevel, "") == "high" ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "apt") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "lazarus") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "equation") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "sofacy") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "cozy") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "bear") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "panda") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "kitten") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "carbanak") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "fin7")
+    ) &&
+    safe(log.act, "") == "blocked" &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-24h
+      count: 5
+    - indexPattern: v11-log-*
+      with:
+        - field: log.dvchost.keyword
+          operator: filter_term
+          value: '{{log.dvchost}}'
+        - field: log.BitdefenderGZModule.keyword
+          operator: filter_term
+          value: 'hd'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.dvchost

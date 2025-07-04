@@ -1,0 +1,35 @@
+- id: 1019
+  dataTypes:
+    - osquery
+  name: Osquery Enrollment Failure Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 4
+  category: System Integrity
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/logging/
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects enrollment failures or issues with osquery fleet management which could indicate tampering with the monitoring infrastructure or attempts to evade detection.
+  where: |
+    safe(action, "") == "osquery.status" && 
+    (
+      safe(log.message, "") =~ "(?i)(enroll.*fail|enrollment.*error|enroll.*denied)" ||
+      safe(log.message, "") =~ "(?i)(fleet.*enroll.*fail|tls.*enroll.*error)" ||
+      safe(log.eventName, "") =~ "(?i)(enrollment.*failure|enroll.*reject)" ||
+      (safe(actionResult, "") == "failed" && safe(log.message, "") =~ "(?i)enroll") ||
+      safe(log.message, "") =~ "(?i)(certificate.*invalid.*enroll|enroll.*certificate.*fail)"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.message

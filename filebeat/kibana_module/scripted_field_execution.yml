@@ -1,0 +1,28 @@
+- id: 1013
+  dataTypes:
+    - kibana
+  name: Scripted Field Execution
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Code Execution
+  technique: T1059.007
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/scripted-fields.html
+    - https://attack.mitre.org/techniques/T1059/007/
+  description: Detects suspicious scripted field execution attempts in Kibana that could be used for remote code execution or data exfiltration
+  where: safe(log.action, "") != "" && (log.action.contains("scripted_field") || log.action == "saved_object_create" || log.action == "saved_object_update") && safe(log.message, "") != "" && (log.message.contains("scripted_field") || log.message.contains("script.inline") || log.message.contains("painless")) && safe(log.severityLabel, "") == "error"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.host
+    - log.action

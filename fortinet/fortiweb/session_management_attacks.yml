@@ -1,0 +1,37 @@
+- id: 1006
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb Session Management Attack Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Web Application Security
+  technique: Session Hijacking
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.2.2/log-message-reference/252057/event
+    - https://attack.mitre.org/techniques/T1550/004/
+  description: Detects session management attacks including session hijacking, session fixation, and unauthorized session manipulation attempts on FortiWeb protected applications
+  where: |
+    safe(origin.ip, "") != "" && 
+    safe(log.type, "") == "attack" &&
+    (
+      safe(log.subtype, "") == "cookie-security" ||
+      safe(log.msg, "") contains "session" ||
+      safe(log.msg, "") contains "Session" ||
+      safe(log.attack_type, "") == "session_management" ||
+      safe(log.trigger_policy, "") contains "session"
+    ) &&
+    safe(action, "") in ["deny", "alert", "block"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - target.ip

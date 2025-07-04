@@ -1,0 +1,27 @@
+- id: 1016
+  dataTypes:
+    - kafka
+  name: Kafka Log Compaction Issues Detected
+  impact:
+    confidentiality: 0
+    integrity: 3
+    availability: 4
+  category: System Integrity
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://kafka.apache.org/documentation/#compaction
+    - https://docs.confluent.io/kafka/design/log_compaction.html
+  description: Detects issues with Kafka log compaction that could indicate data integrity problems or resource exhaustion attacks. Log compaction failures can lead to unbounded disk growth and performance degradation.
+  where: safe(log.severity, "") == "ERROR" && safe(log.msg, "") != "" && (log.msg.contains("compaction") || log.msg.contains("cleaner") || log.msg.contains("LogCleaner")) && (log.msg.contains("failed") || log.msg.contains("error") || log.msg.contains("exception"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.component

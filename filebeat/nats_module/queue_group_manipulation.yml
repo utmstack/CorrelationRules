@@ -1,0 +1,41 @@
+- id: 1004
+  dataTypes:
+    - nats
+  name: NATS Queue Group Manipulation Attack
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Message Queue Attack
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://docs.nats.io/nats-concepts/subjects#queue-groups
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects attempts to manipulate queue groups by creating conflicting subscriptions, abnormal queue patterns, or attempting to hijack message processing
+  where: |
+    safe(action, "") == "nats.log" &&
+    safe(log.queue_group, "") != "" &&
+    (
+      (safe(log.operation, "") == "SUB" && log.queue_group.matches(".*[^a-zA-Z0-9_\\-\\.].*")) ||
+      (safe(log.error, "").contains("queue group") && safe(log.error, "").contains("conflict")) ||
+      (safe(log.message, "").contains("duplicate queue group")) ||
+      (safe(log.queue_group, "").length() > 128) ||
+      (safe(log.queue_group, "").contains("..")) ||
+      (safe(log.queue_group, "").matches("^[\\s]+|[\\s]+$"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.subject.keyword
+          operator: filter_term
+          value: '{{log.subject}}'
+      within: now-10m
+      count: 20
+  deduplicateBy:
+    - origin.host
+    - log.subject
+    - log.queue_group

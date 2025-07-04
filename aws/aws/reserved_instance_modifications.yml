@@ -1,0 +1,26 @@
+- id: 1026
+  dataTypes:
+    - aws
+  name: AWS Reserved Instance Modifications
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 1
+  category: Cost Management
+  technique: Resource Modification
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ri-modifying.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects modifications to AWS Reserved Instances which could indicate unauthorized changes to cost optimization settings or attempts to manipulate billing
+  where: safe(log.eventSource, "") == "ec2.amazonaws.com" && safe(log.eventName, "") == "ModifyReservedInstances"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityAccountId.keyword
+          operator: filter_term
+          value: '{{log.userIdentityAccountId}}'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - log.userIdentityAccountId

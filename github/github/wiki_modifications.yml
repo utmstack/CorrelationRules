@@ -1,0 +1,33 @@
+- id: 1028
+  dataTypes:
+    - github
+  name: Wiki Modifications
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 1
+  category: Defense Evasion
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://docs.github.com/en/webhooks/webhook-events-and-payloads#gollum
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects modifications to repository wikis which could be used to spread misinformation, hide malicious documentation, or remove important security guidelines and procedures.
+  where: >-
+    safe(log.action, "") in ["created", "edited", "destroyed"] &&
+    safe(log.pages, "") != "" &&
+    (safe(log.repositoryHasWiki, false) == true || contains(safe(log.event, ""), "gollum"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.senderLogin.keyword
+          operator: filter_term
+          value: '{{log.senderLogin}}'
+        - field: log.repositoryName.keyword
+          operator: filter_term
+          value: '{{log.repositoryName}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - log.repositoryName
+    - log.senderLogin

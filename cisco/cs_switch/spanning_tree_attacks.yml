@@ -1,0 +1,36 @@
+- id: 1004
+  dataTypes:
+    - cs_switch
+  name: Spanning Tree Protocol Attack Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 5
+  category: Network Attack
+  technique: STP Manipulation
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/support/docs/lan-switching/spanning-tree-protocol/10556-16.html
+    - https://attack.mitre.org/techniques/T1498/
+  description: Detects potential Spanning Tree Protocol (STP) attacks including root bridge takeover attempts, BPDU spoofing, and topology change attacks. These attacks can cause network loops, denial of service, or allow traffic interception.
+  where: |
+    (safe(log.facility, "") == "SPANTREE" && safe(log.mnemonic, "") in ["BLOCK_BPDUGUARD", "RECV_1Q_NON_TRUNK", "ROOTGUARD_BLOCK", "LOOPGUARD_BLOCK"]) ||
+    (safe(log.facility, "") == "SPANTREE" && safe(log.mnemonic, "") in ["INCONSISTENCY", "PVID_MISMATCH", "TYPE_MISMATCH"]) ||
+    (safe(log.message, "") =~ "(?i)(bpdu.*guard.*violation|received.*bpdu.*on.*bpduguard.*enabled)") ||
+    (safe(log.message, "") =~ "(?i)(root.*guard.*blocking|topology.*change.*notification|inferior.*bpdu.*received)") ||
+    (safe(log.message, "") =~ "(?i)(spanning.*tree.*loop|stp.*inconsistent|port.*type.*inconsistent)") ||
+    (safe(log.severity, 999) <= 3 && safe(log.message, "") =~ "(?i)(stp.*attack|bpdu.*flood|root.*bridge.*change)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.interface.keyword
+          operator: filter_term
+          value: '{{log.interface}}'
+        - field: log.facility.keyword
+          operator: filter_term
+          value: 'SPANTREE'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - log.interface
+    - origin.ip

@@ -1,0 +1,44 @@
+- id: 1020
+  dataTypes:
+    - kibana
+  name: Potential Session Hijacking Activity
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Session Security
+  technique: Browser Session Hijacking
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/xpack-security-audit-logging.html
+    - https://attack.mitre.org/techniques/T1185/
+  description: Detects potential session hijacking activities based on suspicious authentication patterns, multiple IP addresses using the same session, or rapid location changes that may indicate stolen session tokens.
+  where: |
+    safe(log.action, "") == "http_request" &&
+    safe(origin.user, "") != "" &&
+    (safe(log.message, "") =~ ".*session.*" ||
+     safe(log.component, "") =~ ".*security.*") &&
+    (safe(actionResult, "") == "failure" ||
+     safe(log.severityLabel, "") == "warning" ||
+     safe(log.severityLabel, "") == "error")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-1h
+      count: 20
+    - indexPattern: v11-log-*
+      with:
+        - field: log.sessionId.keyword
+          operator: filter_term
+          value: '{{log.sessionId}}'
+        - field: origin.host.keyword
+          operator: filter_term_not
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 1
+  deduplicateBy:
+    - origin.user
+    - log.sessionId

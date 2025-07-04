@@ -1,0 +1,30 @@
+- id: 1008
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Bitdefender GravityZone License Expiration Alert
+  impact:
+    confidentiality: 1
+    integrity: 1
+    availability: 5
+  category: System Health
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects license expiration events for Bitdefender GravityZone that could lead to protection gaps
+  where: safe(log.eventType, "") == "license_expired" || safe(log.eventType, "") == "license_expiring" || (safe(log.eventType, "") == "Product ModulesStatus" && safe(log.msg, "").contains("license"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.productVendor.keyword
+          operator: filter_term
+          value: 'Bitdefender'
+        - field: log.eventType.keyword
+          operator: filter_match
+          value: 'license'
+      within: now-7d
+      count: 1
+  deduplicateBy:
+    - log.dvchost
+    - log.productVersion

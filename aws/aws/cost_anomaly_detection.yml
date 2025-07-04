@@ -1,0 +1,30 @@
+- id: 1025
+  dataTypes:
+    - aws
+  name: AWS Cost Anomaly - Unusual Resource Creation
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 3
+  category: Resource Development
+  technique: T1583.006 - Web Services
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference.html
+    - https://attack.mitre.org/techniques/T1583/006/
+  description: Detects potential cost anomalies through unusual creation of expensive resources. This rule monitors for multiple EC2 instance launches or other high-cost resource creation that could indicate cryptomining or resource abuse.
+  where: safe(log.eventSource, "") == "ec2.amazonaws.com" && (safe(log.eventName, "") == "RunInstances" || safe(log.eventName, "") == "RequestSpotInstances") && safe(log.errorCode, "") == ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityAccountId.keyword
+          operator: filter_term
+          value: '{{log.userIdentityAccountId}}'
+        - field: log.eventName.keyword
+          operator: filter_term
+          value: 'RunInstances'
+      within: now-2h
+      count: 20
+  deduplicateBy:
+    - log.userIdentityAccountId
+    - log.awsRegion

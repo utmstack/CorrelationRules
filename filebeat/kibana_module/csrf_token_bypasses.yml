@@ -1,0 +1,36 @@
+- id: 1021
+  dataTypes:
+    - kibana
+  name: CSRF Token Bypass Attempt
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Web Application Attack
+  technique: Cross-Site Request Forgery
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/security-best-practices.html
+    - https://attack.mitre.org/techniques/T1584/
+  description: Detects attempts to bypass CSRF token validation in Kibana by monitoring for requests missing required custom headers or using suspicious referer headers
+  where: |
+    safe(action, "") == "kibana.audit" && 
+    safe(log.action, "") != "" &&
+    safe(actionResult, "") == "failure" &&
+    (
+      safe(log.message, "").contains("missing custom header") ||
+      safe(log.message, "").contains("invalid kbn-xsrf") ||
+      safe(log.message, "").contains("CSRF token validation failed") ||
+      safe(log.actionMessage, "").contains("unauthorized request origin")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.host

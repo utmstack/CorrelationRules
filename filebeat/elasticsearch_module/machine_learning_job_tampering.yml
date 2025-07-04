@@ -1,0 +1,36 @@
+- id: 1011
+  dataTypes:
+    - elasticsearch_module
+  name: Machine Learning Job Tampering Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Privilege Escalation
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/ml-apis.html
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects attempts to tamper with or modify Elasticsearch machine learning jobs, which could indicate an attacker trying to manipulate anomaly detection or hide malicious activities
+  where: |
+    safe(action, "") != "" && 
+    safe(log.eventType, "") == "rest" &&
+    (action.contains("cluster:admin/xpack/ml/job/") || 
+     action.contains("cluster:admin/xpack/ml/datafeed/") ||
+     action.contains("cluster:admin/xpack/ml/anomaly_detectors/")) &&
+    (action.contains("/delete") || 
+     action.contains("/update") || 
+     action.contains("/close") ||
+     action.contains("/stop"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - log.clusterName

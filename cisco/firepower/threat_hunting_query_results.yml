@@ -1,0 +1,41 @@
+- id: 1020
+  dataTypes:
+    - firepower
+  name: Threat Hunting Query Results Detection
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Threat Hunting
+  technique: Discovery
+  adversary: origin
+  references:
+    - https://blogs.cisco.com/security/with-cisco-threat-response-the-best-things-in-threat-hunting-are-free
+    - https://attack.mitre.org/techniques/T1057/
+  description: Detects significant threat hunting query results including advanced correlation matches, multi-product threat indicators, and high-confidence IOC matches from Cisco Threat Response
+  where: |
+    (safe(log.eventType, "") == "THREAT_HUNTING_RESULT" ||
+     safe(log.eventType, "") == "CORRELATION_EVENT" ||
+     safe(log.eventType, "") == "THREAT_RESPONSE_EVENT" ||
+     safe(log.source, "") contains "Threat Response" ||
+     safe(log.correlationRule, "") != "") &&
+    (safe(log.threatConfidence, 0) >= 75 ||
+     safe(log.correlationCount, 0) >= 3 ||
+     safe(log.iocMatch, false) == true ||
+     safe(log.multiProductMatch, false) == true ||
+     (safe(log.matchedProducts, []) size() >= 2))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.correlationRule.keyword
+          operator: filter_term
+          value: '{{log.correlationRule}}'
+      within: now-2h
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.iocValue
+    - log.correlationRule

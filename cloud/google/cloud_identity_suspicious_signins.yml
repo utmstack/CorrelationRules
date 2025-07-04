@@ -1,0 +1,34 @@
+- id: 1011
+  dataTypes:
+    - google
+  name: Cloud Identity Suspicious Sign-ins Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Initial Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://support.google.com/cloudidentity/answer/4580120?hl=en
+    - https://cloud.google.com/blog/products/identity-security/logs-based-security-alerting-in-google-cloud
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects suspicious sign-in attempts to Google Cloud Identity, including logins from unfamiliar locations, unusual IP addresses, or after multiple failed attempts. These could indicate compromised credentials or unauthorized access attempts.
+  where: |
+    safe(log.protoPayload.serviceName, "") == "login.googleapis.com" && 
+    (
+      safe(log.protoPayload.metadata.event.type, "") == "Suspicious Login" ||
+      (safe(log.protoPayload.metadata.event.type, "") == "login" && safe(log.protoPayload.metadata.event.parameter.is_suspicious, false) == true) ||
+      safe(log.protoPayload.metadata.event.parameter.is_suspicious, false) == true
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.protoPayload.authenticationInfo.principalEmail

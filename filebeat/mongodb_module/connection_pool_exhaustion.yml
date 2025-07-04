@@ -1,0 +1,35 @@
+- id: 1016
+  dataTypes:
+    - mongodb
+  name: MongoDB Connection Pool Exhaustion
+  impact:
+    confidentiality: 0
+    integrity: 0
+    availability: 5
+  category: Resource Exhaustion
+  technique: Network Denial of Service
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/administration/connection-pool-overview/
+    - https://www.mongodb.com/docs/manual/tutorial/connection-pool-performance-tuning/
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects MongoDB connection pool exhaustion events which could indicate a denial of service attack or misconfigured clients overwhelming the database with connections. This can prevent legitimate users from accessing the database.
+  where: |
+    safe(log.component, "") == "NETWORK" && 
+    severity == "high" && 
+    (
+      safe(log.message, "") matches ".*connection refused because too many open connections.*" ||
+      safe(log.message, "") matches ".*pool has been closed.*" ||
+      safe(log.message, "") matches ".*MaxConnectionPoolSize.*exceeded.*" ||
+      safe(log.message, "") matches ".*numOpenConns.*" && safe(log.message, "") matches ".*limit.*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 50
+  deduplicateBy:
+    - origin.host

@@ -1,0 +1,36 @@
+- id: 1002
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb OWASP Top 10 Violation Attempts
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Web Application Security
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb-cloud/23.3.0/user-guide/552829/known-attacks
+    - https://owasp.org/www-project-top-ten/
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects attempts to exploit OWASP Top 10 vulnerabilities including injection flaws, broken authentication, sensitive data exposure, XXE, broken access control, security misconfiguration, and more
+  where: |
+    safe(action, "") in ["deny", "alert_deny"] && 
+    safe(log.type, "") == "attack" &&
+    (
+      safe(log.attack_type, "") in ["LDAP Injection", "Command Injection", "Path Traversal", "Remote File Inclusion", "XML External Entity", "XXE", "Broken Authentication", "Sensitive Data Exposure", "Security Misconfiguration"] ||
+      safe(log.msg, "") =~ "(?i)(ldap.*injection|command.*injection|path.*traversal|remote.*file.*inclusion|xml.*external.*entity|xxe|broken.*auth|sensitive.*data|security.*misconfig)" ||
+      safe(log.severity, "") in ["High", "Critical"] ||
+      safe(log.owasp_top10, "") != ""
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.attack_type

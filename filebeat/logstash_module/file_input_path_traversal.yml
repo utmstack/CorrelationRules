@@ -1,0 +1,41 @@
+- id: 1021
+  dataTypes:
+    - logstash_module
+  name: File Input Path Traversal Attempt
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Input Validation Violation
+  technique: Path Traversal
+  adversary: origin
+  references:
+    - https://cwe.mitre.org/data/definitions/22.html
+    - https://attack.mitre.org/techniques/T1005/
+  description: Detects attempts to use path traversal sequences in Logstash file input plugin to access files outside the intended directory structure
+  where: |
+    safe(log.component, "") == "logstash.inputs.file" && 
+    safe(log.msg, "") != "" && 
+    (
+      log.msg.contains("../") || 
+      log.msg.contains("..\\") || 
+      log.msg.contains("%2e%2e") || 
+      log.msg.contains("%252e") ||
+      log.msg.contains("..%2f") ||
+      log.msg.contains("..%5c") ||
+      log.msg.contains("/etc/") ||
+      log.msg.contains("\\windows\\") ||
+      log.msg.contains("/proc/") ||
+      log.msg.contains("/dev/")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.msg

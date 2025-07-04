@@ -1,0 +1,35 @@
+- id: 1020
+  dataTypes:
+    - osquery
+  name: Osquery Configuration Refresh Attack
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Configuration Manipulation
+  technique: Modify System Process
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/configuration/
+    - https://attack.mitre.org/techniques/T1543/
+  description: Detects suspicious configuration refresh patterns that could indicate attempts to inject malicious configurations, disable security queries, or manipulate osquery behavior.
+  where: |
+    safe(action, "") == "osquery.status" && 
+    (
+      safe(log.message, "") =~ "(?i)(config.*refresh.*fail|config.*invalid|config.*error)" ||
+      safe(log.message, "") =~ "(?i)(config.*inject|malformed.*config|config.*tamper)" ||
+      safe(log.eventName, "") =~ "(?i)(config.*reload.*error|config.*update.*fail)" ||
+      (safe(actionResult, "") == "error" && safe(log.message, "") =~ "(?i)config.*refresh") ||
+      safe(log.message, "") =~ "(?i)(unauthorized.*config|config.*unauthorized|config.*permission.*denied)"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-20m
+      count: 4
+  deduplicateBy:
+    - origin.host
+    - log.deviceTime

@@ -1,0 +1,31 @@
+- id: 1008
+  dataTypes:
+    - meraki
+  name: Air Marshal Rogue Access Point Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Wireless Security
+  technique: T1200
+  adversary: origin
+  references:
+    - https://documentation.meraki.com/MR/Monitoring_and_Reporting/Air_Marshal
+    - https://attack.mitre.org/techniques/T1200/
+  description: Detects when Meraki Air Marshal identifies rogue access points or unauthorized SSIDs in the wireless environment. This could indicate malicious wireless infrastructure attempting to intercept traffic or perform man-in-the-middle attacks.
+  where: |
+    safe(log.eventType, "") == "airmarshal_events" && 
+    safe(log.type, "") == "rogue_ssid_detected" &&
+    safe(log.bssid, "") != "" &&
+    safe(log.rssi, 0) >= 50
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.bssid.keyword
+          operator: filter_term
+          value: '{{log.bssid}}'
+      within: now-24h
+      count: 10
+  deduplicateBy:
+    - log.bssid
+    - log.ssid

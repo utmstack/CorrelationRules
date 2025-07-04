@@ -1,0 +1,42 @@
+- id: 1011
+  dataTypes:
+    - generic
+  name: Delimiter Injection Attempts
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Log Injection
+  technique: Log Injection-Tampering-Forging
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/Log_Injection
+    - https://capec.mitre.org/data/definitions/93.html
+  description: Detects attempts to inject delimiters, newlines, or special characters into logs that could break log parsing or forge log entries. This includes carriage returns, line feeds, and common log delimiters that could be used to create fake log entries or hide malicious activity.
+  where: |
+    safe(log.message, "") != "" && (
+      log.message.contains("\r\n") ||
+      log.message.contains("\n\r") ||
+      log.message.contains("\\r\\n") ||
+      log.message.contains("\\n\\r") ||
+      log.message.matches(".*[\r\n].*Successful Login.*") ||
+      log.message.matches(".*[\r\n].*authenticated.*") ||
+      log.message.matches(".*[\r\n].*INFO.*") ||
+      log.message.matches(".*[\r\n].*ERROR.*") ||
+      log.message.matches(".*[\r\n].*DEBUG.*") ||
+      log.message.matches(".*[\r\n].*WARN.*") ||
+      log.message.matches(".*\t\t+.*") ||
+      log.message.matches(".*\|\|.*\|\|.*") ||
+      log.message.matches(".*;;.*;;.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.message

@@ -1,0 +1,36 @@
+- id: 1002
+  dataTypes:
+    - debian_family
+  name: Package Signature Verification Failure
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Package Security
+  technique: Supply Chain Compromise
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1195/
+    - https://wiki.debian.org/SecureApt#How_to_tell_if_the_key_is_safe
+  description: Detects package signature verification failures during APT or DPKG operations, which may indicate tampered packages, compromised repositories, or man-in-the-middle attacks on package downloads
+  where: |
+    (safe(log.process, "") contains "dpkg" || safe(log.process, "") contains "apt" || safe(log.process, "") contains "apt-get") &&
+    (safe(log.message, "") contains "signature could not be verified" ||
+     safe(log.message, "") contains "WARNING: The following packages cannot be authenticated" ||
+     safe(log.message, "") contains "BADSIG" ||
+     safe(log.message, "") contains "NO_PUBKEY" ||
+     safe(log.message, "") contains "invalid signature" ||
+     safe(log.message, "") contains "Hash Sum mismatch" ||
+     safe(log.message, "") contains "Size mismatch" ||
+     safe(log.message, "") contains "Verification failed")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - origin.hostname
+    - log.message

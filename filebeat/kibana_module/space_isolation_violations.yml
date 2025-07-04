@@ -1,0 +1,45 @@
+- id: 1025
+  dataTypes:
+    - kibana
+  name: Kibana Space Isolation Violation
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Access Control Violation
+  technique: Privilege Escalation
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/xpack-security-audit-logging.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects attempts to violate Kibana space isolation by accessing resources across unauthorized spaces or bypassing space-level permissions
+  where: |
+    safe(action, "") == "kibana.audit" &&
+    (
+      safe(log.action, "").contains("space") ||
+      safe(log.eventCategory, "") == "authorization" ||
+      safe(log.component, "") == "spaces"
+    ) &&
+    (
+      safe(actionResult, "") == "failure" ||
+      safe(log.message, "").contains("space access denied") ||
+      safe(log.message, "").contains("cross-space") ||
+      safe(log.message, "").contains("unauthorized space") ||
+      safe(log.actionMessage, "").contains("permission denied") ||
+      safe(log.actionMessage, "").contains("space isolation")
+    ) &&
+    safe(origin.user, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.eventCategory.keyword
+          operator: filter_term
+          value: 'authorization'
+      within: now-20m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.host

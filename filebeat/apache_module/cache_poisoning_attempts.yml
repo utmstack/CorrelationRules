@@ -1,0 +1,40 @@
+- id: 1023
+  dataTypes:
+    - apache
+  name: Web Cache Poisoning Attempts
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Initial Access
+  technique: Drive-by Compromise
+  adversary: origin
+  references:
+    - https://portswigger.net/web-security/web-cache-poisoning
+    - https://attack.mitre.org/techniques/T1189/
+  description: Detects potential web cache poisoning attempts through manipulation of cache key headers, malformed host headers, or injection of cache-busting parameters. This attack can lead to stored XSS, defacement, or serving malicious content to other users.
+  where: >
+    safe(origin.ip, "") != "" &&
+    (safe(log.request, "").contains("X-Forwarded-Host:") ||
+     safe(log.request, "").contains("X-Host:") ||
+     safe(log.request, "").contains("X-Forwarded-Server:") ||
+     safe(log.request, "").contains("X-Original-URL:") ||
+     safe(log.request, "").contains("X-Rewrite-URL:") ||
+     (safe(origin.path, "").contains("?") && 
+      (origin.path.contains("cb=") || 
+       origin.path.contains("utm_") || 
+       origin.path.contains("cache=") ||
+       origin.path.contains("_=") ||
+       origin.path.contains("buster="))) ||
+     safe(log.message, "").contains("Cache-Control: no-transform"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - origin.host

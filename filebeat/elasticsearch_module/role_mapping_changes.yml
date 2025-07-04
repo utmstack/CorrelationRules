@@ -1,0 +1,34 @@
+- id: 1013
+  dataTypes:
+    - elasticsearch_module
+  name: Role Mapping Changes Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Persistence
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-put-role-mapping.html
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects changes to role mappings in Elasticsearch, which could indicate an attacker attempting to escalate privileges or grant unauthorized access to sensitive indices
+  where: |
+    safe(action, "") != "" && 
+    (action.contains("cluster:admin/xpack/security/role_mapping/") ||
+     action.contains("PutRoleMappingAction") ||
+     action.contains("DeleteRoleMappingAction") ||
+     (safe(log.auditRestRequestPath, "").contains("/_security/role_mapping/") && 
+      (safe(log.method, "") == "PUT" || safe(log.method, "") == "POST" || safe(log.method, "") == "DELETE"))) &&
+    safe(origin.user, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-2h
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.ip

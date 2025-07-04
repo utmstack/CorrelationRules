@@ -1,0 +1,52 @@
+- id: 1020
+  dataTypes:
+    - apache
+  name: Apache Server Status Information Exposure
+  impact:
+    confidentiality: 3
+    integrity: 0
+    availability: 0
+  category: Information Disclosure
+  technique: System Information Discovery
+  adversary: origin
+  references:
+    - https://httpd.apache.org/docs/2.4/mod/mod_status.html
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects attempts to access Apache server-status pages and other server information endpoints that may expose sensitive configuration and performance data
+  where: |
+    safe(origin.path, "") != "" && 
+    (
+      origin.path.contains("/server-status") ||
+      origin.path.contains("/server-info") ||
+      origin.path.contains("/status") ||
+      origin.path.contains("/apache-status") ||
+      origin.path.contains("/mod_status") ||
+      origin.path.contains("/server-stats") ||
+      origin.path.contains("/stats") ||
+      origin.path.contains("/info.php") ||
+      origin.path.contains("/test.php") ||
+      origin.path.contains("/phpinfo.php") ||
+      origin.path.contains("/info.html") ||
+      origin.path.contains("/server-monitor") ||
+      origin.path.contains("/monitor") ||
+      origin.path.contains("/balancer-manager") ||
+      origin.path.contains("/ldap-status") ||
+      origin.path.contains("/perl-status")
+    ) &&
+    safe(log.statusCode, 0) == 200 &&
+    safe(origin.ip, "") != "" &&
+    !origin.ip.startsWith("10.") &&
+    !origin.ip.startsWith("172.16.") &&
+    !origin.ip.startsWith("192.168.") &&
+    !origin.ip.startsWith("127.")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - origin.path

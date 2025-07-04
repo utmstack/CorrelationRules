@@ -1,0 +1,35 @@
+- id: 1009
+  dataTypes:
+    - json-input
+  name: JSON Depth Limit Violation Detection
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Resource Exhaustion
+  technique: Nested Structure Attack
+  adversary: origin
+  references:
+    - https://danaepp.com/attacking-apis-using-json-injection
+    - https://attack.mitre.org/techniques/T1499/002/
+  description: Detects attempts to send deeply nested JSON structures that could cause parser stack overflow, excessive memory usage, or denial of service conditions
+  where: >
+    (safe(log.nesting_depth, 0) > 100) ||
+    (safe(log.json_depth, 0) > 100) ||
+    (safe(log.max_depth_exceeded, false) == true) ||
+    (safe(log.error, "") contains "maximum depth") ||
+    (safe(log.error, "") contains "nesting too deep") ||
+    (safe(log.parser_error, "") contains "recursion limit") ||
+    (safe(log.parser_error, "") contains "stack overflow") ||
+    (safe(log.processing_time, 0) > 5000 && safe(log.json_depth, 0) > 50)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.request_id

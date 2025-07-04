@@ -1,0 +1,34 @@
+- id: 1023
+  dataTypes:
+    - linux
+  name: System Update Failures
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Configuration Management
+  technique: Software Updates
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1072/
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+  description: Detects failures in system update processes including package manager errors, dependency conflicts, repository issues, and failed patches that may leave systems vulnerable
+  where: |
+    (safe(log.program, "") =~ "(?i)(apt|apt-get|dpkg|yum|dnf|zypper|rpm|snap|flatpak)" && 
+     safe(log.message, "") =~ "(?i)(error|failed|unable|cannot|dependency.*problem|conflict|broken|corrupt)") ||
+    safe(log.message, "") =~ "(?i)(repository.*not found|gpg.*fail|signature.*invalid|checksum.*mismatch|verification.*fail)" ||
+    safe(log.message, "") =~ "(?i)(unmet dependencies|held broken packages|unable to correct problems|dpkg.*error|rpm.*fail)" ||
+    safe(log.message, "") =~ "(?i)(upgrade.*abort|update.*fail|patch.*error|kernel.*update.*fail|security update.*fail)" ||
+    (safe(log.program, "") == "unattended-upgrades" && safe(log.message, "") =~ "(?i)(error|warning|fail)") ||
+    safe(log.message, "") =~ "(?i)(package.*hash.*mismatch|mirror.*fail|cdn.*unreachable|timeout.*repository)"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.program

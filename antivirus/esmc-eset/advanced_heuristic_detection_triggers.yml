@@ -1,0 +1,31 @@
+- id: 1011
+  dataTypes:
+    - antivirus-esmc-eset
+  name: Advanced Heuristic Detection Triggers
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Malware Detection
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://help.eset.com/essp/17/en-US/idh_config_threat_sense.html
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects when ESET's advanced heuristic engine identifies suspicious behavior patterns that may indicate novel malware or zero-day threats. These detections use DNA signatures and behavioral analysis.
+  where: |
+    safe(log.event_type, "") == "EnterpriseInspectorAlert_Event" && 
+    safe(log.scanner, "") == "Advanced heuristics" &&
+    safe(log.severity, "") in ["ERROR", "Error", "WARNING", "Warning"] &&
+    safe(log.action, "") in ["cleaned", "deleted", "quarantined"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.host.keyword
+          operator: filter_term
+          value: '{{target.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - target.host
+    - log.hash

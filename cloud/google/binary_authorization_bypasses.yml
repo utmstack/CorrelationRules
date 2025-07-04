@@ -1,0 +1,44 @@
+- id: 1014
+  dataTypes:
+    - google
+  name: Binary Authorization Bypass Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Subvert Trust Controls
+  adversary: origin
+  references:
+    - https://cloud.google.com/binary-authorization/docs/audit-logging
+    - https://cloud.google.com/binary-authorization/docs/run/using-breakglass-cloud-run
+    - https://attack.mitre.org/techniques/T1553/
+  description: Detects attempts to bypass Binary Authorization controls including use of breakglass deployments, policy violations, and unauthorized container deployments. These events could indicate attempts to deploy untrusted or malicious container images.
+  where: |
+    (
+      safe(log.protoPayload.serviceName, "") == "binaryauthorization.googleapis.com" && 
+      (
+        safe(log.logName, "") contains "cloudaudit.googleapis.com/system_event" &&
+        (safe(log.protoPayload.response.details, "") contains "breakglass" || safe(log.jsonPayload.breakglass, false) == true)
+      )
+    ) ||
+    (
+      safe(log.resourceType, "") == "cloud_run_revision" &&
+      safe(log.logName, "") contains "cloudaudit.googleapis.com/system_event" &&
+      (
+        safe(log.protoPayload.response.status.conditions[0].reason, "") == "ContainerImageUnauthorized" ||
+        safe(log.jsonPayload.policyViolation, false) == true ||
+        safe(log.protoPayload.metadata.dryRun, false) == true
+      )
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.protoPayload.authenticationInfo.principalEmail.keyword
+          operator: filter_term
+          value: '{{log.protoPayload.authenticationInfo.principalEmail}}'
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - log.protoPayload.authenticationInfo.principalEmail
+    - log.protoPayload.resourceName

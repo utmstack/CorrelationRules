@@ -1,0 +1,31 @@
+- id: 1009
+  dataTypes:
+    - antivirus-sentinel-one
+  name: Threat Intelligence Matches
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Threat Intelligence
+  technique: Exploitation for Client Execution
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/blog/decrypting-sentinelone-cloud-detection-the-threat-intelligence-engine-in-real-time-cwpp/
+    - https://attack.mitre.org/techniques/T1203/
+  description: Detects matches against threat intelligence feeds including known malicious hashes, IPs, domains, and behavioral patterns associated with APT groups and cybercrime campaigns
+  where: (safe(log.externalthreatvalue, "") != "" || safe(log.filecontenthash, "") != "" && safe(log.confidencelevel, 0) >= 90) || (safe(log.dveventtype, "") contains "threat_intel" || safe(log.eventDescription, "") contains "reputation")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+        - field: log.filecontenthash.keyword
+          operator: filter_term
+          value: '{{log.filecontenthash}}'
+      within: now-30m
+      count: 2
+  deduplicateBy:
+    - log.syslogHost
+    - log.filecontenthash
+    - log.externalthreatvalue

@@ -1,0 +1,38 @@
+- id: 1015
+  dataTypes:
+    - linux
+  name: AppArmor Profile Changes Detected
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: System Security
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1562/001/
+    - https://ubuntu.com/server/docs/apparmor
+  description: Detects AppArmor profile modifications, denials, or attempts to disable AppArmor security policies that could indicate attempts to bypass mandatory access controls.
+  where: |
+    safe(action, "") contains "system" &&
+    (safe(log.message, "") contains "apparmor" ||
+     safe(log.message, "") contains "AppArmor") &&
+    (safe(log.message, "") contains "DENIED" ||
+     safe(log.message, "") contains "complain" ||
+     safe(log.message, "") contains "enforce" ||
+     safe(log.message, "") contains "audit" ||
+     safe(log.message, "") contains "profile" ||
+     safe(log.message, "") contains "aa-" ||
+     safe(log.message, "") contains "apparmor_parser" ||
+     safe(log.message, "") contains "teardown")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.message

@@ -1,0 +1,30 @@
+- id: 1008
+  dataTypes:
+    - antivirus-sentinel-one
+  name: Storyline Correlation Events
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 3
+  category: Behavioral Analysis
+  technique: Multi-Stage Channels
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/blog/rapid-threat-hunting-with-deep-visibility-feature-spotlight/
+    - https://attack.mitre.org/techniques/T1104/
+  description: Detects correlated threat events using SentinelOne's Storyline technology which tracks and links related malicious activities across processes, files, and network connections to identify complex attack chains
+  where: (safe(log.eventDescription, "") contains "storyline" || safe(log.dveventtype, "") contains "correlation" || (safe(log.alertscounter, 0) > 3 && safe(log.alertprocessname, "") != ""))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+        - field: log.alertprocessname.keyword
+          operator: filter_term
+          value: '{{log.alertprocessname}}'
+      within: now-10m
+      count: 4
+  deduplicateBy:
+    - log.syslogHost
+    - log.alertid

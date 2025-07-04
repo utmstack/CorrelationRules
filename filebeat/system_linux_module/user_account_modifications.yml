@@ -1,0 +1,26 @@
+- id: 1006
+  dataTypes:
+    - linux
+  name: User Account Modifications
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Persistence
+  technique: Create Account
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+    - https://attack.mitre.org/techniques/T1136/
+  description: Detects user account creation, modification, or deletion activities that could indicate unauthorized access or privilege escalation attempts
+  where: safe(origin.host, "") != "" && (safe(log.message, "") contains "useradd" || safe(log.message, "") contains "usermod" || safe(log.message, "") contains "userdel" || safe(log.message, "") contains "adduser" || safe(log.message, "") contains "deluser" || (safe(log.message, "") contains "passwd" && safe(log.message, "") contains "changed"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.host

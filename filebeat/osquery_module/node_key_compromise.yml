@@ -1,0 +1,34 @@
+- id: 1018
+  dataTypes:
+    - osquery
+  name: Osquery Node Key Compromise Indicator
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Authentication Security
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/configuration/
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects potential compromise of osquery node keys which are used for authentication in distributed deployments. This could allow unauthorized queries or data exfiltration.
+  where: |
+    safe(action, "") == "osquery.status" && 
+    (
+      safe(log.message, "") =~ "(?i)(node.*key.*invalid|invalid.*node.*key|node.*key.*fail)" ||
+      safe(log.message, "") =~ "(?i)(node.*key.*mismatch|duplicate.*node.*key)" ||
+      safe(log.eventName, "") =~ "(?i)(node.*key.*error|node.*authentication.*fail)" ||
+      (safe(actionResult, "") == "denied" && safe(log.message, "") =~ "(?i)node.*key") ||
+      safe(log.message, "") =~ "(?i)(unauthorized.*node|node.*unauthorized)"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 2
+  deduplicateBy:
+    - origin.host

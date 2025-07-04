@@ -1,0 +1,38 @@
+- id: 1014
+  dataTypes:
+    - linux
+  name: SELinux Policy Violations Detected
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: System Security
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1562/001/
+    - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html-single/using_selinux/index
+  description: Detects SELinux policy violations, AVC denials, or attempts to disable SELinux that could indicate security bypass attempts or system compromise.
+  where: |
+    safe(action, "") contains "system" &&
+    (safe(log.message, "") contains "avc:" ||
+     safe(log.message, "") contains "selinux" ||
+     safe(log.message, "") contains "SELinux") &&
+    (safe(log.message, "") contains "denied" ||
+     safe(log.message, "") contains "permissive" ||
+     safe(log.message, "") contains "disabled" ||
+     safe(log.message, "") contains "setenforce" ||
+     safe(log.message, "") contains "setsebool" ||
+     safe(log.message, "") contains "restorecon" ||
+     safe(log.message, "") contains "audit2allow")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.process.name

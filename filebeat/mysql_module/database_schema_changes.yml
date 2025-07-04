@@ -1,0 +1,49 @@
+- id: 1004
+  dataTypes:
+    - mysql
+  name: Suspicious Database Schema Changes
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Indicator Removal on Host
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/sql-data-definition-statements.html
+    - https://attack.mitre.org/techniques/T1070/
+    - https://cloud.google.com/sql/docs/mysql/audit-logging
+  description: Detects unauthorized or suspicious database schema modifications including table drops, alterations, or creation of potentially malicious objects
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      log.msg.contains("DROP DATABASE") ||
+      log.msg.contains("DROP TABLE") && !log.msg.contains("IF EXISTS tmp_") ||
+      log.msg.contains("DROP SCHEMA") ||
+      log.msg.contains("TRUNCATE TABLE") ||
+      log.msg.contains("ALTER TABLE") && (log.msg.contains("DISABLE KEYS") || log.msg.contains("DROP COLUMN") || log.msg.contains("DROP CONSTRAINT")) ||
+      log.msg.contains("CREATE TABLE") && (log.msg.contains("BLACKHOLE") || log.msg.contains("FEDERATED") || log.msg.contains("CSV")) ||
+      log.msg.contains("RENAME TABLE") ||
+      log.msg.contains("CREATE DATABASE") && (log.msg.contains("test") || log.msg.contains("temp") || log.msg.contains("tmp")) ||
+      log.msg.contains("ALTER DATABASE") ||
+      log.msg.contains("CREATE VIEW") && log.msg.contains("mysql.") ||
+      log.msg.contains("DROP VIEW") ||
+      log.msg.contains("CREATE TRIGGER") ||
+      log.msg.contains("DROP TRIGGER") ||
+      log.msg.contains("CREATE EVENT") ||
+      log.msg.contains("DROP EVENT") ||
+      log.msg.contains("INFORMATION_SCHEMA") && (log.msg.contains("UPDATE") || log.msg.contains("DELETE")) ||
+      log.errorCode == "ER_CANT_CREATE_TABLE" ||
+      log.errorCode == "ER_CANT_DROP_FIELD_OR_KEY"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - action

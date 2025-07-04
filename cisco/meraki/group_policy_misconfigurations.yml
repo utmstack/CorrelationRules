@@ -1,0 +1,35 @@
+- id: 1018
+  dataTypes:
+    - meraki
+  name: Group Policy Misconfigurations
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Configuration Security
+  technique: Permission Groups Discovery
+  adversary: destination
+  references:
+    - https://documentation.meraki.com/General_Administration/Cross-Platform_Content/Creating_and_Applying_Group_Policies
+    - https://attack.mitre.org/techniques/T1069/
+  description: Detects potential misconfigurations in group policies that could lead to unauthorized access, privilege escalation, or security policy bypasses
+  where: |
+    safe(log.eventType, "") in ["group_policy_modified", "group_policy_error", "policy_conflict"] &&
+    (safe(log.policyAction, "") in ["allow_all", "bypass_security", "disable_filtering"] ||
+     safe(log.conflictingPolicies, 0) > 0 ||
+     safe(log.affectedDevices, 0) > 50)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: destination.user.keyword
+          operator: filter_term
+          value: '{{destination.user}}'
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: 'group_policy_modified'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - destination.user
+    - log.policyName
+    - log.organizationName

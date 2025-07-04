@@ -1,0 +1,43 @@
+- id: 1024
+  dataTypes:
+    - osquery_module
+  name: Process Auditing Gap Exploitation
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Defense Evasion
+  technique: Process Injection
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/process-auditing/
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects potential exploitation of process auditing gaps including ephemeral processes, audit system tampering, or suspicious process patterns that may indicate attempts to evade monitoring. Monitors for audit failures, disabled events, or rapid process spawning.
+  where: |
+    (safe(log.eventName, "") == "process_events" || 
+     safe(log.eventName, "") == "bpf_process_events" ||
+     safe(action, "").contains("process")) &&
+    (safe(log.message, "").contains("audit") && 
+     (safe(log.message, "").contains("disabled") ||
+      safe(log.message, "").contains("failed") ||
+      safe(log.message, "").contains("throttled") ||
+      safe(log.message, "").contains("lost")) ||
+     safe(actionResult, "") == "failure" ||
+     safe(origin.path, "").contains("/proc/") ||
+     safe(origin.path, "").contains("memfd") ||
+     safe(log.message, "").contains("injection") ||
+     (safe(log.processCount, 0) > 100 && safe(log.duration, 0) < 60))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.message
+          operator: query_string
+          value: 'audit AND (disabled OR failed OR throttled)'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - origin.user

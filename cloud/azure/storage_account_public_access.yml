@@ -1,0 +1,32 @@
+- id: 1008
+  dataTypes:
+    - azure
+  name: Storage Account Public Access Enabled
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Data Exposure Risk
+  technique: Data from Cloud Storage
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/activity-log-schema
+    - https://attack.mitre.org/techniques/T1530/
+  description: Detects when public access is enabled on Azure Storage Accounts which could lead to unauthorized data exposure
+  where: |
+    safe(log.operationName, "").contains("Microsoft.Storage/storageAccounts") &&
+    (safe(log.operationName, "").contains("/write") || safe(log.operationName, "").contains("/blobServices/write")) &&
+    safe(log.category, "") == "Administrative" &&
+    safe(actionResult, "") == "accepted" &&
+    (safe(log.properties, "").contains("allowBlobPublicAccess") || safe(log.properties, "").contains("publicAccess"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.aadObjectId.keyword
+          operator: filter_term
+          value: '{{log.aadObjectId}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.resourceId
+    - log.aadObjectId

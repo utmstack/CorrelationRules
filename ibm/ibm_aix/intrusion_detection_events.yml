@@ -1,0 +1,50 @@
+- id: 1015
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Intrusion Detection Alert
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Intrusion Detection
+  technique: Exploitation for Privilege Escalation
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/powersc-standard/2.1.0?topic=ids-configuring-intrusion-detection-prevention-idp-aix-endpoints
+    - https://attack.mitre.org/techniques/T1068/
+  description: Detects intrusion attempts and security violations identified by the IBM AIX intrusion detection system, including suspicious activities, privilege escalation attempts, and potential system compromises
+  where: >
+    (
+      safe(log.eventType, "") == "ids" ||
+      safe(log.eventType, "") == "securityd" ||
+      safe(log.eventType, "") == "audit" ||
+      safe(log.msg, "").contains("intrusion") ||
+      safe(log.msg, "").contains("suspicious") ||
+      safe(log.msg, "").contains("anomaly detected")
+    ) && 
+    (
+      safe(log.msg, "").contains("buffer overflow") ||
+      safe(log.msg, "").contains("privilege escalation") ||
+      safe(log.msg, "").contains("unauthorized modification") ||
+      safe(log.msg, "").contains("rootkit") ||
+      safe(log.msg, "").contains("backdoor") ||
+      safe(log.msg, "").contains("suspicious process") ||
+      safe(log.msg, "").contains("file integrity") ||
+      safe(action, "").contains("ALERT") ||
+      safe(log.returnCode, "") == "1"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 1
+  deduplicateBy:
+    - origin.user
+    - origin.ip
+    - log.eventType

@@ -1,0 +1,39 @@
+- id: 1002
+  dataTypes:
+    - nats
+  name: NATS Unauthorized Subscription Attempt
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Access Control Violation
+  technique: Privilege Escalation
+  adversary: origin
+  references:
+    - https://docs.nats.io/running-a-nats-service/configuration/securing_nats/authorization
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects attempts to subscribe to subjects that result in authorization violations, indicating potential unauthorized access attempts to restricted topics
+  where: |
+    (safe(log.error, "").contains("permissions violation") ||
+     safe(log.error, "").contains("authorization violation") ||
+     safe(log.message, "").contains("Permissions Violation for Subscription") ||
+     safe(log.message, "").contains("Authorization Violation")) &&
+    safe(action, "") == "nats.log" &&
+    (safe(log.operation, "") == "SUB" ||
+     safe(log.msg_type, "") == "SUB" ||
+     safe(log.event_type, "") == "subscription")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.client_id.keyword
+          operator: filter_term
+          value: '{{log.client_id}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.client_id
+    - log.subject

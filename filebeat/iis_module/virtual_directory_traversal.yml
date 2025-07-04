@@ -1,0 +1,41 @@
+- id: 1012
+  dataTypes:
+    - iis
+  name: Virtual Directory Traversal Attack
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Web Application Attack
+  technique: Path Traversal
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/Path_Traversal
+    - https://attack.mitre.org/techniques/T1083/
+  description: Detects attempts to traverse directories and access files outside the web root through various encoding techniques and traversal sequences
+  where: |
+    (
+      safe(target.path, "") =~ ".*\\.\\.[\\\\/].*" ||
+      safe(target.path, "") =~ ".*%2e%2e[\\\\/].*" ||
+      safe(target.path, "") =~ ".*%252e%252e.*" ||
+      safe(target.path, "") =~ ".*%c0%ae%c0%ae.*" ||
+      safe(target.path, "") =~ ".*%e0%80%ae%e0%80%ae.*" ||
+      safe(target.path, "") =~ ".*\\.\\./.*" ||
+      safe(target.path, "") =~ ".*/Windows/System32/.*" ||
+      safe(target.path, "") =~ ".*/boot\\.ini.*" ||
+      safe(target.path, "") =~ ".*/win\\.ini.*" ||
+      safe(target.path, "") =~ ".*/web\\.config.*" ||
+      safe(target.path, "") =~ ".*/applicationHost\\.config.*"
+    ) &&
+    safe(target.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - target.ip
+    - origin.host

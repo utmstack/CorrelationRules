@@ -1,0 +1,32 @@
+- id: 1006
+  dataTypes:
+    - haproxy
+  name: SSL/TLS Vulnerabilities Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Network Security
+  technique: Weaken Encryption
+  adversary: origin
+  references:
+    - https://www.haproxy.com/blog/haproxy-ssl-termination
+    - https://attack.mitre.org/techniques/T1600/
+  description: Detects attempts to exploit SSL/TLS vulnerabilities including weak ciphers, protocol downgrade attacks, and certificate issues in HAProxy
+  where: |
+    (safe(log.ssl_fc_protocol, "") != "" && safe(log.ssl_fc_protocol, "") in ["SSLv2", "SSLv3", "TLSv1", "TLSv1.0", "TLSv1.1"]) ||
+    (safe(log.ssl_fc_cipher, "") != "" && (contains(lower(safe(log.ssl_fc_cipher, "")), "export") || contains(lower(safe(log.ssl_fc_cipher, "")), "null") || contains(lower(safe(log.ssl_fc_cipher, "")), "anon") || contains(lower(safe(log.ssl_fc_cipher, "")), "des") || contains(lower(safe(log.ssl_fc_cipher, "")), "rc4"))) ||
+    (safe(log.ssl_c_verify, "") != "" && safe(log.ssl_c_verify, "") != "0") ||
+    (safe(log.termination_state, "") != "" && contains(safe(log.termination_state, ""), "S")) ||
+    (safe(log.http_status, 0) >= 495 && safe(log.http_status, 0) <= 499)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.ssl_fc_cipher

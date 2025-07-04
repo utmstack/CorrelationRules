@@ -1,0 +1,39 @@
+- id: 1008
+  dataTypes:
+    - postgresql
+  name: PostgreSQL Physical Replication Attack Indicators
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 5
+  category: Infrastructure Attack
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://www.postgresql.org/docs/current/warm-standby.html
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects potential attacks on PostgreSQL physical replication including standby server compromise, replication lag manipulation, timeline divergence, and attempts to disrupt streaming replication.
+  where: >
+    safe(log.messageType, "") in ["ERROR", "FATAL", "PANIC", "WARNING"] &&
+    safe(log.msg, "") != "" &&
+    (log.msg =~ "(?i)streaming replication.*disconnected" ||
+     log.msg =~ "(?i)standby.*disconnected" ||
+     log.msg =~ "(?i)timeline.*does not match" ||
+     log.msg =~ "(?i)requested timeline.*not found" ||
+     log.msg =~ "(?i)recovery.*conflict" ||
+     log.msg =~ "(?i)archive recovery.*failed" ||
+     log.msg =~ "(?i)restore_command.*failed" ||
+     log.msg =~ "(?i)primary_conninfo.*authentication failed")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.messageType.keyword
+          operator: filter_terms
+          value: '["ERROR", "FATAL", "PANIC"]'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.host

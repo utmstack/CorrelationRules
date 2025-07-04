@@ -1,0 +1,31 @@
+- id: 1010
+  dataTypes:
+    - antivirus-esmc-eset
+  name: ESET Botnet Communication Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Command and Control
+  technique: Application Layer Protocol
+  adversary: origin
+  references:
+    - https://www.eset.com/us/botnet/
+    - https://support.eset.com/en/kb7487-resolve-the-incomingattackgeneric-or-botnetcncgeneric-network-protection-alert
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects attempts to communicate with known botnet command and control servers. ESET identifies typical communication patterns when a computer is infected and a bot is attempting to communicate with malicious C2 infrastructure.
+  where: (safe(log.rulename, "") contains "Botnet" || safe(log.rulename, "") == "Botnet.CnC.Generic" || safe(log.event_type, "") == "Botnet_Event") && safe(action, "") == "blocked" && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.host.keyword
+          operator: filter_term
+          value: '{{target.host}}'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-24h
+      count: 10
+  deduplicateBy:
+    - target.host
+    - origin.ip

@@ -1,0 +1,40 @@
+- id: 1010
+  dataTypes:
+    - postgresql
+  name: PostgreSQL Checkpoint Manipulation and Recovery Issues
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 5
+  category: System Integrity
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://www.postgresql.org/docs/current/wal-configuration.html
+    - https://attack.mitre.org/techniques/T1490/
+  description: Detects attempts to manipulate PostgreSQL checkpoint processes, invalid checkpoint records, or recovery issues that could indicate database corruption, DoS attempts, or efforts to prevent proper database recovery.
+  where: >
+    safe(log.messageType, "") in ["ERROR", "FATAL", "PANIC", "WARNING"] &&
+    safe(log.msg, "") != "" &&
+    (log.msg =~ "(?i)could not locate.*checkpoint record" ||
+     log.msg =~ "(?i)invalid.*checkpoint record" ||
+     log.msg =~ "(?i)checkpoint.*starting.*too frequently" ||
+     log.msg =~ "(?i)checkpoints.*too frequent" ||
+     log.msg =~ "(?i)recovery.*in progress" ||
+     log.msg =~ "(?i)database system was not properly shut down" ||
+     log.msg =~ "(?i)could not write.*checkpoint" ||
+     log.msg =~ "(?i)checkpoint.*failed" ||
+     log.msg =~ "(?i)redo.*failed")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.messageType.keyword
+          operator: filter_terms
+          value: '["PANIC", "FATAL"]'
+      within: now-6h
+      count: 1
+  deduplicateBy:
+    - origin.host

@@ -1,0 +1,42 @@
+- id: 1016
+  dataTypes:
+    - mysql
+  name: MySQL Performance Schema Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Database Security
+  technique: Information Gathering
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/performance-schema-system-variables.html
+    - https://attack.mitre.org/techniques/T1046/
+  description: Detects suspicious queries to MySQL Performance Schema tables that could indicate information gathering or reconnaissance activities. Attackers often query performance_schema tables to understand system configuration and identify potential vulnerabilities.
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      log.msg contains "performance_schema" ||
+      log.msg contains "PERFORMANCE_SCHEMA"
+    ) &&
+    (
+      log.msg contains "global_variables" ||
+      log.msg contains "session_variables" ||
+      log.msg contains "threads" ||
+      log.msg contains "events_statements" ||
+      log.msg contains "prepared_statements_instances" ||
+      log.msg contains "status_by_" ||
+      log.msg contains "variables_by_thread"
+    ) &&
+    safe(severity, "") == "high"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.thread

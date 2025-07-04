@@ -1,0 +1,33 @@
+- id: 1021
+  dataTypes:
+    - traefik
+  name: Redis Provider Issues
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 5
+  category: Service Disruption
+  technique: Dynamic Configuration Manipulation
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/providers/redis/
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects issues with Redis provider connection, authentication failures, or keyspace notification problems that could indicate service disruption or configuration tampering attempts
+  where: >
+    (safe(action, "") == "traefik.access" || safe(action, "") == "traefik") &&
+    (
+      (safe(log.msg, "") == string(log.msg) && log.msg.contains("redis") && (log.msg.contains("connection refused") || log.msg.contains("authentication failed") || log.msg.contains("keyspace notification"))) ||
+      (safe(log.error, "") == string(log.error) && log.error.contains("redis provider")) ||
+      (safe(log.ServiceName, "") == string(log.ServiceName) && log.ServiceName.contains("redis") && safe(log.DownstreamStatus, 0) >= 500) ||
+      (safe(log.provider, "") == "redis" && safe(log.status, "") == "error")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.host

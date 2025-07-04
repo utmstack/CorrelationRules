@@ -1,0 +1,39 @@
+- id: 1008
+  dataTypes:
+    - aws
+  name: AWS Security Group Modifications
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Configuration Change
+  technique: T1562.007 - Impair Defenses: Disable or Modify Cloud Firewall
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html
+    - https://attack.mitre.org/techniques/T1562/007/
+  description: Detects modifications to AWS security groups that could weaken network security posture. Monitors for changes that add permissive rules or remove restrictive rules.
+  where: |
+    safe(log.eventSource, "") == "ec2.amazonaws.com" && 
+    safe(log.eventName, "") in ["AuthorizeSecurityGroupIngress", "AuthorizeSecurityGroupEgress", "RevokeSecurityGroupIngress", "RevokeSecurityGroupEgress", "CreateSecurityGroup", "DeleteSecurityGroup", "ModifySecurityGroupRules"] &&
+    safe(log.sourceIPAddress, "") != "" &&
+    safe(log.errorCode, "") == "" &&
+    (
+      contains(safe(log.requestParametersIpPermissionsIpProtocol, ""), "-1") ||
+      contains(safe(log.requestParametersIpPermissionsCidrIp, ""), "0.0.0.0/0") ||
+      contains(safe(log.requestParametersIpPermissionsIpv6CidrIp, ""), "::/0")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.sourceIPAddress.keyword
+          operator: filter_term
+          value: '{{log.sourceIPAddress}}'
+        - field: log.eventSource.keyword
+          operator: filter_term
+          value: 'ec2.amazonaws.com'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - log.sourceIPAddress
+    - log.userIdentityArn

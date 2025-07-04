@@ -1,0 +1,33 @@
+- id: 1018
+  dataTypes:
+    - iis
+  name: IIS MIME Type Confusion Attack
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Code Injection
+  technique: Cross-Site Scripting (XSS)
+  adversary: origin
+  references:
+    - https://blog.fox-it.com/2012/05/08/mime-sniffing-feature-or-vulnerability/
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects potential MIME type confusion attacks where attackers try to upload malicious scripts disguised as other file types to exploit MIME sniffing vulnerabilities.
+  where: |
+    (safe(target.path, "") contains ".jpg" || safe(target.path, "") contains ".jpeg" || 
+     safe(target.path, "") contains ".png" || safe(target.path, "") contains ".gif" ||
+     safe(target.path, "") contains ".zip" || safe(target.path, "") contains ".csv") &&
+    (safe(target.path, "") contains "<script" || safe(target.path, "") contains "%3Cscript" ||
+     safe(target.path, "") contains "javascript:" || safe(target.path, "") contains "vbscript:" ||
+     safe(log.referrer, "") contains "javascript:" || safe(log.userAgent, "") contains "<script")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - target.ip
+    - target.path

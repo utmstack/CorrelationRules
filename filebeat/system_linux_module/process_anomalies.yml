@@ -1,0 +1,26 @@
+- id: 1017
+  dataTypes:
+    - linux
+  name: Process Execution Anomalies
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Process Monitoring
+  technique: Process Injection
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects anomalous process behavior including unexpected terminations, segmentation faults, and suspicious process spawning patterns
+  where: safe(log.message, "") != "" && (safe(log.message, "") contains "segfault" || safe(log.message, "") contains "core dumped" || safe(log.message, "") contains "Killed process" || safe(log.message, "") contains "process" && (safe(log.message, "") contains "abnormal" || safe(log.message, "") contains "terminated" || safe(log.message, "") contains "signal 9" || safe(log.message, "") contains "signal 11") || safe(log.message, "") contains "defunct" || safe(log.message, "") contains "zombie") && safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host

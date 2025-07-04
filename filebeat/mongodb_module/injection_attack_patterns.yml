@@ -1,0 +1,41 @@
+- id: 1002
+  dataTypes:
+    - mongodb
+  name: MongoDB Injection Attack Patterns
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Initial Access
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/reference/log-messages/
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential MongoDB injection attempts through suspicious query patterns including $where, $function, or mapReduce operations that may contain malicious JavaScript code
+  where: |
+    safe(log.component, "") in ["QUERY", "COMMAND"] &&
+    safe(severity, "") in ["high", "medium"] &&
+    (safe(log.msg, "") contains "$where" ||
+     safe(log.msg, "") contains "$function" ||
+     safe(log.msg, "") contains "mapReduce" ||
+     safe(log.msg, "") contains "eval" ||
+     safe(log.msg, "") contains "$regex" ||
+     safe(log.msg, "") matches ".*\\$[a-zA-Z]+.*[<>\"'].*" ||
+     safe(log.msg, "") contains "function()" ||
+     safe(log.msg, "") contains "this." ||
+     safe(log.msg, "") contains "db.eval")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_terms
+          value: '["QUERY", "COMMAND"]'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.msg

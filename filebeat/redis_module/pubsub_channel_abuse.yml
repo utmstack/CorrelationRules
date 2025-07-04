@@ -1,0 +1,37 @@
+- id: 1007
+  dataTypes:
+    - redis
+  name: Redis Pub/Sub Channel Abuse Detection
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 4
+  category: Application Attack
+  technique: Channel Hijacking
+  adversary: origin
+  references:
+    - https://redis.io/docs/latest/develop/interact/pubsub/
+    - https://attack.mitre.org/techniques/T1557/
+  description: Detects suspicious activity in Redis Pub/Sub channels including channel flooding, unauthorized subscriptions, or potential data exfiltration attempts through pub/sub mechanism
+  where: |
+    safe(log.msg, "") != "" && (
+      log.msg.contains("PSUBSCRIBE") ||
+      log.msg.contains("PUNSUBSCRIBE") ||
+      (log.msg.contains("PUBLISH") && log.msg.contains("__keyspace@")) ||
+      (log.msg.contains("PUBLISH") && log.msg.contains("__keyevent@")) ||
+      log.msg.contains("Mass PUBLISH") ||
+      log.msg.contains("channel") && log.msg.contains("flood") ||
+      log.msg.contains("Too many channels") ||
+      log.msg.contains("pubsub") && log.msg.contains("denied") ||
+      (safe(log.severity, "") == "warning" && log.msg.contains("pubsub"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - origin.host

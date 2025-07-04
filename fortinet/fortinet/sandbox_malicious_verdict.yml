@@ -1,0 +1,31 @@
+- id: 1012
+  dataTypes:
+    - firewall-fortigate-traffic
+  name: FortiSandbox Malicious File Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Malware
+  technique: T1204 - User Execution
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortisandbox/4.4.0/administration-guide/274898/how-files-determined-to-be-suspicious-low-medium-or-high
+    - https://attack.mitre.org/techniques/T1204/
+  description: Detects when FortiSandbox identifies a file as malicious based on behavioral analysis and static scanning. This indicates active malware attempting to infiltrate the network through file transfers or downloads.
+  where: >
+    (safe(log.subtype, "") == "sandbox" && safe(log.verdict, "") == "malicious") ||
+    (safe(log.msg, "") contains "sandbox verdict: malicious") ||
+    (safe(log.risk, "") == "high" && safe(log.subtype, "") == "sandbox") ||
+    (safe(log.msg, "") contains "FortiSandbox detected malware")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - log.filehash

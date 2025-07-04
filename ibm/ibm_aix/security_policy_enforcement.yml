@@ -1,0 +1,31 @@
+- id: 1018
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Security Policy Enforcement Events
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Security Controls
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/aix/7.2?topic=security-policy-management
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects security policy enforcement events and violations in IBM AIX systems, including policy rule violations, unauthorized policy changes, or attempts to bypass security controls
+  where: (safe(log.eventType, "") == "POLICY_ENFORCE" || safe(log.eventType, "") == "SECURITY_POLICY") || (safe(log.msg, "").contains("policy") && (safe(log.msg, "").contains("enforced") || safe(log.msg, "").contains("violated") || safe(log.msg, "").contains("bypass"))) || (safe(action, "").contains("POLICY") && (safe(action, "").contains("CHANGE") || safe(action, "").contains("MODIFY"))) || (safe(log.commandType, "") == "secpolicy" || safe(origin.command, "").contains("chsec")) || (safe(log.tty, "") == "console" && safe(action, "").contains("SECURITY"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: action.keyword
+          operator: filter_match
+          value: 'POLICY'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - action
+    - log.eventType

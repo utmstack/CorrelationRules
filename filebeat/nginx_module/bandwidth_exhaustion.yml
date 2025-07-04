@@ -1,0 +1,52 @@
+- id: 1023
+  dataTypes:
+    - nginx
+  name: Bandwidth Exhaustion Attack
+  impact:
+    confidentiality: 0
+    integrity: 0
+    availability: 5
+  category: Denial of Service
+  technique: Network Denial of Service
+  adversary: origin
+  references:
+    - https://blog.nginx.org/blog/mitigating-ddos-attacks-with-nginx-and-nginx-plus
+    - https://attack.mitre.org/techniques/T1498/001/
+  description: Detects bandwidth exhaustion attacks where attackers consume excessive network resources through large requests, slow reads, or repetitive large file downloads. This rule identifies patterns of abnormally high data transfer from single sources.
+  where: |
+    safe(origin.bytesReceived, 0.0) > 1048576.0 &&
+    safe(origin.ip, "") != "" &&
+    (
+      (safe(log.userAgent, "") != "" && 
+       (
+         log.userAgent.contains("bot") ||
+         log.userAgent.contains("crawler") ||
+         log.userAgent.contains("scanner") ||
+         log.userAgent == "-"
+       )
+      ) ||
+      (safe(action, "") != "" && 
+       (action == "get" || action == "post") &&
+       safe(statusCode, 0) == 200
+      ) ||
+      (safe(origin.path, "") != "" &&
+       (
+         origin.path.contains(".zip") ||
+         origin.path.contains(".tar") ||
+         origin.path.contains(".gz") ||
+         origin.path.contains(".iso") ||
+         origin.path.contains(".mp4") ||
+         origin.path.contains(".avi")
+       )
+      )
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 20
+  deduplicateBy:
+    - origin.ip

@@ -1,0 +1,42 @@
+- id: 1002
+  dataTypes:
+    - logstash
+  name: Logstash Filter Bypass Attempts
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Security Evasion
+  technique: T1562.006
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/filter-plugins.html
+    - https://attack.mitre.org/techniques/T1562/006/
+  description: Detects attempts to bypass or disable Logstash filter plugins that could lead to unprocessed malicious data or security control evasion
+  where: >
+    (safe(log.component, "") == "logstash.filters" || 
+     safe(log.component, "") == "logstash.pipeline") && 
+    safe(log.msg, "") != "" && 
+    safe(severity, "") == "high" &&
+    (
+      log.msg.contains("filter") && 
+      (log.msg.contains("skip") || log.msg.contains("bypass") || log.msg.contains("disabled")) ||
+      log.msg.contains("exception") && log.msg.contains("filter") ||
+      log.msg.contains("Failed to execute filter") ||
+      log.msg.contains("Filter chain broken") ||
+      log.msg.contains("conditional") && log.msg.contains("always false")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.pipelineName.keyword
+          operator: filter_term
+          value: '{{log.pipelineName}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.pipelineName

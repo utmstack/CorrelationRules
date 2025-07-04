@@ -1,0 +1,30 @@
+- id: 1011
+  dataTypes:
+    - osquery
+  name: Osquery Event Publisher Attack Detected
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: System Compromise
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://github.com/osquery/osquery/issues/6762
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects potential attacks against osquery event publishers including failed setup attempts, misconfiguration exploitation, or attempts to disable event collection mechanisms
+  where: |
+    (safe(actionResult, "") == "failed" && contains(safe(log.message, ""), "Event publisher")) ||
+    (safe(log.eventName, "") == "osquery_events" && contains(safe(log.message, ""), "Publisher disabled")) ||
+    (contains(safe(log.message, ""), "Event publisher failed setup")) ||
+    (safe(action, "") == "osquery.result" && contains(safe(log.message, ""), "publisher") && contains(safe(log.message, ""), "error"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host

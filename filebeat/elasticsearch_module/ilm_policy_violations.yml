@@ -1,0 +1,27 @@
+- id: 1019
+  dataTypes:
+    - elasticsearch
+  name: ILM Policy Violation Detected
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 4
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html
+    - https://attack.mitre.org/techniques/T1562/
+  description: Detects violations and unauthorized modifications to Index Lifecycle Management (ILM) policies that could lead to data retention issues, premature data deletion, or compliance violations
+  where: (safe(log.auditRestRequestPath, "").contains("_ilm") || safe(origin.url, "").contains("_ilm/policy")) && (safe(log.method, "") == "DELETE" || safe(log.method, "") == "PUT" || safe(action, "") == "access_denied" || (safe(log.level, "") == "ERROR" && safe(log.component, "").contains("ilm")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-2h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.auditRestRequestPath

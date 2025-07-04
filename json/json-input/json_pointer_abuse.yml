@@ -1,0 +1,36 @@
+- id: 1018
+  dataTypes:
+    - json-input
+  name: JSON Pointer Path Traversal Abuse
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Path Traversal
+  technique: JSON Pointer Manipulation
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc6901
+    - https://bishopfox.com/blog/json-interoperability-vulnerabilities
+    - https://attack.mitre.org/techniques/T1083/
+  description: Detects attempts to abuse JSON Pointer syntax for unauthorized access to data structures, including path traversal attempts and escape sequence manipulation to access restricted keys.
+  where: |
+    (safe(log.json_pointer, "") != "" || safe(log.path, "").contains("/")) &&
+    (safe(log.json_pointer, "").contains("~0") ||
+     safe(log.json_pointer, "").contains("~1") ||
+     safe(log.path, "").contains("/../") ||
+     safe(log.path, "").contains("/..%2F") ||
+     safe(log.path, "").contains("/..%252F") ||
+     safe(log.body, "").matches(".*\"path\"\\s*:\\s*\"[^\"]*(\\.\\.|~0~1|~1~0).*\".*") ||
+     safe(log.query_params, "").contains("pointer=/../"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.json_pointer

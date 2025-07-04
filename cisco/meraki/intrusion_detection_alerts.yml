@@ -1,0 +1,35 @@
+- id: 1007
+  dataTypes:
+    - meraki
+  name: Meraki IDS High Priority Intrusion Alert
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Network Security
+  technique: T1190
+  adversary: origin
+  references:
+    - https://documentation.meraki.com/General_Administration/Monitoring_and_Reporting/Syslog_Event_Types_and_Log_Samples
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects high and medium priority intrusion detection alerts from Meraki IDS/IPS system. These alerts indicate potential exploitation attempts, malicious traffic patterns, or known attack signatures detected by the Snort engine.
+  where: |
+    safe(log.eventType, "") == "security_event" && 
+    safe(log.alertType, "") == "ids_alerted" &&
+    safe(log.priority, 99) <= 2 &&
+    safe(origin.ip, "") != "" &&
+    safe(destination.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.signature.keyword
+          operator: filter_term
+          value: '{{log.signature}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.signature

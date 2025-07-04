@@ -1,0 +1,53 @@
+- id: 1022
+  dataTypes:
+    - mysql
+  name: Window Function Abuse Detection
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 4
+  category: Resource Exhaustion
+  technique: Query Complexity Attack
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/window-functions.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects potential abuse of MySQL window functions that could lead to resource exhaustion or unauthorized data access. Window functions like ROW_NUMBER(), RANK(), DENSE_RANK(), LAG(), LEAD() can be abused to create complex queries that consume excessive resources or bypass access controls.
+  where: |
+    safe(action, "") == "mysql.error" &&
+    safe(log.msg, "") != "" &&
+    (
+      log.msg.contains("ROW_NUMBER()") ||
+      log.msg.contains("RANK()") ||
+      log.msg.contains("DENSE_RANK()") ||
+      log.msg.contains("PERCENT_RANK()") ||
+      log.msg.contains("CUME_DIST()") ||
+      log.msg.contains("NTILE()") ||
+      log.msg.contains("LAG()") ||
+      log.msg.contains("LEAD()") ||
+      log.msg.contains("FIRST_VALUE()") ||
+      log.msg.contains("LAST_VALUE()") ||
+      log.msg.contains("NTH_VALUE()") ||
+      log.msg.contains("OVER") ||
+      log.msg.contains("PARTITION BY")
+    ) &&
+    (
+      log.msg.contains("Resource temporarily unavailable") ||
+      log.msg.contains("Out of memory") ||
+      log.msg.contains("Query execution was interrupted") ||
+      log.msg.contains("max_execution_time exceeded") ||
+      log.msg.contains("Too many connections") ||
+      log.msg.contains("denied") ||
+      safe(severity, "") == "high"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.thread

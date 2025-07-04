@@ -1,0 +1,39 @@
+- id: 1015
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb ML Anomaly Detection Alert
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Anomalous Activity
+  technique: Application Layer Protocol
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.6.0/administration-guide/94907/ml-based-anomaly-detection
+    - https://docs.fortinet.com/document/fortiweb/6.3.7/administration-guide/865612/viewing-anomaly-detection-log
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects when FortiWeb's machine learning anomaly detection system identifies abnormal behavior patterns. The system uses HMM models to monitor URLs, parameters, and HTTP methods to detect deviations from normal traffic patterns that may indicate zero-day attacks or advanced threats.
+  where: |
+    safe(log.type, "") == "attack" && 
+    (contains(safe(log.msg, ""), "anomaly") || 
+     contains(safe(log.msg, ""), "ML detect") ||
+     contains(safe(log.msg, ""), "machine learning") ||
+     contains(safe(log.attack_type, ""), "anomaly") ||
+     safe(log.subtype, "") == "anomaly_detection" ||
+     safe(log.subtype, "") == "ml_detection") &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'attack'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.msg

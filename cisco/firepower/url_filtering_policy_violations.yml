@@ -1,0 +1,31 @@
+- id: 1003
+  dataTypes:
+    - firepower
+  name: URL Filtering Policy Violations
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: Policy Violation
+  technique: Web Service
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/623/configuration/guide/fpmc-config-guide-v623/url_filtering.html
+    - https://attack.mitre.org/techniques/T1102/
+  description: Detects attempts to access blocked or restricted URLs, including malicious sites, phishing domains, or policy-violating content categories
+  where: |
+    safe(log.eventType, "") == "URL_EVENT" && 
+    (safe(log.action, "") == "BLOCKED" || 
+     safe(log.action, "") == "RESET_BOTH" ||
+     safe(log.urlCategory, "") =~ "malware|phishing|spam|botnets|spyware|adult|gambling|illegal|proxy-avoidance")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-2h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.url

@@ -1,0 +1,36 @@
+- id: 1007
+  dataTypes:
+    - osquery
+  name: Osquery Distributed Query Injection Attack
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Code Injection
+  technique: Command and Scripting Interpreter
+  adversary: origin
+  references:
+    - https://www.invicti.com/blog/web-security/osquery-injection/
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects potential SQL injection attempts in osquery distributed queries. Attackers may exploit improper input validation to execute unauthorized queries, potentially accessing sensitive system information or performing malicious enumeration.
+  where: |
+    (safe(log.eventName, "") contains_any ["distributed", "query", "schedule"] ||
+     safe(action, "") == "osquery.distributed") &&
+    (safe(log.message, "") contains_any ["UNION", "SELECT", "DROP", "--", "/*", "*/", "';", '";'] ||
+     safe(log.message, "") matches ".*[0-9]+\\s+(OR|AND)\\s+[0-9]+.*" ||
+     safe(origin.path, "") contains_any ["UNION", "SELECT", "'", '"']) &&
+    safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - origin.user

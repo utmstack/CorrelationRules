@@ -1,0 +1,31 @@
+- id: 1010
+  dataTypes:
+    - antivirus-sentinel-one
+  name: Custom Detection Rule Triggers
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Custom Rules
+  technique: Scripting
+  adversary: origin
+  references:
+    - https://docs.sentinelone.com/
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects when custom detection rules configured in SentinelOne trigger, indicating organization-specific threat patterns or policy violations have been identified
+  where: (safe(log.eventDescription, "") contains "custom rule" || safe(log.dveventtype, "") contains "custom_detection" || safe(log.eventcategory, "") == "Custom Rules - New Alert") && safe(log.confidencelevel, 0) >= 60
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+        - field: log.eventcategory.keyword
+          operator: filter_term
+          value: '{{log.eventcategory}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - log.syslogHost
+    - log.alertid
+    - log.eventDescription

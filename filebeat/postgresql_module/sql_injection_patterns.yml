@@ -1,0 +1,42 @@
+- id: 1001
+  dataTypes:
+    - postgresql
+  name: PostgreSQL SQL Injection Attack Detected
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Initial Access
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://www.postgresql.org/docs/current/sql-syntax.html
+    - https://attack.mitre.org/techniques/T1190/
+    - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/05-Testing_for_SQL_Injection
+  description: Detects SQL injection patterns in PostgreSQL logs including common injection techniques, error-based injections, and malicious SQL syntax patterns
+  where: |
+    safe(log.messageType, "") == "ERROR" && (
+      safe(log.msg, "") matches ".*(['\";]\\s*(OR|AND)\\s+[0-9]+=\\s*[0-9]+).*" ||
+      safe(log.msg, "") matches ".*(UNION\\s+(ALL\\s+)?SELECT).*" ||
+      safe(log.msg, "") matches ".*(';\\s*(DROP|ALTER|CREATE|TRUNCATE)\\s+(TABLE|DATABASE)).*" ||
+      safe(log.msg, "") matches ".*(/\\*.*\\*/|--\\s*$|#\\s*$).*" ||
+      safe(log.msg, "") matches ".*(xp_cmdshell|sp_executesql|exec\\s*\\().*" ||
+      safe(log.msg, "") matches ".*(CAST\\s*\\(.*AS\\s*(INT|VARCHAR)).*" ||
+      safe(log.msg, "") matches ".*(information_schema\\.|pg_catalog\\.).*" ||
+      safe(log.msg, "") matches ".*(WAITFOR\\s+DELAY|BENCHMARK\\s*\\(|pg_sleep).*" ||
+      safe(log.msg, "") matches ".*(0x[0-9a-fA-F]+|CHAR\\s*\\([0-9]+\\)).*" ||
+      safe(log.errorCode, "") == "42601" ||
+      safe(log.errorCode, "") == "42703" ||
+      safe(log.errorCode, "") == "42P01"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.sessionId

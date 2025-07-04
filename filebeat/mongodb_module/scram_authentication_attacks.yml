@@ -1,0 +1,29 @@
+- id: 1021
+  dataTypes:
+    - mongodb
+  name: MongoDB SCRAM Authentication Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Initial Access
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/core/security-scram/
+    - https://attack.mitre.org/techniques/T1110/
+  description: Detects multiple failed SCRAM authentication attempts from the same source IP, indicating potential brute force or credential stuffing attacks against MongoDB database users
+  where: safe(log.component, "") == "ACCESS" && safe(log.msg, "") contains "SCRAM" && (safe(log.msg, "") contains "authentication failed" || safe(log.msg, "") contains "storedKey mismatch" || safe(log.msg, "") contains "AuthenticationFailed") && safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'ACCESS'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host

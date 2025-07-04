@@ -1,0 +1,30 @@
+- id: 1011
+  dataTypes:
+    - firewall-fortigate-traffic
+  name: FortiGuard Threat Feed Match Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Threat Intelligence
+  technique: T1071 - Application Layer Protocol
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortigate/7.6.2/administration-guide/995517/fortiguard-category-threat-feed
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects when network traffic matches a FortiGuard threat feed entry, indicating communication with known malicious IPs, domains, or URLs. This could indicate malware command and control, data exfiltration, or other malicious activity.
+  where: >
+    (safe(log.subtype, "") == "webfilter" && safe(log.eventtype, "") == "ftgd_blk") ||
+    (safe(log.cat, "") == "192" && safe(log.catdesc, "") contains "Custom-Remote-FGD") ||
+    (safe(log.msg, "") contains "FortiGuard-WebFilter identified URL")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - target.ip

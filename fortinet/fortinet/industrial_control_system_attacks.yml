@@ -1,0 +1,46 @@
+- id: 1017
+  dataTypes:
+    - firewall-fortigate-traffic
+  name: Industrial Control System Attack Detected
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 5
+  category: ICS/SCADA Attack
+  technique: Impair Process Control
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortigate/7.0.4/fortios-log-message-reference/656858/log-id-definitions
+    - https://attack.mitre.org/techniques/T0836/
+    - https://attack.mitre.org/techniques/T0882/
+  description: Detects potential attacks targeting Industrial Control Systems (ICS) or SCADA networks. This includes attempts to access OT protocols, modify control logic, or exploit vulnerabilities in industrial equipment.
+  where: |
+    (
+      safe(target.port, 0) in [502, 102, 20000, 44818, 47808, 4840, 34980] ||
+      safe(log.service, "") in ["modbus", "s7", "dnp3", "iec-104", "opcua", "bacnet", "ethernetip"] ||
+      safe(log.appcat, "") == "Industrial" ||
+      safe(log.app, "").contains("scada") ||
+      safe(log.app, "").contains("industrial")
+    ) &&
+    (
+      safe(action, "") in ["deny", "block", "reset"] ||
+      safe(log.attack, "") != "" ||
+      safe(log.threat, "") != "" ||
+      safe(log.msg, "").contains("ics attack") ||
+      safe(log.msg, "").contains("scada") ||
+      safe(log.msg, "").contains("plc manipulation")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.appcat.keyword
+          operator: filter_term
+          value: 'Industrial'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - target.ip

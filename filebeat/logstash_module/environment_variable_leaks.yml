@@ -1,0 +1,32 @@
+- id: 1019
+  dataTypes:
+    - logstash_module
+  name: Logstash Environment Variable Information Disclosure
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Information Disclosure
+  technique: System Information Discovery
+  adversary: origin
+  references:
+    - https://discuss.elastic.co/t/logstash-keystore-password-can-be-read-from-linux-command/133119
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects potential environment variable exposure or enumeration attempts that could reveal sensitive configuration data, passwords, or API keys stored in environment variables
+  where: |
+    safe(log.msg, "") != "" &&
+    (log.msg contains "environ" || log.msg contains "getenv" || log.msg contains "printenv" || 
+     log.msg contains "LOGSTASH_KEYSTORE_PASS" || log.msg contains "${" || 
+     log.msg contains "password" || log.msg contains "api_key" || log.msg contains "secret") &&
+    (safe(log.component, "") in ["logstash.runner", "logstash.config.source.local.configpathloader"] ||
+     safe(log.level, "") in ["WARN", "ERROR"])
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.host

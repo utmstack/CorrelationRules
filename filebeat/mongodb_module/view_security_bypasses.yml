@@ -1,0 +1,31 @@
+- id: 1013
+  dataTypes:
+    - mongodb
+  name: MongoDB View Security Bypass Attempt
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Access Control
+  technique: T1548 - Abuse Elevation Control Mechanism
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/core/views/
+    - https://attack.mitre.org/techniques/T1548/
+  description: Detects attempts to bypass view-level security restrictions or unauthorized access to views that could expose sensitive aggregated data
+  where: safe(log.component, "") == "COMMAND" && (safe(log.msg, "") contains("createView") || safe(log.msg, "") contains("modifyView") || safe(log.msg, "") contains("collMod")) && safe(log.ctx, "") contains("view") && safe(severity, "") != "low"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'COMMAND'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.ctx
+    - log.ns

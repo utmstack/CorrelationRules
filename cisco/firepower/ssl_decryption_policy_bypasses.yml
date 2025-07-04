@@ -1,0 +1,36 @@
+- id: 1004
+  dataTypes:
+    - firepower
+  name: SSL/TLS Decryption Policy Bypass Attempts
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Evasion
+  technique: Encrypted Channel
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/70/configuration/guide/fpmc-config-guide-v70/ssl_tls_decryption.html
+    - https://attack.mitre.org/techniques/T1573/
+  description: Detects attempts to bypass SSL/TLS decryption policies, including certificate validation failures, untrusted certificates, or connections that could not be decrypted
+  where: |
+    safe(log.eventType, "") == "SSL_EVENT" && 
+    (safe(log.sslAction, "") == "DO_NOT_DECRYPT" && safe(log.sslReason, "") != "POLICY_MATCH" ||
+     safe(log.sslCertStatus, "") =~ "INVALID|EXPIRED|SELF_SIGNED|UNTRUSTED" ||
+     safe(log.sslFailureReason, "") != "" ||
+     safe(log.sslFlowStatus, "") == "ERROR")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.sslCertFingerprint

@@ -1,0 +1,32 @@
+- id: 1011
+  dataTypes:
+    - mysql
+  name: MySQL Connection Limit Violations
+  impact:
+    confidentiality: 0
+    integrity: 0
+    availability: 4
+  category: Resource Exhaustion
+  technique: Resource Exhaustion (T1499)
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_max_connections
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects when MySQL connection limits are reached or when hosts are blocked due to connection errors, potentially indicating DoS attempts or misconfigured applications
+  where: >
+    safe(log.msg, "") != "" && 
+    (log.msg.contains("Too many connections") || 
+     log.msg.contains("Host") && log.msg.contains("is blocked because of many connection errors") ||
+     log.msg.contains("max_connections") ||
+     log.msg.contains("Connection limit exceeded") ||
+     log.msg.contains("is not allowed to connect to this MySQL server"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.host

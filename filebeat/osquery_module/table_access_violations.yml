@@ -1,0 +1,36 @@
+- id: 1002
+  dataTypes:
+    - osquery
+  name: Osquery Table Access Violations Detected
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Unauthorized Access
+  technique: Information Discovery
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/process-auditing/
+    - https://attack.mitre.org/techniques/T1057/
+  description: Detects unauthorized or suspicious access attempts to osquery tables, particularly sensitive system tables that could be used for reconnaissance or data exfiltration. This includes access to tables containing process information, network connections, or system configuration data.
+  where: |
+    (safe(actionResult, "") == "failed" && safe(log.message, "") =~ ".*(permission|denied|unauthorized).*table.*") ||
+    (safe(log.eventName, "") =~ ".*table_access.*" && safe(actionResult, "") == "denied") ||
+    (safe(action, "") == "osquery.result" && safe(log.message, "") =~ ".*(shadow|passwd|sudoers|private).*") ||
+    (safe(log.eventName, "") == "query" && safe(log.message, "") =~ ".*(SELECT.*FROM.*(users|groups|processes|listening_ports|certificates)).*" && safe(origin.user, "") != "root") ||
+    (safe(log.eventName, "") == "distributed_query" && safe(log.message, "") =~ ".*(kernel_info|system_info|hardware_events).*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - origin.user
+    - log.eventName

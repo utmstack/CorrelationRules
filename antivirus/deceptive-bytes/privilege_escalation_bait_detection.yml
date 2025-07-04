@@ -1,0 +1,31 @@
+- id: 1012
+  dataTypes:
+    - deceptive-bytes
+  name: Privilege Escalation Bait Accessed
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Privilege Escalation
+  technique: Exploitation for Privilege Escalation
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1068/
+    - https://attack.mitre.org/techniques/T1078/
+    - https://deceptivebytes.com/solution/
+  description: Detects when an attacker accesses deceptive privileged account baits or attempts to escalate privileges using trapped credentials, indicating active exploitation attempts.
+  where: safe(log.event_type, "") == "bait_accessed" && safe(log.bait_type, "") == "privilege_escalation" && (safe(log.target_privilege, "") == "admin" || safe(log.target_privilege, "") == "system")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 2
+  deduplicateBy:
+    - origin.user
+    - origin.ip

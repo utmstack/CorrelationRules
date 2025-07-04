@@ -1,0 +1,30 @@
+- id: 1017
+  dataTypes:
+    - generic
+  name: Multi-line Event Processing Issues
+  impact:
+    confidentiality: 1
+    integrity: 4
+    availability: 2
+  category: System
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://github.com/fluent/fluentd/issues/2585
+    - https://attack.mitre.org/techniques/T1565/
+  description: Detects potential issues with multi-line event processing where logs contain unexpected newline characters or excessive line breaks that could cause parsing failures or log injection attempts
+  where: |
+    safe(log.message, "") contains "\n" &&
+    (len(safe(log.message, "")) > 4096 || 
+     len(regexp_extract_all(safe(log.message, ""), "\n")) > 10)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.program

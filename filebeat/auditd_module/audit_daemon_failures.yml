@@ -1,0 +1,40 @@
+- id: 1025
+  dataTypes:
+    - auditd
+  name: Audit Daemon Failures and Errors
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Audit Log Tampering
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://man7.org/linux/man-pages/man5/auditd.conf.5.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects failures and errors in the audit daemon itself, including configuration errors, disk space issues, daemon crashes, or inability to write audit logs. These events could indicate system issues or attempts to disable audit logging.
+  where: >
+    safe(action, "") == "auditd.log" && 
+    (
+      safe(log.record_type, "") == "DAEMON_ABORT" ||
+      safe(log.record_type, "") == "DAEMON_ERR" ||
+      safe(log.record_type, "") == "DAEMON_CONFIG" ||
+      safe(log.record_type, "") == "DAEMON_RECONFIG" ||
+      safe(log.record_type, "") == "SERVICE_STOP" ||
+      safe(log.record_type, "") == "ANOM_DISK_FULL" ||
+      safe(log.record_type, "") == "ANOM_DISK_ERROR" ||
+      (safe(log.record_type, "") == "CONFIG_CHANGE" && strings.contains(safe(log.audit_enabled, ""), "0")) ||
+      (safe(log.record_type, "") == "SYSCALL" && safe(log.comm, "") == "auditctl" && safe(log.success, "") == "no")
+    ) &&
+    safe(log.success, "") != "yes"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - log.record_type

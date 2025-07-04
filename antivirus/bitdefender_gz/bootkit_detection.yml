@@ -1,0 +1,33 @@
+- id: 1016
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Bootkit/UEFI Threat Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Malware
+  technique: Boot or Logon Autostart Execution
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1542/001/
+    - https://www.bitdefender.com/business/support/en/77209-135324-event-types.html
+  description: Detects bootkit or UEFI-level threats that attempt to persist at the firmware level and compromise the boot process.
+  where: |
+    has(log.eventType) && 
+    (log.eventType == "boot" || 
+     log.eventType == "bootkit" || 
+     log.eventType == "uefi" || 
+     (has(log.msg) && (safe(log.msg, "").contains("boot") || safe(log.msg, "").contains("uefi") || safe(log.msg, "").contains("firmware"))) ||
+     (has(log.threatType) && (safe(log.threatType, "").contains("boot") || safe(log.threatType, "").contains("uefi"))))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.hostId.keyword
+          operator: filter_term
+          value: '{{log.hostId}}'
+      within: now-24h
+      count: 1
+  deduplicateBy:
+    - log.hostId
+    - log.eventType

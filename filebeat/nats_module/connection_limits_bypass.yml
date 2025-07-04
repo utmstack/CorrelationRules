@@ -1,0 +1,31 @@
+- id: 1016
+  dataTypes:
+    - nats
+  name: NATS Connection Limits Bypass Attempt
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 5
+  category: Resource Exhaustion
+  technique: Endpoint Denial of Service
+  adversary: origin
+  references:
+    - https://docs.nats.io/running-a-nats-service/configuration
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects attempts to bypass or exceed NATS server connection limits, which could indicate a denial of service attack or unauthorized resource consumption. This rule monitors for rapid connection attempts from the same source or connection limit errors in the logs.
+  where: |
+    (safe(log.error, "") =~ ".*[Mm]aximum.*[Cc]onnection.*" ||
+     safe(log.message, "") =~ ".*[Cc]onnection.*[Ll]imit.*" ||
+     safe(log.error_message, "") =~ ".*too many connections.*" ||
+     safe(log.msg, "") =~ ".*max_connections.*exceeded.*") &&
+    safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.host

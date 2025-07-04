@@ -1,0 +1,27 @@
+- id: 1016
+  dataTypes:
+    - aws
+  name: AWS GuardDuty High-Severity Finding
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Threat Detection
+  technique: Resource Access
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_findings.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects high-severity findings from AWS GuardDuty indicating potential security threats such as malicious activity, unauthorized access, or compromised instances
+  where: safe(log.eventSource, "") == "guardduty.amazonaws.com" && safe(log.eventName, "") == "GetFindings" && (safe(log.severity, 0) >= 7 || contains(safe(log.findingType, ""), "HighSeverity"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityAccountId.keyword
+          operator: filter_term
+          value: '{{log.userIdentityAccountId}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.userIdentityAccountId
+    - log.findingType

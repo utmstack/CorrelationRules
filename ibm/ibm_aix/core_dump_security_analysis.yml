@@ -1,0 +1,28 @@
+- id: 1025
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Core Dump Security Analysis
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 3
+  category: Security Events
+  technique: Process Injection
+  adversary: origin
+  references:
+    - https://www.halock.com/configuring-log-event-source-series-ibm-aix/
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects and analyzes core dump events in IBM AIX that could indicate process crashes due to exploitation attempts, buffer overflows, or malicious code execution
+  where: (safe(log.eventType, "") != "" && (safe(log.eventType, "").toLowerCase().contains("core") || safe(log.eventType, "").toLowerCase().contains("dump") || safe(log.eventType, "").toLowerCase().contains("segfault") || safe(log.eventType, "").toLowerCase().contains("sigsegv"))) || (safe(log.msg, "") != "" && (safe(log.msg, "").toLowerCase().contains("core dumped") || safe(log.msg, "").toLowerCase().contains("segmentation fault") || safe(log.msg, "").toLowerCase().contains("memory violation") || safe(log.msg, "").toLowerCase().contains("buffer overflow"))) || (safe(origin.command, "") != "" && safe(origin.command, "").toLowerCase().contains("core"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - origin.user
+    - log.pid
+    - from.host

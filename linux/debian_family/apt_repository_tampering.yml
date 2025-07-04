@@ -1,0 +1,35 @@
+- id: 1001
+  dataTypes:
+    - debian_family
+  name: APT Repository Tampering Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: System Manipulation
+  technique: Software Supply Chain Compromise
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1195/002/
+    - https://wiki.debian.org/SecureApt
+  description: Detects attempts to modify APT repository configurations, add untrusted repositories, or bypass package signing verification, which could indicate supply chain attacks or malicious package installation attempts
+  where: |
+    (safe(log.process, "") contains "apt" || safe(log.process, "") contains "apt-get" || safe(log.process, "") contains "apt-key") &&
+    (safe(log.message, "") contains "sources.list" || 
+     safe(log.message, "") contains "add-apt-repository" ||
+     safe(log.message, "") contains "trusted.gpg" ||
+     safe(log.message, "") contains "NO_PUBKEY" ||
+     safe(log.message, "") contains "GPG error" ||
+     safe(log.message, "") contains "could not be verified" ||
+     safe(log.message, "") contains "repository" && safe(log.message, "") contains "unsigned")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.hostname
+    - log.process

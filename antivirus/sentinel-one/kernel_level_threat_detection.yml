@@ -1,0 +1,27 @@
+- id: 1006
+  dataTypes:
+    - antivirus-sentinel-one
+  name: Kernel-Level Threat Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Endpoint Security
+  technique: Kernel Exploitation
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/blog/decrypting-sentinelone-detection-the-behavioral-ai-engine-in-real-time-cwpp/
+    - https://attack.mitre.org/techniques/T1068/
+  description: Detects kernel-level threats including rootkits, kernel exploits, and malicious kernel drivers that attempt to gain elevated privileges or hide malicious activity at the kernel level
+  where: safe(log.eventDescription, "") contains "kernel" && (safe(log.confidencelevel, 0) >= 80 || safe(log.dveventtype, "") contains "kernel" || safe(log.indicatorname, "") contains "kernel")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - log.syslogHost
+    - log.eventDescription

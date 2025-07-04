@@ -1,0 +1,40 @@
+- id: 1011
+  dataTypes:
+    - nats
+  name: NATS Account Isolation Bypass Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 2
+  category: Access Control Violation
+  technique: Privilege Escalation
+  adversary: origin
+  references:
+    - https://docs.nats.io/running-a-nats-service/configuration/securing_nats/accounts
+    - https://attack.mitre.org/techniques/T1548/
+  description: Detects attempts to bypass account isolation in NATS, including cross-account access attempts, import/export violations, or account boundary breaches
+  where: |
+    safe(action, "") == "nats.log" && (
+      safe(log.msg, "") =~ ".*account.*isolation.*" ||
+      safe(log.msg, "") =~ ".*cross.*account.*denied.*" ||
+      safe(log.error, "") =~ ".*import.*not.*allowed.*" ||
+      safe(log.error, "") =~ ".*export.*violation.*" ||
+      safe(log.msg, "") =~ ".*account.*boundary.*violation.*" ||
+      (safe(log.msg_type, "") == "PUB" && safe(log.error, "") =~ ".*different.*account.*") ||
+      (safe(log.operation, "") == "IMPORT" && safe(log.status, "") == "denied")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.account.keyword
+          operator: filter_term
+          value: '{{log.account}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.account
+    - log.client_id

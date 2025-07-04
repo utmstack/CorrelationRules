@@ -1,0 +1,49 @@
+- id: 1022
+  dataTypes:
+    - nginx
+  name: Connection Limit Bypass Attempt
+  impact:
+    confidentiality: 0
+    integrity: 1
+    availability: 5
+  category: Denial of Service
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://nginx.org/en/docs/http/ngx_http_limit_conn_module.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects attempts to bypass nginx connection limits through various techniques including rapid connection cycling, keepalive manipulation, or exploiting configuration weaknesses. These attacks aim to exhaust server resources by circumventing rate limiting controls.
+  where: |
+    (
+      (safe(log.severityLabel, "") == "error" && 
+       safe(log.message, "") != "" && 
+       (
+         log.message.contains("limiting connections by zone") ||
+         log.message.contains("limiting requests") ||
+         log.message.contains("client exceeded limit_conn") ||
+         log.message.contains("limiting connections, dry run") ||
+         log.message.contains("connection limit exceeded")
+       )
+      ) ||
+      (safe(statusCode, 0) == 503 && 
+       safe(log.message, "") != "" &&
+       log.message.contains("Service Temporarily Unavailable")
+      ) ||
+      (safe(actionResult, "") == "denied" && 
+       safe(statusCode, 0) == 429
+      )
+    ) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: actionResult.keyword
+          operator: filter_term
+          value: denied
+      within: now-1m
+      count: 50
+  deduplicateBy:
+    - origin.ip

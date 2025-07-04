@@ -1,0 +1,39 @@
+- id: 1014
+  dataTypes:
+    - json-input
+  name: JSONP Vulnerability Exploitation Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Cross-Site Scripting
+  technique: JSONP Exploitation
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+    - https://attack.mitre.org/techniques/T1059/007/
+  description: Detects attempts to exploit JSONP endpoints through callback manipulation, XSS injection via callbacks, or unauthorized cross-domain data access
+  where: |
+    (safe(log.callback, "") != "" && 
+     (contains(safe(log.callback, ""), "<") ||
+      contains(safe(log.callback, ""), ">") ||
+      contains(safe(log.callback, ""), "javascript:") ||
+      contains(safe(log.callback, ""), "alert(") ||
+      contains(safe(log.callback, ""), "eval(") ||
+      contains(safe(log.callback, ""), "Function(") ||
+      contains(safe(log.callback, ""), ".constructor(") ||
+      !matches(safe(log.callback, ""), "^[a-zA-Z_$][a-zA-Z0-9_$]*$"))) ||
+    (safe(url.query, "") != "" && 
+     contains(safe(url.query, ""), "callback=") &&
+     contains(safe(url.query, ""), "<script"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-20m
+      count: 4
+  deduplicateBy:
+    - origin.ip
+    - url.path

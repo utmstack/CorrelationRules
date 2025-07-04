@@ -1,0 +1,41 @@
+- id: 1004
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne Endpoint Detection and Response (EDR) Alerts
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: EDR Alert
+  technique: Endpoint Monitoring
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/platform/edr/
+    - https://attack.mitre.org/techniques/T1059/
+    - https://attack.mitre.org/techniques/T1547/
+  description: Critical EDR alerts from SentinelOne including suspicious endpoint activities, unauthorized system changes, malicious command execution, and advanced persistent threat (APT) indicators
+  where: |
+    (
+      safe(log.eventDescription, "") =~ "(?i)(edr|endpoint detection|endpoint alert|endpoint threat|endpoint incident)" ||
+      safe(log.eventDescription, "") =~ "(?i)(suspicious endpoint|compromised endpoint|endpoint breach|endpoint attack)" ||
+      safe(log.msg, "") =~ "(?i)(edr alert|endpoint response|incident response|threat response)"
+    ) &&
+    (
+      safe(log.eventDescription, "") =~ "(?i)(critical|high|severe|malicious|unauthorized|breach)" ||
+      safe(log.endpointDeviceName, "") != ""
+    ) &&
+    safe(log.syslogHost, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+        - field: dataType.keyword
+          operator: filter_term
+          value: 'antivirus-sentinel-one'
+      within: now-30m
+      count: 2
+  deduplicateBy:
+    - log.syslogHost
+    - log.endpointDeviceName

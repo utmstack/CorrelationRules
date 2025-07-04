@@ -1,0 +1,32 @@
+- id: 1012
+  dataTypes:
+    - traefik
+  name: Metrics Endpoint Unauthorized Access
+  impact:
+    confidentiality: 4
+    integrity: 1
+    availability: 1
+  category: Information Disclosure
+  technique: System Information Discovery
+  adversary: origin
+  references:
+    - https://doc.traefik.io/traefik/observability/metrics/prometheus/
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects unauthorized access attempts to Traefik metrics endpoints which could expose sensitive system performance data and infrastructure details
+  where: |
+    (safe(origin.url, "") contains "/metrics" || 
+     safe(origin.url, "") contains "/prometheus") && 
+    (safe(log.http.response_code, 0) == 200 || 
+     safe(log.http.response_code, 0) == 401 ||
+     safe(log.http.response_code, 0) == 403) &&
+    safe(log.http.request_headers.authorization, "") == ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip

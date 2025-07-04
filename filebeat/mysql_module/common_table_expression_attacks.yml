@@ -1,0 +1,45 @@
+- id: 1023
+  dataTypes:
+    - mysql
+  name: Common Table Expression (CTE) Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 3
+  category: SQL Injection
+  technique: CTE-based SQL Injection
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/with.html
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential attacks using Common Table Expressions (CTEs) including recursive CTEs that could be used for SQL injection, resource exhaustion, or unauthorized data access. Monitors for suspicious WITH and WITH RECURSIVE statements that may indicate malicious activity.
+  where: |
+    safe(action, "") == "mysql.error" &&
+    safe(log.msg, "") != "" &&
+    (
+      log.msg.contains("WITH RECURSIVE") ||
+      log.msg.contains("WITH") ||
+      log.msg.contains("CTE")
+    ) &&
+    (
+      log.msg.contains("max_sp_recursion_depth") ||
+      log.msg.contains("max_execution_time") ||
+      log.msg.contains("Recursive query aborted") ||
+      log.msg.contains("Statement is unsafe") ||
+      log.msg.contains("syntax error") ||
+      log.msg.contains("denied") ||
+      log.msg.contains("Too many levels of recursion") ||
+      log.msg.contains("Stack overflow") ||
+      log.msg.contains("Query execution was interrupted") ||
+      safe(severity, "") == "high"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host

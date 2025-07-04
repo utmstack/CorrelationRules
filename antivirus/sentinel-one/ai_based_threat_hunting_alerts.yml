@@ -1,0 +1,36 @@
+- id: 1003
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne AI-Based Threat Hunting Alerts
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: AI Threat Hunting
+  technique: Machine Learning Detection
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/platform/ai-powered-prevention/
+    - https://attack.mitre.org/tactics/TA0043/
+  description: Detects threats identified by SentinelOne's AI and machine learning threat hunting capabilities, including zero-day exploits, fileless attacks, and previously unknown malware variants
+  where: |
+    safe(log.eventDescription, "") =~ "(?i)(ai detected|machine learning|ml detection|threat hunt|hunting alert|ai threat|automated detection)" &&
+    (
+      safe(log.eventDescription, "") =~ "(?i)(zero.?day|unknown malware|new variant|fileless|in.?memory)" ||
+      safe(log.msg, "") =~ "(?i)(threat hunting|ai engine|ml model|predictive|proactive detection)"
+    ) &&
+    safe(log.syslogHost, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+        - field: log.eventDescription.keyword
+          operator: wildcard
+          value: '*AI*'
+      within: now-1h
+      count: 1
+  deduplicateBy:
+    - log.syslogHost
+    - log.accName

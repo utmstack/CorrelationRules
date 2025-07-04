@@ -1,0 +1,35 @@
+- id: 1016
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb Custom Signature Matches Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Web Application Security
+  technique: Custom Rule Violation
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.2.2/log-message-reference/445549/attack
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects when FortiWeb custom signatures are matched, indicating potential attacks against web applications using organization-specific detection rules
+  where: |
+    safe(log.type, "") == "attack" && 
+    safe(log.subtype, "") == "waf_signature_detection" && 
+    safe(log.signature_id, "") != "" &&
+    safe(log.severity_level, "") in ["High", "Critical"] &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'attack'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.signature_id

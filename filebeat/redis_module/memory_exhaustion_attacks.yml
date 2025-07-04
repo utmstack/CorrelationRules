@@ -1,0 +1,41 @@
+- id: 1010
+  dataTypes:
+    - redis
+  name: Redis Memory Exhaustion Attack
+  impact:
+    confidentiality: 2
+    integrity: 2
+    availability: 5
+  category: Resource Exhaustion
+  technique: Memory DoS Attack
+  adversary: origin
+  references:
+    - https://redis.io/docs/latest/operate/oss_and_stack/management/optimization/memory-optimization/
+    - https://www.trendmicro.com/en_us/research/20/d/exposed-redis-instances-abused-for-remote-code-execution-cryptocurrency-mining.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects potential memory exhaustion attacks against Redis including attempts to consume excessive memory, trigger out-of-memory conditions, or perform denial of service through memory manipulation
+  where: |
+    safe(log.msg, "") != "" && (
+      log.msg.contains("OOM command not allowed") ||
+      log.msg.contains("out of memory") ||
+      log.msg.contains("memory exhaustion") ||
+      log.msg.contains("used_memory") && log.msg.contains("maxmemory") ||
+      log.msg.contains("can't allocate memory") ||
+      log.msg.contains("Background save terminated by signal") ||
+      log.msg.contains("MISCONF Redis is configured to save RDB snapshots") ||
+      log.msg.contains("evicted") && log.msg.contains("keys") ||
+      log.msg.contains("maxclients") && log.msg.contains("reached") ||
+      log.msg.contains("Too many") && log.msg.contains("allocate") ||
+      log.msg.contains("memory") && log.msg.contains("limit") ||
+      (safe(log.severity, "") == "warning" && log.msg.contains("memory"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.host

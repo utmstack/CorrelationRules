@@ -1,0 +1,40 @@
+- id: 1017
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne Suspicious Script Execution Detected
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Malicious Code
+  technique: T1059 - Command and Scripting Interpreter
+  adversary: malware
+  references:
+    - https://www.sentinelone.com/platform/singularity-cloud-workload-security/
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects suspicious script execution activities including PowerShell, Python, Bash, or other scripting interpreters that may indicate malicious activity or fileless attacks
+  where: |
+    safe(log.eventDescription, "") != "" && 
+    (
+      contains(lower(safe(log.eventDescription, "")), "script execution") ||
+      contains(lower(safe(log.eventDescription, "")), "powershell") ||
+      contains(lower(safe(log.eventDescription, "")), "python") ||
+      contains(lower(safe(log.eventDescription, "")), "bash") ||
+      contains(lower(safe(log.eventDescription, "")), "cmd.exe") ||
+      contains(lower(safe(log.eventDescription, "")), "fileless") ||
+      contains(lower(safe(log.eventDescription, "")), "interpreter") ||
+      contains(lower(safe(log.eventDescription, "")), "suspicious process") ||
+      contains(lower(safe(log.eventDescription, "")), "malicious script")
+    ) &&
+    (safe(log.syslogHost, "") != "" || safe(log.syslogHostIP, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - log.syslogHost
+    - log.eventDescription

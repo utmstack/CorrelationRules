@@ -1,0 +1,27 @@
+- id: 1014
+  dataTypes:
+    - mongodb
+  name: MongoDB Stored JavaScript Execution
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Code Execution
+  technique: T1059 - Command and Scripting Interpreter
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/core/server-side-javascript/
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects execution of stored JavaScript functions or server-side JavaScript which could be used for code injection attacks or unauthorized operations
+  where: safe(log.component, "") == "COMMAND" && (safe(log.msg, "") contains("$where") || safe(log.msg, "") contains("$function") || safe(log.msg, "") contains("mapReduce") || safe(log.msg, "") contains("system.js")) && safe(severity, "") != "low"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.ctx

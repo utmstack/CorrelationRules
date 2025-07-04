@@ -1,0 +1,38 @@
+- id: 1012
+  dataTypes:
+    - json-input
+  name: Unsafe Deserialization Attack Detected
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Code Execution
+  technique: Deserialization Attack
+  adversary: origin
+  references:
+    - https://knowledge-base.secureflag.com/vulnerabilities/unsafe_deserialization/unsafe_deserialization_java.html
+    - https://attack.mitre.org/techniques/T1055/001/
+  description: Detects attempts to exploit unsafe deserialization vulnerabilities through malicious JSON payloads containing serialized objects or code execution patterns
+  where: |
+    (contains(safe(raw, ""), "java.lang.Runtime") ||
+     contains(safe(raw, ""), "java.lang.ProcessBuilder") ||
+     contains(safe(raw, ""), "java.io.ObjectInputStream") ||
+     contains(safe(raw, ""), "readObject()") ||
+     contains(safe(raw, ""), "writeObject()") ||
+     contains(safe(raw, ""), "serialVersionUID") ||
+     contains(safe(raw, ""), "$$beanFactory") ||
+     contains(safe(raw, ""), "gadget") ||
+     safe(log.$type, "") != "" ||
+     safe(log._type, "") != "" ||
+     safe(log.class, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - destination.port

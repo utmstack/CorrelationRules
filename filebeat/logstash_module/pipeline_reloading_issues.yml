@@ -1,0 +1,27 @@
+- id: 1015
+  dataTypes:
+    - logstash
+  name: Logstash Pipeline Reloading Security Event
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 4
+  category: Service Disruption
+  technique: T1489 - Service Stop
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/reloading-config.html
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects suspicious pipeline reloading patterns that could indicate attempts to inject malicious configurations or disrupt log processing
+  where: safe(log.component, "") != "" && (log.component.contains("pipeline") || log.component.contains("reload")) && safe(log.msg, "") != "" && (log.msg.contains("reload") || log.msg.contains("restart") || log.msg.contains("shutdown")) && safe(log.level, "") == "ERROR"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.pipelineName

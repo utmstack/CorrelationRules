@@ -1,0 +1,49 @@
+- id: 1016
+  dataTypes:
+    - apache
+  name: Apache Information Disclosure
+  impact:
+    confidentiality: 4
+    integrity: 0
+    availability: 0
+  category: Information Disclosure
+  technique: Sensitive Data Exposure
+  adversary: origin
+  references:
+    - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/
+    - https://attack.mitre.org/techniques/T1213/
+  description: Detects attempts to access sensitive information files on Apache web server including configuration files, environment files, and other sensitive data
+  where: |
+    safe(origin.path, "") != "" && 
+    (
+      origin.path.contains(".env") ||
+      origin.path.contains(".git") ||
+      origin.path.contains(".svn") ||
+      origin.path.contains(".htaccess") ||
+      origin.path.contains(".htpasswd") ||
+      origin.path.contains("web.config") ||
+      origin.path.contains("phpinfo") ||
+      origin.path.contains("/config/") ||
+      origin.path.contains("/admin/") ||
+      origin.path.contains("/private/") ||
+      origin.path.contains("/.well-known/") ||
+      origin.path.contains("/WEB-INF/") ||
+      origin.path.contains("/META-INF/") ||
+      origin.path.contains("/.ssh/") ||
+      origin.path.contains("/.bash_history") ||
+      origin.path.contains("/proc/") ||
+      origin.path.contains("/etc/passwd") ||
+      origin.path.contains("/etc/shadow")
+    ) &&
+    safe(log.statusCode, 0) == 200
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.path

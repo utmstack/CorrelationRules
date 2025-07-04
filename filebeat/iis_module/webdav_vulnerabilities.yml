@@ -1,0 +1,38 @@
+- id: 1007
+  dataTypes:
+    - iis
+  name: IIS WebDAV Vulnerability Exploitation
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Web Application Attack
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://isc.sans.edu/diary/24600
+    - https://www.rapid7.com/db/modules/exploit/windows/iis/iis_webdav_scstoragepathfromurl/
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects attempts to exploit WebDAV vulnerabilities in IIS, including PROPFIND/PROPPATCH buffer overflow and malformed request attacks
+  where: |
+    safe(action, "") != "" &&
+    (
+      (safe(log.method, "") == "PROPFIND" && safe(log.userAgent, "").contains("If: <http://")) ||
+      (safe(log.method, "") == "PROPFIND" && safe(target.path, "").length() > 1000) ||
+      (safe(log.method, "") == "PROPPATCH" && safe(statusCode, 0) == 207) ||
+      (safe(log.method, "") == "SEARCH" && safe(target.path, "").length() > 500) ||
+      (safe(log.method, "").matches("^(LOCK|UNLOCK|MKCOL|COPY|MOVE)$") && safe(target.ip, "") != "") ||
+      (safe(log.method, "") == "PUT" && safe(target.path, "").matches(".*\\.(asp|aspx|asa|cer|cdx)$")) ||
+      (safe(statusCode, 0) == 207 && safe(log.responseTime, 0) > 3000)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.method

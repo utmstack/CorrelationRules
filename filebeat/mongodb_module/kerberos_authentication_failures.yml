@@ -1,0 +1,40 @@
+- id: 1019
+  dataTypes:
+    - mongodb
+  name: MongoDB Kerberos Authentication Failures
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Authentication Attack
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/tutorial/troubleshoot-kerberos/
+    - https://attack.mitre.org/techniques/T1110/001/
+  description: Detects Kerberos authentication failures in MongoDB which could indicate brute force attempts, misconfigured Kerberos settings, or attempts to compromise service accounts. Monitors for GSSAPI errors, time skew issues, and invalid credentials.
+  where: |
+    safe(log.component, "") == "ACCESS" && 
+    (severity == "high" || severity == "medium") && 
+    (
+      safe(log.message, "") matches ".*GSSAPI.*error.*" ||
+      safe(log.message, "") matches ".*Kerberos.*authentication.*failed.*" ||
+      safe(log.message, "") matches ".*security context.*negotiation.*failed.*" ||
+      safe(log.message, "") matches ".*time.*skew.*detected.*" ||
+      safe(log.message, "") matches ".*KRB5.*error.*" ||
+      safe(log.message, "") matches ".*invalid.*keytab.*" ||
+      safe(log.message, "") matches ".*service.*principal.*not.*found.*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'ACCESS'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.host

@@ -1,0 +1,27 @@
+- id: 1021
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX User Administration Events
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 1
+  category: User Management
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://www.ibm.com/support/knowledgecenter/en/SSGMCP_9.0.0/com.ibm.aix.log.doc/filter.html
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects user administration events in IBM AIX including user creation, deletion, modification, and privilege changes
+  where: safe(log.eventType, "") != "" && (safe(log.eventType, "").toLowerCase().contains("useradd") || safe(log.eventType, "").toLowerCase().contains("userdel") || safe(log.eventType, "").toLowerCase().contains("usermod") || safe(log.eventType, "").toLowerCase().contains("passwd") || safe(log.eventType, "").toLowerCase().contains("chuser") || safe(log.eventType, "").toLowerCase().contains("mkuser") || safe(log.eventType, "").toLowerCase().contains("rmuser")) && safe(origin.user, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - log.eventType

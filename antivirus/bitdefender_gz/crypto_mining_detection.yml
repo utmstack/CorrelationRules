@@ -1,0 +1,56 @@
+- id: 1014
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Crypto-Mining Detection
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 4
+  category: Resource Hijacking
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects cryptocurrency mining activities including miners, coin miners, and cryptojacking attempts detected by Bitdefender GravityZone
+  where: |
+    (safe(log.BitdefenderGZModule, "") == "av" || safe(log.BitdefenderGZModule, "") == "avc" || safe(log.BitdefenderGZModule, "") == "hd") &&
+    (
+      safe(log.BitdefenderGZMalwareType, "") == "miner" ||
+      safe(log.BitdefenderGZMalwareType, "") == "coinminer" ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "miner") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "coin") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "xmr") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "monero") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "bitcoin") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "ethereum") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "crypto") ||
+      contains(safe(log.BitdefenderGZMalwareName, ""), "coinhive") ||
+      contains(safe(origin.path, ""), "xmrig") ||
+      contains(safe(origin.path, ""), "minerd") ||
+      contains(safe(origin.path, ""), "cgminer") ||
+      contains(safe(origin.path, ""), "bfgminer") ||
+      (safe(log.BitdefenderGZModule, "") == "uc" && contains(safe(log.request, ""), "mining"))
+    ) &&
+    safe(log.act, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.dvchost.keyword
+          operator: filter_term
+          value: '{{log.dvchost}}'
+        - field: log.BitdefenderGZMalwareType.keyword
+          operator: filter_term
+          value: 'miner'
+      within: now-2h
+      count: 3
+    - indexPattern: v11-log-*
+      with:
+        - field: log.deviceExternalId.keyword
+          operator: filter_term
+          value: '{{log.deviceExternalId}}'
+      within: now-4h
+      count: 5
+  deduplicateBy:
+    - log.dvchost
+    - log.BitdefenderGZMalwareName

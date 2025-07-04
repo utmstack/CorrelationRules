@@ -1,0 +1,55 @@
+- id: 1004
+  dataTypes:
+    - iis
+  name: IIS Application Pool Attack Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 5
+  category: Impact
+  technique: Service Stop
+  adversary: target
+  references:
+    - https://docs.microsoft.com/en-us/iis/configuration/system.applicationhost/applicationpools/
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects suspicious patterns indicating attempts to manipulate or attack IIS application pools through worker process abuse
+  where: |
+    safe(target.path, "") != "" &&
+    (
+      contains(lower(target.path), "/app_") ||
+      contains(lower(target.path), "/_app") ||
+      contains(lower(target.path), "/bin/") ||
+      contains(lower(target.path), "/app_data/") ||
+      contains(lower(target.path), "/app_code/") ||
+      contains(lower(target.path), "/app_browsers/") ||
+      contains(lower(target.path), "/app_globalresources/") ||
+      contains(lower(target.path), "/app_localresources/") ||
+      contains(lower(target.path), "/app_webreferences/") ||
+      contains(lower(target.path), "/app_themes/") ||
+      contains(lower(target.path), "/.vs/") ||
+      contains(lower(target.path), "/packages/")
+    ) &&
+    (
+      safe(statusCode, 0) == 500 ||
+      safe(statusCode, 0) == 503 ||
+      safe(log.win32Status, 0) == 64 ||
+      safe(log.win32Status, 0) == 121 ||
+      safe(log.subStatusCode, 0) == 19 ||
+      safe(log.subStatusCode, 0) == 20 ||
+      safe(log.subStatusCode, 0) == 21 ||
+      safe(log.subStatusCode, 0) == 22
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+        - field: statusCode
+          operator: filter_term
+          value: '500'
+      within: now-15m
+      count: 20
+  deduplicateBy:
+    - target.ip
+    - origin.host

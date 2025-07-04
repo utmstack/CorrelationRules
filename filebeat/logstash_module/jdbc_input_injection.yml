@@ -1,0 +1,61 @@
+- id: 1024
+  dataTypes:
+    - logstash_module
+  name: JDBC Input SQL Injection Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: SQL Injection
+  technique: SQL Injection
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/plugins-inputs-jdbc.html
+    - https://attack.mitre.org/techniques/T1190/
+    - https://cwe.mitre.org/data/definitions/89.html
+  description: Detects SQL injection attempts and database security violations in Logstash JDBC input plugin operations
+  where: |
+    safe(log.component, "") == "logstash.inputs.jdbc" && 
+    safe(log.msg, "") != "" &&
+    (
+      log.msg.contains("SELECT") ||
+      log.msg.contains("INSERT") ||
+      log.msg.contains("UPDATE") ||
+      log.msg.contains("DELETE") ||
+      log.msg.contains("DROP") ||
+      log.msg.contains("CREATE") ||
+      log.msg.contains("ALTER") ||
+      log.msg.contains("UNION") ||
+      log.msg.contains("' OR ") ||
+      log.msg.contains("\" OR ") ||
+      log.msg.contains("1=1") ||
+      log.msg.contains("1' = '1") ||
+      log.msg.contains("--") ||
+      log.msg.contains("/*") ||
+      log.msg.contains("*/") ||
+      log.msg.contains("xp_") ||
+      log.msg.contains("sp_") ||
+      log.msg.contains("exec ") ||
+      log.msg.contains("execute ") ||
+      log.msg.contains("cast(") ||
+      log.msg.contains("convert(") ||
+      log.msg.contains("concat(") ||
+      log.msg.contains("authentication failed") ||
+      log.msg.contains("access denied") ||
+      log.msg.contains("permission denied") ||
+      (safe(log.level, "") != "" && (log.level == "ERROR" || log.level == "FATAL"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'logstash.inputs.jdbc'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.pipelineName

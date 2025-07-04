@@ -1,0 +1,30 @@
+- id: 1007
+  dataTypes:
+    - deceptive-bytes
+  name: Honey Table Query Detection
+  impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 1
+  category: Collection
+  technique: Data from Local System
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1005/
+    - https://deceptivebytes.com/solution/
+  description: Detects when an attacker queries honey tables or decoy database objects deployed by Deceptive Bytes. This indicates potential data exfiltration attempts or database reconnaissance.
+  where: safe(log.eventType, "") == "decoy_access" && safe(log.resourceType, "") == "database_table" && safe(log.action, "") == "query" && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: decoy_access
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.tableName

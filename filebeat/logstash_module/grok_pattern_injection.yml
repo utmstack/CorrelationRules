@@ -1,0 +1,42 @@
+- id: 1006
+  dataTypes:
+    - logstash
+  name: Grok Pattern Injection Attack
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Injection Attack
+  technique: T1027.006
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/logstash/current/plugins-filters-grok.html
+    - https://attack.mitre.org/techniques/T1027/006/
+  description: Detects potential injection attacks through malicious Grok patterns that could lead to regex catastrophic backtracking, data exfiltration, or pattern manipulation
+  where: >
+    (safe(log.component, "") == "logstash.filters.grok" || 
+     safe(log.component, "") == "logstash.filters") && 
+    safe(log.msg, "") != "" && 
+    (
+      (log.msg.contains("pattern") && log.msg.contains("timeout")) ||
+      (log.msg.contains("regex") && log.msg.contains("catastrophic")) ||
+      (log.msg.contains("grok") && log.msg.contains("failure") && safe(severity, "") == "high") ||
+      (log.msg.contains("_grokparsefailure") && log.msg.contains("malformed")) ||
+      (log.msg.contains("pattern") && (log.msg.contains("(?R)") || log.msg.contains("(?P<") || log.msg.contains("(?{") || log.msg.contains("(?"))) ||
+      (log.msg.contains("custom pattern") && log.msg.contains("loaded") && log.msg.contains("/tmp/")) ||
+      (log.msg.contains("grok") && log.msg.contains("expression") && log.msg.contains("eval"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.pipelineName.keyword
+          operator: filter_term
+          value: '{{log.pipelineName}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.pipelineName

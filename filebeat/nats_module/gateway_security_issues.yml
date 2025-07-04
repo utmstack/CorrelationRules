@@ -1,0 +1,38 @@
+- id: 1008
+  dataTypes:
+    - nats
+  name: NATS Gateway Security Violation
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 4
+  category: Access Control
+  technique: Gateway Bypass
+  adversary: origin
+  references:
+    - https://docs.nats.io/running-a-nats-service/configuration
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects security violations in NATS gateway operations including authentication failures, unauthorized gateway access, or gateway configuration tampering
+  where: |
+    safe(action, "") == "nats.log" && (
+      safe(log.msg, "") =~ ".*gateway.*auth.*fail.*" ||
+      safe(log.msg, "") =~ ".*gateway.*unauthorized.*" ||
+      safe(log.msg, "") =~ ".*gateway.*invalid.*credentials.*" ||
+      safe(log.msg, "") =~ ".*gateway.*access.*denied.*" ||
+      safe(log.msg, "") =~ ".*gateway.*certificate.*error.*" ||
+      safe(log.msg, "") =~ ".*gateway.*tls.*fail.*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'nats.log'
+      within: now-1h
+      count: 15
+  deduplicateBy:
+    - origin.host
+    - origin.url

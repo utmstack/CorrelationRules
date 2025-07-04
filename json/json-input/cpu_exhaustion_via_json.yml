@@ -1,0 +1,36 @@
+- id: 1024
+  dataTypes:
+    - json-input
+  name: JSON CPU Exhaustion Attack
+  impact:
+    confidentiality: 0
+    integrity: 1
+    availability: 5
+  category: Resource Exhaustion
+  technique: CPU Resource Consumption
+  adversary: origin
+  references:
+    - https://medium.com/data-science-community-srm/json-is-incredibly-slow-heres-what-s-faster-ca35d5aaf9e8
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects attempts to exhaust CPU resources through malicious JSON processing. This includes complex parsing operations, excessive string manipulations, or patterns that cause high CPU usage during JSON deserialization.
+  where: >
+    (safe(log.cpu_usage_percent, 0) > 90 && safe(log.component, "") == "json_parser") ||
+     safe(log.error, "") contains "CPU limit exceeded" ||
+     safe(log.error_type, "") == "cpu_exhaustion" ||
+     safe(log.processing_time_ms, 0) > 30000 ||
+     safe(log.parser_timeout, false) == true ||
+     safe(log.message, "") contains "JSON parsing timeout" ||
+     (safe(log.thread_state, "") == "blocked" && safe(log.blocked_on, "") contains "json") ||
+     safe(log.json_complexity_score, 0) > 1000 ||
+     safe(log.string_operations_count, 0) > 100000
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.process_id

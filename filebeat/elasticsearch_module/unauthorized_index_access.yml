@@ -1,0 +1,30 @@
+- id: 1001
+  dataTypes:
+    - elasticsearch
+  name: Unauthorized Index Access Attempt
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Access Control
+  technique: Unauthorized Access
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/audit-event-types.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects attempts to access Elasticsearch indices without proper authorization, which could indicate reconnaissance or data theft attempts.
+  where: safe(action, "") == "access_denied" && safe(log.auditTraceIndices, []).size() > 0 && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'access_denied'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.auditTraceIndices

@@ -1,0 +1,37 @@
+- id: 1007
+  dataTypes:
+    - mongodb_module
+  name: MongoDB Replica Set Poisoning Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 5
+  category: Data Manipulation
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/replication/
+    - https://attack.mitre.org/techniques/T1565/
+  description: Detects attempts to poison or manipulate MongoDB replica sets through unauthorized configuration changes, suspicious primary elections, or attempts to add malicious nodes to the replica set. This could lead to data corruption or unauthorized access.
+  where: |
+    (safe(log.component, "") == "REPL" && (safe(log.message, "") =~ ".*replSetReconfig.*" || safe(log.message, "") =~ ".*replSetInitiate.*")) ||
+    (safe(log.component, "") == "REPL" && safe(log.message, "") =~ ".*priority.*" && safe(log.message, "") =~ ".*changed.*") ||
+    (safe(log.component, "") == "REPL" && safe(log.message, "") =~ ".*member.*added.*" && safe(severity, "") == "high") ||
+    (safe(log.component, "") == "REPL_HB" && safe(log.message, "") =~ ".*authentication.*failed.*") ||
+    (safe(log.component, "") == "ELECTION" && safe(log.message, "") =~ ".*unexpected.*primary.*") ||
+    (safe(log.component, "") == "REPL" && safe(log.message, "") =~ ".*replSetStepDown.*") ||
+    (safe(log.component, "") == "NETWORK" && safe(log.message, "") =~ ".*replica.*" && safe(log.message, "") =~ ".*refused.*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'REPL'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - origin.port

@@ -1,0 +1,34 @@
+- id: 1008
+  dataTypes:
+    - osquery
+  name: Osquery Decorator Bypass Attempt
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Defense Evasion
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/configuration/
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects attempts to bypass or disable osquery decorators which are used to add contextual information to query results. Attackers may try to remove decorators to hide their activities or reduce the amount of forensic information collected.
+  where: |
+    (safe(log.eventName, "") contains "decorator" ||
+     safe(action, "") contains "decorator" ||
+     safe(log.message, "") contains_any ["decorator", "decorations"]) &&
+    (safe(actionResult, "") == "removed" ||
+     safe(log.message, "") contains_any ["bypass", "disable", "empty", "null", "clear", "delete"]) &&
+    safe(origin.host, "") != "" &&
+    safe(log.agentVersion, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - log.agentVersion

@@ -1,0 +1,27 @@
+- id: 1011
+  dataTypes:
+    - kibana
+  name: Index Pattern Tampering
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 3
+  category: Data Integrity
+  technique: T1565.001
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/index-patterns.html
+    - https://attack.mitre.org/techniques/T1565/001/
+  description: Detects attempts to tamper with Kibana index patterns which could lead to data manipulation or hiding of malicious activities
+  where: safe(log.action, "") != "" && (log.action == "saved_object_update" || log.action == "saved_object_create" || log.action == "saved_object_delete") && safe(log.message, "") != "" && log.message.contains("index-pattern")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - origin.host

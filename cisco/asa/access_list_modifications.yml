@@ -1,0 +1,27 @@
+- id: 1007
+  dataTypes:
+    - asa
+  name: Access Control List (ACL) Modifications
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Configuration Change
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects modifications to Access Control Lists (ACLs) on Cisco ASA devices. Unauthorized ACL changes can open security holes, allow malicious traffic, or block legitimate communications. Monitors for access-list, access-group commands and related syslog messages.
+  where: (safe(log.commandName, "") =~ "^access-(list|group).*" && safe(event.action, "") == "configuration_change") || (safe(log.message, "") =~ ".*access-list.*" && safe(log.message, "") =~ ".*(added|removed|modified|applied|deleted).*") || safe(log.messageId, "") in ["106001", "106002", "106006", "106007", "106018", "335005"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.name.keyword
+          operator: filter_term
+          value: '{{origin.user.name}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.user.name
+    - log.commandName

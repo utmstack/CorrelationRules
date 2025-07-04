@@ -1,0 +1,31 @@
+- id: 1022
+  dataTypes:
+    - nats
+  name: NATS Configuration Reload Attack Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Tampering
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://docs.nats.io/running-a-nats-service/configuration
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects suspicious configuration reload attempts that could be used to modify server behavior, inject malicious settings, or cause service disruption. Frequent reloads may indicate an attack or misconfiguration.
+  where: |
+    safe(log.message, "") contains "configuration reload" ||
+    safe(log.message, "") contains "config reload" ||
+    safe(log.message, "") contains "SIGHUP" ||
+    safe(log.message, "") contains "reloading config" ||
+    safe(action, "") == "nats.log" && safe(log.message, "") contains "reload"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.host

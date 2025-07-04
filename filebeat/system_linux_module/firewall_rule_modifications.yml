@@ -1,0 +1,42 @@
+- id: 1013
+  dataTypes:
+    - linux
+  name: Firewall Rule Modifications Detected
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Network Security
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1562/004/
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+  description: Detects modifications to firewall rules including iptables, firewalld, or ufw that could indicate attempts to disable security controls or open backdoor access.
+  where: |
+    safe(action, "") contains "system" &&
+    (safe(log.message, "") contains "iptables" ||
+     safe(log.message, "") contains "ip6tables" ||
+     safe(log.message, "") contains "firewall-cmd" ||
+     safe(log.message, "") contains "ufw" ||
+     safe(log.message, "") contains "nftables" ||
+     safe(log.message, "") contains "ebtables") &&
+    (safe(log.message, "") contains "ACCEPT" ||
+     safe(log.message, "") contains "DROP" ||
+     safe(log.message, "") contains "REJECT" ||
+     safe(log.message, "") contains "flush" ||
+     safe(log.message, "") contains "delete" ||
+     safe(log.message, "") contains "insert" ||
+     safe(log.message, "") contains "--dport" ||
+     safe(log.message, "") contains "--sport")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.message

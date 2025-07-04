@@ -1,0 +1,61 @@
+- id: 1017
+  dataTypes:
+    - postgresql
+  name: PostgreSQL Kerberos Authentication Failures
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Authentication
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://www.postgresql.org/docs/current/gssapi-auth.html
+    - https://attack.mitre.org/techniques/T1110/001/
+  description: Detects multiple Kerberos/GSSAPI authentication failures that may indicate credential brute forcing, ticket manipulation, or authentication configuration issues
+  where: |
+    safe(log.messageType, "") in ["FATAL", "ERROR"] && 
+    safe(log.msg, "") != "" && 
+    (
+      (log.msg.contains("GSSAPI") || log.msg.contains("Kerberos")) &&
+      (
+        log.msg.contains("authentication failed") ||
+        log.msg.contains("accepting GSS security context failed") ||
+        log.msg.contains("could not acquire credential") ||
+        log.msg.contains("no credential found") ||
+        log.msg.contains("keytab") ||
+        log.msg.contains("ticket expired") ||
+        log.msg.contains("clock skew") ||
+        log.msg.contains("checksum failed")
+      )
+    ) ||
+    (
+      safe(action, "") == "postgresql.log" &&
+      safe(log.errorCode, "") == "28000" &&
+      (safe(log.msg, "").contains("gss") || safe(log.msg, "").contains("krb"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.messageType.keyword
+          operator: filter_term
+          value: 'FATAL'
+      within: now-30m
+      count: 10
+      or:
+        - indexPattern: v11-log-*
+          with:
+            - field: target.host.keyword
+              operator: filter_term
+              value: '{{target.host}}'
+            - field: log.msg.keyword
+              operator: filter_match
+              value: 'GSSAPI'
+          within: now-1h
+          count: 20
+  deduplicateBy:
+    - origin.host
+    - log.sessionId

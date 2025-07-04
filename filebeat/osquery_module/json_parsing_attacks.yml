@@ -1,0 +1,33 @@
+- id: 1014
+  dataTypes:
+    - osquery
+  name: JSON Parsing Attack on Osquery Configuration
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: Configuration Manipulation
+  technique: Exploitation for Defense Evasion
+  adversary: origin
+  references:
+    - https://github.com/osquery/osquery/pull/6325
+    - https://attack.mitre.org/techniques/T1211/
+  description: Detects JSON parsing attacks including deeply nested configuration exploitation, stack overflow attempts through recursive parsing, or configuration size limit bypass attempts
+  where: |
+    (contains(safe(log.message, ""), "stack overflow") && contains(safe(log.message, ""), "config")) ||
+    (contains(safe(log.message, ""), "deeply nested") && safe(action, "") == "osquery.result") ||
+    (contains(safe(log.message, ""), "JSON") && contains(safe(log.message, ""), "parsing error")) ||
+    (contains(safe(log.message, ""), "config") && contains(safe(log.message, ""), "nesting level exceeded")) ||
+    (contains(safe(log.message, ""), "RapidJSON") && contains(safe(log.message, ""), "error")) ||
+    (contains(safe(log.message, ""), "Maximum JSON depth reached"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - origin.file

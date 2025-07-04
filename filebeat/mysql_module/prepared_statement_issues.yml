@@ -1,0 +1,50 @@
+- id: 1024
+  dataTypes:
+    - mysql
+  name: Prepared Statement Bypass Attempt
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: SQL Injection
+  technique: Prepared Statement Manipulation
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/sql-prepared-statements.html
+    - https://www.securityjourney.com/post/how-to-prevent-sql-injection-vulnerabilities-how-prepared-statements-work
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects attempts to bypass or manipulate prepared statements which could indicate SQL injection attempts. Monitors for errors related to PREPARE, EXECUTE, and DEALLOCATE statements, as well as parameter binding issues that might indicate attempts to exploit prepared statement vulnerabilities.
+  where: |
+    safe(action, "") == "mysql.error" &&
+    safe(log.msg, "") != "" &&
+    (
+      log.msg.contains("PREPARE") ||
+      log.msg.contains("EXECUTE") ||
+      log.msg.contains("DEALLOCATE") ||
+      log.msg.contains("prepared statement") ||
+      log.msg.contains("parameter") ||
+      log.msg.contains("placeholder")
+    ) &&
+    (
+      log.msg.contains("Incorrect arguments") ||
+      log.msg.contains("parameter count mismatch") ||
+      log.msg.contains("Unknown prepared statement") ||
+      log.msg.contains("Can't create more than max_prepared_stmt_count") ||
+      log.msg.contains("Statement not found") ||
+      log.msg.contains("syntax error") ||
+      log.msg.contains("denied") ||
+      log.msg.contains("type mismatch") ||
+      log.msg.contains("Invalid parameter") ||
+      safe(severity, "") == "high"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-5m
+      count: 15
+  deduplicateBy:
+    - origin.host
+    - log.thread

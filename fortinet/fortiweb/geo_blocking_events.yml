@@ -1,0 +1,39 @@
+- id: 1013
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb Geo-blocking Policy Violation
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 2
+  category: Access Control Violation
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.6.0/administration-guide
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects when FortiWeb geo-blocking policies block access attempts from restricted geographical locations. This could indicate unauthorized access attempts from forbidden regions or potential evasion techniques.
+  where: |
+    (safe(log.type, "") == "attack" || safe(log.type, "") == "traffic") && 
+    (contains(safe(log.msg, ""), "geo block") || 
+     contains(safe(log.msg, ""), "geo-block") ||
+     contains(safe(log.msg, ""), "geographic") ||
+     contains(safe(log.msg, ""), "country block") ||
+     safe(log.subtype, "") == "geo_block") &&
+    safe(action, "") == "blocked" &&
+    safe(origin.ip, "") != "" &&
+    safe(origin.geolocation.country, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.geolocation.country.keyword
+          operator: filter_term
+          value: '{{origin.geolocation.country}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'blocked'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.geolocation.country
+    - target.ip

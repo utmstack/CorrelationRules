@@ -1,0 +1,44 @@
+- id: 1006
+  dataTypes:
+    - debian_family
+  name: UFW Firewall Configuration Changes
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1562/004/
+    - https://help.ubuntu.com/community/UFW
+  description: Detects changes to UFW (Uncomplicated Firewall) configuration including rule modifications, firewall disable/enable operations, and logging level changes which could indicate attempts to bypass security controls or create backdoor access
+  where: |
+    (safe(log.process, "") contains "ufw" || safe(log.message, "") contains "ufw") &&
+    (safe(log.message, "") contains "Rule added" ||
+     safe(log.message, "") contains "Rule deleted" ||
+     safe(log.message, "") contains "Rule inserted" ||
+     safe(log.message, "") contains "Rule updated" ||
+     safe(log.message, "") contains "Firewall stopped" ||
+     safe(log.message, "") contains "Firewall reloaded" ||
+     safe(log.message, "") contains "Default policy changed" ||
+     safe(log.message, "") contains "Logging level changed" ||
+     safe(log.message, "") contains "ALLOW" ||
+     safe(log.message, "") contains "DENY" ||
+     safe(log.message, "") contains "REJECT" ||
+     safe(log.message, "") contains "disabled firewall" ||
+     safe(log.message, "") contains "enabled firewall")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.hostname
+    - origin.user

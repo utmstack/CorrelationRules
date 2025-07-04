@@ -1,0 +1,39 @@
+- id: 1014
+  dataTypes:
+    - cs_switch
+  name: Interface CRC Errors Detected
+  impact:
+    confidentiality: 1
+    integrity: 4
+    availability: 3
+  category: Network Hardware
+  technique: Endpoint Denial of Service
+  adversary: destination
+  references:
+    - https://pitstop.manageengine.com/portal/en/community/topic/crc-errors-on-cisco-interfaces
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects CRC errors on switch interfaces which may indicate cable issues, duplex mismatches, hardware failures, or physical layer attacks
+  where: |
+    (safe(log.facility, "") == "LINEPROTO" || 
+     safe(log.facility, "") == "LINK" ||
+     safe(log.facility, "") == "IF") &&
+    (contains(safe(log.message, ""), "CRC error") ||
+     contains(safe(log.message, ""), "cyclic redundancy check") ||
+     contains(safe(log.message, ""), "input errors") ||
+     contains(safe(log.message, ""), "frame errors") ||
+     safe(log.mnemonic, "") == "RCVD_CRC_ERR" ||
+     safe(log.mnemonic, "") == "EXCESSIVE_CRC")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: destination.device.keyword
+          operator: filter_term
+          value: '{{destination.device}}'
+        - field: log.interface.keyword
+          operator: filter_term
+          value: '{{log.interface}}'
+      within: now-15m
+      count: 20
+  deduplicateBy:
+    - destination.device
+    - log.interface

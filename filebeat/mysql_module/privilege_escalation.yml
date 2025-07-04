@@ -1,0 +1,45 @@
+- id: 1002
+  dataTypes:
+    - mysql
+  name: MySQL Privilege Escalation Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Privilege Escalation
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://dev.mysql.com/doc/refman/8.0/en/privilege-system.html
+    - https://attack.mitre.org/techniques/T1078/
+    - https://legalhackers.com/advisories/MySQL-Exploit-Remote-Root-Code-Execution-Privesc-CVE-2016-6662.html
+  description: Detects attempts to escalate privileges in MySQL through GRANT statements, role modifications, or exploitation of FILE privileges
+  where: |
+    safe(log.msg, "") != "" && 
+    (
+      log.msg.contains("GRANT") && (log.msg.contains("ALL PRIVILEGES") || log.msg.contains("SUPER") || log.msg.contains("FILE") || log.msg.contains("WITH GRANT OPTION")) ||
+      log.msg.contains("CREATE USER") && log.msg.contains("IDENTIFIED") ||
+      log.msg.contains("ALTER USER") && (log.msg.contains("SUPER") || log.msg.contains("FILE")) ||
+      log.msg.contains("SET ROLE") ||
+      log.msg.contains("LOAD DATA INFILE") ||
+      log.msg.contains("SELECT") && log.msg.contains("INTO OUTFILE") && log.msg.contains("/etc/") ||
+      log.msg.contains("mysql.user") && (log.msg.contains("UPDATE") || log.msg.contains("INSERT")) ||
+      log.msg.contains("FLUSH PRIVILEGES") ||
+      log.errorCode == "ER_SPECIFIC_ACCESS_DENIED_ERROR" ||
+      log.errorCode == "ER_ACCESS_DENIED_ERROR" && log.msg.contains("SUPER") ||
+      log.msg.contains("UDF") && (log.msg.contains("CREATE FUNCTION") || log.msg.contains("lib_mysqludf_sys"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.thread.keyword
+          operator: filter_term
+          value: '{{log.thread}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.thread

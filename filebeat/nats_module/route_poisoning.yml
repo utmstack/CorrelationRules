@@ -1,0 +1,35 @@
+- id: 1007
+  dataTypes:
+    - nats
+  name: NATS Route Poisoning Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Network Security
+  technique: Route Manipulation
+  adversary: origin
+  references:
+    - https://docs.nats.io/running-a-nats-service/configuration/clustering/cluster_config
+    - https://attack.mitre.org/techniques/T1565/002/
+  description: Detects attempts to poison NATS routing tables or inject malicious routes that could redirect traffic or cause cluster instability
+  where: |
+    safe(action, "") == "nats.log" && (
+      safe(log.msg, "") =~ ".*route.*conflict.*" ||
+      safe(log.msg, "") =~ ".*duplicate.*route.*" ||
+      safe(log.msg, "") =~ ".*invalid.*route.*" ||
+      safe(log.msg, "") =~ ".*route.*loop.*detected.*" ||
+      safe(log.msg, "") =~ ".*route.*table.*corrupt.*" ||
+      (safe(log.level, "") == "warn" || safe(log.level, "") == "error") && safe(log.msg, "") =~ ".*route.*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.msg

@@ -1,0 +1,36 @@
+- id: 1009
+  dataTypes:
+    - aws
+  name: AWS Network ACL Changes
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Configuration Change
+  technique: T1562.007 - Impair Defenses: Disable or Modify Cloud Firewall
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-event-reference-record-contents.html
+    - https://attack.mitre.org/techniques/T1562/007/
+  description: Detects changes to AWS Network ACLs that could compromise network security. Monitors for creation, modification, or deletion of network ACL rules that may allow unauthorized access.
+  where: |
+    safe(log.eventSource, "") == "ec2.amazonaws.com" && 
+    safe(log.eventName, "") in ["CreateNetworkAcl", "DeleteNetworkAcl", "CreateNetworkAclEntry", "DeleteNetworkAclEntry", "ReplaceNetworkAclEntry", "ReplaceNetworkAclAssociation"] &&
+    safe(log.sourceIPAddress, "") != "" &&
+    safe(log.errorCode, "") == "" &&
+    safe(log.userIdentityType, "") != "AWSService"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityArn.keyword
+          operator: filter_term
+          value: '{{log.userIdentityArn}}'
+        - field: log.eventSource.keyword
+          operator: filter_term
+          value: 'ec2.amazonaws.com'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - log.sourceIPAddress
+    - log.userIdentityArn
+    - log.awsRegion

@@ -1,0 +1,40 @@
+- id: 1002
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky Application Privilege Escalation Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Privilege Escalation
+  technique: Process Manipulation
+  adversary: origin
+  references:
+    - https://support.kaspersky.com/KLMS/8.2/en-US/151684.htm
+    - https://attack.mitre.org/techniques/T1055/
+    - https://attack.mitre.org/techniques/T1134/
+  description: Detects attempts to escalate privileges through application manipulation, process injection, or unauthorized elevation of permissions monitored by Kaspersky endpoint protection.
+  where: |
+    safe(log.signatureID, "") != "" && 
+    (
+      contains(safe(log.msg, ""), "privilege") ||
+      contains(safe(log.msg, ""), "elevation") ||
+      contains(safe(log.descMsg, ""), "privilege") ||
+      contains(safe(log.cs1, ""), "EXPLOIT") ||
+      contains(safe(log.cs2, ""), "Exploit") ||
+      contains(safe(log.cs4, ""), "Exploit") ||
+      contains(safe(log.msg, ""), "process injection") ||
+      contains(safe(log.msg, ""), "token manipulation")
+    ) &&
+    safe(action, "") != "Allowed"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.signatureID

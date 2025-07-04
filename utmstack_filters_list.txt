@@ -1,0 +1,99 @@
+# UTMStack Filters List (release/v11)
+
+filters available at: filters_from_github/
+
+## Antivirus Filters
+- filters/antivirus/bitdefender_gz.yml
+- filters/antivirus/esmc-eset.yml
+- filters/antivirus/kaspersky.yml
+- filters/antivirus/sentinel-one.yml
+
+## AWS Filters
+- filters/aws/aws.yml
+
+## Azure Filters
+- filters/azure/azure-eventhub.yml
+
+## Cisco Filters
+- filters/cisco/asa.yml
+- filters/cisco/cs_switch.yml
+- filters/cisco/firepower.yml
+- filters/cisco/meraki.yml
+
+## Deceptive Bytes Filters
+- filters/deceptivebytes/deceptive-bytes.yml
+
+## Filebeat Filters
+- filters/filebeat/apache_module.yml
+- filters/filebeat/auditd_module.yml
+- filters/filebeat/elasticsearch_module.yml
+- filters/filebeat/haproxy_module.yml
+- filters/filebeat/iis_module.yml
+- filters/filebeat/kafka_module.yml
+- filters/filebeat/kibana_module.yml
+- filters/filebeat/logstash_module.yml
+- filters/filebeat/mongodb_module.yml
+- filters/filebeat/mysql_module.yml
+- filters/filebeat/nats_module.yml
+- filters/filebeat/nginx_module.yml
+- filters/filebeat/osquery_module.yml
+- filters/filebeat/postgresql_module.yml
+- filters/filebeat/redis_module.yml
+- filters/filebeat/system_linux_module.yml
+- filters/filebeat/traefik_module.yml
+
+## Fortinet Filters
+- filters/fortinet/fortinet.yml
+- filters/fortinet/fortiweb.yml
+
+## Generic Filters
+- filters/generic/generic.yml
+
+## GitHub Filters
+- filters/github/github.yml
+
+## Google Filters
+- filters/google/gcp.yml
+
+## IBM Filters
+- filters/ibm/ibm_aix.yml
+- filters/ibm/ibm_as_400.yml
+
+## JSON Filters
+- filters/json/json-input.yml
+
+## macOS Filters
+- filters/macos/macos.yml
+
+## MikroTik Filters
+- filters/mikrotik/mikrotik-fw.yml
+
+## NetFlow Filters
+- filters/netflow/netflow.yml
+
+## Office365 Filters
+- filters/office365/o365.yml
+
+## Palo Alto Filters
+- filters/paloalto/pa_firewall.yml
+
+## pfSense Filters
+- filters/pfsense/pfsense_fw.yml
+
+## SonicWall Filters
+- filters/sonicwall/sonic_wall.yml
+
+## Sophos Filters
+- filters/sophos/sophos_central.yml
+- filters/sophos/sophos_xg_firewall.yml
+
+## Syslog Filters
+- filters/syslog/syslog-generic.yml
+
+## VMware Filters
+- filters/vmware/vmware-esxi.yml
+
+## Windows Filters
+- filters/windows/windows-events.yml
+
+Total: 47 filters

@@ -1,0 +1,27 @@
+- id: 1011
+  dataTypes:
+    - deceptive-bytes
+  name: Lateral Movement Trap Triggered
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Lateral Movement
+  technique: Remote Services
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1021/
+    - https://deceptivebytes.com/solution/
+  description: Detects when an attacker triggers a deceptive trap while attempting lateral movement across the network. This indicates potential compromise and active threat movement.
+  where: safe(log.event_type, "") == "trap_triggered" && safe(log.trap_type, "") == "lateral_movement" && safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - destination.hostname

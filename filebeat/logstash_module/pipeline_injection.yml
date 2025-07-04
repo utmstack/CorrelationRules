@@ -1,0 +1,36 @@
+- id: 1001
+  dataTypes:
+    - logstash
+  name: Logstash Pipeline Injection Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Command Injection
+  technique: T1059.004
+  adversary: origin
+  references:
+    - https://book.hacktricks.xyz/linux-hardening/privilege-escalation/logstash
+    - https://attack.mitre.org/techniques/T1059/004/
+  description: Detects potential pipeline injection attempts in Logstash through malicious configuration or command execution in pipeline files
+  where: >
+    safe(log.component, "") == "logstash.config.sourceloader" && 
+    safe(log.msg, "") != "" && 
+    (
+      log.msg.contains("exec") && 
+      (log.msg.contains("command") || log.msg.contains("interval")) ||
+      log.msg.contains("ruby") && log.msg.contains("code") ||
+      log.msg.contains("file") && log.msg.contains("/etc/") ||
+      log.msg.contains("pipeline") && log.msg.contains("reload")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.msg

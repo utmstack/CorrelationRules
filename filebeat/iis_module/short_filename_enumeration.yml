@@ -1,0 +1,18 @@
+- id: 1022
+  dataTypes:
+    - iis-log
+  name: IIS 8.3 Short Filename Enumeration Attack
+  description: Detects attempts to enumerate 8.3 short filenames using the tilde (~) character, which can reveal sensitive file and directory names on IIS servers
+  where: |
+    target.path.contains("~") &&
+    (target.path.matches(".*~[0-9].*") || target.path.matches(".*~[0-9]\\*.*")) &&
+    (statusCode == 404 || statusCode == 400 || statusCode == 200) &&
+    (log.subStatusCode == 0 || log.subStatusCode == 2) &&
+    !target.path.matches("(?i).*\\.(css|js|jpg|jpeg|png|gif|ico).*")
+  confidentiality: medium
+  integrity: low
+  availability: low
+  mitreAttack:
+    - T1083 # File and Directory Discovery
+    - T1057 # Process Discovery
+    - T1497 # Virtualization/Sandbox Evasion

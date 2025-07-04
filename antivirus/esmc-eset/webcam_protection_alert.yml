@@ -1,0 +1,30 @@
+- id: 1019
+  dataTypes:
+    - antivirus-esmc-eset
+  name: Webcam Access Violation
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Privacy Protection
+  technique: Audio Capture
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1123/
+    - https://help.eset.com/eis/16.2/en-US/idh_config_webcam.html
+  description: Detects unauthorized or suspicious attempts to access the webcam, potentially indicating spyware or surveillance malware activity
+  where: safe(log.event_type, "") == "WebcamProtection_Event" && safe(actionResult, "") == "blocked" && safe(log.process_name, "") != "" && safe(log.detail, "").contains("webcam")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.host.keyword
+          operator: filter_term
+          value: '{{target.host}}'
+        - field: log.process_name.keyword
+          operator: filter_term
+          value: '{{log.process_name}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - target.host
+    - log.process_name

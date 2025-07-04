@@ -1,0 +1,30 @@
+- id: 1012
+  dataTypes:
+    - postgresql
+  name: PostgreSQL Statistics Collector Issues
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 3
+  category: System Tampering
+  technique: T1070.004 - Indicator Removal: File Deletion
+  adversary: origin
+  references:
+    - https://www.postgresql.org/docs/current/monitoring-stats.html
+    - https://attack.mitre.org/techniques/T1070/004/
+  description: Detects issues with PostgreSQL statistics collector including failures to write statistics, missing statistics files, or repeated errors in statistics gathering. This could indicate attempts to blind monitoring systems or hide malicious activity.
+  where: safe(action, "") == "postgresql.log" && (safe(log.messageType, "") == "ERROR" || safe(log.messageType, "") == "WARNING") && (safe(log.msg, "").contains("statistics collector") || safe(log.msg, "").contains("pgstat") || safe(log.msg, "").contains("stats_temp_directory"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.messageType.keyword
+          operator: filter_term
+          value: 'ERROR'
+      within: now-5m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.processId

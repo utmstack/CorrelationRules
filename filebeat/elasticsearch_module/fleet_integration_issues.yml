@@ -1,0 +1,30 @@
+- id: 1022
+  dataTypes:
+    - elasticsearch_module
+  name: Fleet Integration Issues Detected
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 4
+  category: System Health
+  technique: Service Stop
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/fleet/current/fleet-troubleshooting.html
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects Fleet integration issues in Elasticsearch that could indicate service disruption, communication failures, or potential tampering with Fleet-managed agents
+  where: safe(log.component, "") != "" && (log.component.contains("fleet") || log.component.contains("agent")) && safe(severity, "") == "high" && (safe(log.msg, "").contains("failed") || safe(log.msg, "").contains("error") || safe(log.msg, "").contains("timeout") || safe(log.msg, "").contains("disconnect"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: '{{log.component}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.component

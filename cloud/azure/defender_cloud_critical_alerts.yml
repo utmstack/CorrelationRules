@@ -1,0 +1,28 @@
+- id: 1012
+  dataTypes:
+    - azure
+  name: Azure Defender for Cloud Critical Security Alert
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Intrusion Detection
+  technique: Initial Access
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/defender-for-cloud/alerts-overview
+    - https://learn.microsoft.com/en-us/azure/defender-for-cloud/alerts-schemas
+    - https://attack.mitre.org/tactics/TA0001/
+  description: Detects critical severity alerts from Azure Defender for Cloud indicating potential active threats, malware infections, or successful breach attempts that require immediate response
+  where: safe(log.eventName.value, "").contains("detected") && safe(log.category.value, "") == "Security" && safe(log.level, "") in ["Critical", "Error"] && safe(log.operationName.value, "").contains("Microsoft.Security")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.correlationId.keyword
+          operator: filter_term
+          value: '{{log.correlationId}}'
+      within: now-30m
+      count: 1
+  deduplicateBy:
+    - log.eventDataId
+    - log.correlationId

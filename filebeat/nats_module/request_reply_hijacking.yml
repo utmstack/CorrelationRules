@@ -1,0 +1,47 @@
+- id: 1005
+  dataTypes:
+    - nats
+  name: NATS Request-Reply Hijacking Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 2
+  category: Man-in-the-Middle Attack
+  technique: Interception
+  adversary: origin
+  references:
+    - https://docs.nats.io/nats-concepts/core-nats/reqreply
+    - https://attack.mitre.org/techniques/T1557/
+  description: Detects potential request-reply hijacking where an attacker attempts to intercept or respond to request-reply patterns by subscribing to reply subjects or manipulating inbox patterns
+  where: |
+    safe(action, "") == "nats.log" &&
+    (
+      (safe(log.subject, "").contains("_INBOX.") && 
+       safe(log.operation, "") == "SUB" &&
+       safe(log.client_id, "") != safe(log.original_requestor, "")) ||
+      (safe(log.subject, "").matches("_INBOX\\.[A-Z0-9]{22}\\.*") &&
+       safe(log.error, "").contains("permission")) ||
+      (safe(log.message, "").contains("reply subject hijack")) ||
+      (safe(log.subject, "").contains("_INBOX.") &&
+       safe(log.queue_group, "") != "" &&
+       safe(log.operation, "") == "SUB") ||
+      (safe(log.reply_to, "") != "" &&
+       safe(log.reply_to, "").contains("_INBOX.") &&
+       safe(log.operation, "") == "PUB" &&
+       safe(log.client_id, "") != safe(log.expected_responder, ""))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.client_id.keyword
+          operator: filter_term
+          value: '{{log.client_id}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.client_id
+    - log.subject

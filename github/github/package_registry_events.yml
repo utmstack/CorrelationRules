@@ -1,0 +1,33 @@
+- id: 1030
+  dataTypes:
+    - github
+  name: Package Registry Suspicious Events
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Supply Chain Attack
+  technique: Compromise Software Dependencies and Development Tools
+  adversary: origin
+  references:
+    - https://docs.github.com/en/webhooks/webhook-events-and-payloads#package
+    - https://attack.mitre.org/techniques/T1195/002/
+  description: Detects suspicious package registry events including unauthorized publishes, deletions, or version changes that could indicate supply chain attacks through malicious package distribution.
+  where: >-
+    (safe(log.action, "") in ["published", "updated", "deleted"] && safe(log.package, "") != "") ||
+    (safe(log.registry_package, "") != "" && safe(log.action, "") in ["published", "updated"]) ||
+    (contains(safe(log.event, ""), "package") && safe(log.action, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.senderLogin.keyword
+          operator: filter_term
+          value: '{{log.senderLogin}}'
+        - field: log.action.keyword
+          operator: filter_term
+          value: published
+      within: now-6h
+      count: 5
+  deduplicateBy:
+    - log.package.name
+    - log.senderLogin

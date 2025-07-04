@@ -1,0 +1,27 @@
+- id: 1006
+  dataTypes:
+    - asa
+  name: NAT Rule Configuration Changes
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Configuration Change
+  technique: Network Configuration Modification
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog.html
+    - https://attack.mitre.org/techniques/T1599/001/
+  description: Detects NAT rule configuration changes on Cisco ASA devices. NAT rule modifications can be used to redirect traffic, bypass security controls, or establish unauthorized access paths. Message ID 305006 indicates NAT configuration errors or changes.
+  where: safe(log.messageId, "") == "305006" || (safe(log.message, "") =~ ".*NAT.*" && safe(log.message, "") =~ ".*(added|removed|modified|changed).*") || (safe(log.commandName, "") =~ "^(nat|global|static).*" && safe(event.action, "") == "configuration_change")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.messageId

@@ -1,0 +1,35 @@
+- id: 1003
+  dataTypes:
+    - aws
+  name: AWS S3 Bucket Public Exposure
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+  category: Data Exfiltration
+  technique: Data from Cloud Storage Object
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html
+    - https://attack.mitre.org/techniques/T1530/
+  description: Detects S3 bucket configuration changes that expose buckets to public access, including ACL modifications and public access block removal.
+  where: |
+    safe(log.eventSource, "") == "s3.amazonaws.com" && 
+    (safe(log.eventName, "") == "PutBucketAcl" || 
+     safe(log.eventName, "") == "PutBucketPublicAccessBlock" || 
+     safe(log.eventName, "") == "DeleteBucketPublicAccessBlock" || 
+     safe(log.eventName, "") == "PutObjectAcl") &&
+    safe(log.errorCode, "") == "" &&
+    (safe(log.requestParametersXAmzAcl, "") == "public-read" || 
+     safe(log.requestParametersXAmzAcl, "") == "public-read-write" ||
+     safe(log.requestParametersAcl, "") contains "AllUsers")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityAccessKeyId.keyword
+          operator: filter_term
+          value: '{{log.userIdentityAccessKeyId}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - log.userIdentityAccesrequestParametersBucketNamesKeyId

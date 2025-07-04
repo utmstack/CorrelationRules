@@ -1,0 +1,29 @@
+- id: 1026
+  dataTypes:
+    - github
+  name: Repository Archive or Delete Operations
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 5
+  category: Data Destruction
+  technique: Data Destruction
+  adversary: origin
+  references:
+    - https://docs.github.com/en/webhooks/webhook-events-and-payloads#repository
+    - https://attack.mitre.org/techniques/T1485/
+  description: Detects when a repository is archived or deleted, which could indicate malicious attempts to destroy code or make repositories unavailable. This could be part of a supply chain attack or insider threat.
+  where: >-
+    safe(log.action, "") in ["archived", "deleted", "privatized"] &&
+    safe(log.repositoryName, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.senderLogin.keyword
+          operator: filter_term
+          value: '{{log.senderLogin}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.repositoryName
+    - log.senderLogin

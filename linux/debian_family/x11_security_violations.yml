@@ -1,0 +1,36 @@
+- id: 1013
+  dataTypes:
+    - debian_family
+  name: X11 Security Violation Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Access Control Violation
+  technique: Remote Services
+  adversary: origin
+  references:
+    - https://www.x.org/wiki/Development/Security/
+    - https://attack.mitre.org/techniques/T1021/
+  description: Detects X11 security violations including unauthorized display access, MIT-MAGIC-COOKIE bypass attempts, and X11 forwarding abuse
+  where: |
+    (safe(log.facility, "") == "auth" && safe(log.message, "") contains_any ["X11 authentication failed", "Invalid MIT-MAGIC-COOKIE", "X11 connection rejected"]) ||
+    (safe(log.process_name, "") == "Xorg" && safe(log.error, "") contains_any ["Permission denied", "Authorization required", "Access control enabled"]) ||
+    (safe(log.xauth_event, "") in ["cookie_mismatch", "display_access_denied", "unauthorized_client"]) ||
+    (safe(log.command, "") contains_any ["xhost +", "xhost -ac", "export DISPLAY="] && safe(log.user, "") != "root") ||
+    (safe(log.file_path, "") contains_any [".Xauthority", "/tmp/.X11-unix/", "/var/run/xauth/"] && safe(log.operation, "") in ["unauthorized_read", "tamper", "steal"]) ||
+    (safe(log.network_protocol, "") == "X11" && safe(log.source_ip, "") != "127.0.0.1" && safe(log.event_type, "") in ["connection_attempt", "authentication_bypass"])
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.display.keyword
+          operator: filter_term
+          value: '{{destination.display}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - destination.display

@@ -1,0 +1,34 @@
+- id: 1017
+  dataTypes:
+    - osquery
+  name: Osquery Shard Assignment Anomaly
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Configuration Tampering
+  technique: System Information Discovery
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/configuration/
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects anomalies in osquery shard assignments which could indicate attempts to manipulate query distribution, bypass monitoring on specific hosts, or perform targeted reconnaissance.
+  where: |
+    safe(action, "") == "osquery.status" && 
+    (
+      safe(log.message, "") =~ "(?i)(shard.*invalid|shard.*error|shard.*fail)" ||
+      safe(log.eventName, "") =~ "(?i)shard.*assignment" ||
+      (safe(actionResult, "") == "error" && safe(log.message, "") =~ "(?i)shard") ||
+      safe(log.message, "") =~ "(?i)(shard.*conflict|shard.*mismatch)"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.eventName

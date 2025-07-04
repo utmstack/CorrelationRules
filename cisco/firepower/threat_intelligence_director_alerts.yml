@@ -1,0 +1,33 @@
+- id: 1011
+  dataTypes:
+    - firepower
+  name: Threat Intelligence Director (TID) Alert Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Threat Intelligence
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/firepower/70/configuration/guide/fpmc-config-guide-v70/tid_overview.html
+    - https://attack.mitre.org/techniques/T1071/
+  description: Detects when Cisco Firepower Threat Intelligence Director identifies connections to known malicious indicators including IPs, domains, URLs, and SHA256 hashes from threat feeds
+  where: |
+    safe(log.eventType, "") == "TID_EVENT" && 
+    (safe(log.action, "") == "BLOCK" || 
+     safe(log.action, "") == "WOULD_BLOCK" ||
+     safe(log.tidIndicatorType, "") != "") &&
+    (safe(log.tidCategory, "") != "" || 
+     safe(log.threatScore, 0) >= 80)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.tidIndicator

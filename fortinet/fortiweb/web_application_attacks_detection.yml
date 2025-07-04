@@ -1,0 +1,35 @@
+- id: 1001
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb Web Application Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Web Application Security
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.6.0/administration-guide/981691/syntax-based-sql-xss-injection-detection
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects SQL injection, XSS, and other web application attacks blocked by FortiWeb WAF based on signature or syntax-based detection
+  where: |
+    safe(action, "") == "deny" && 
+    (
+      safe(log.type, "") == "attack" || 
+      safe(log.subtype, "") == "waf" ||
+      safe(log.attack_type, "") in ["SQL Injection", "Cross Site Scripting", "XSS", "SQLi"] ||
+      safe(log.msg, "") =~ "(?i)(sql.*injection|cross.*site.*scripting|xss|sqli)" ||
+      safe(log.main_type, "") == "SQL/XSS Syntax Based Detection"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - target.ip

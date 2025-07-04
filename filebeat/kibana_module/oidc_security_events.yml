@@ -1,0 +1,36 @@
+- id: 1018
+  dataTypes:
+    - kibana
+  name: OIDC Authentication Security Event
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 1
+  category: Authentication Attack
+  technique: Use Alternate Authentication Material
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/oidc-guide.html
+    - https://attack.mitre.org/techniques/T1550/
+  description: Detects OpenID Connect (OIDC) authentication security events including token replay attacks, authorization code interception, or refresh token abuse.
+  where: |
+    (safe(log.action, "") =~ ".*authentication.*" || 
+     safe(log.action, "") =~ ".*token.*") &&
+    safe(log.message, "") =~ ".*oidc.*" &&
+    (safe(actionResult, "") == "failure" ||
+     safe(log.severityLabel, "") == "error" ||
+     safe(log.severityLabel, "") == "critical")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.message
+          operator: wildcard
+          value: '*oidc*'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.user
+    - log.action

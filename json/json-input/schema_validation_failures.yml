@@ -1,0 +1,34 @@
+- id: 1001
+  dataTypes:
+    - json-input
+  name: JSON Schema Validation Failure Detected
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 1
+  category: Input Validation
+  technique: Schema Validation Bypass
+  adversary: origin
+  references:
+    - https://www.invicti.com/learn/json-injection/
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects JSON schema validation failures which may indicate attempts to bypass input validation or exploit parser vulnerabilities. Multiple failures from the same source could indicate reconnaissance or attack attempts.
+  where: |
+    (safe(log.error_type, "") == "schema_validation_failed" || 
+     safe(log.error_type, "") == "invalid_schema" ||
+     safe(log.error_type, "") == "validation_error" ||
+     safe(log.message, "").contains("schema validation") ||
+     safe(log.message, "").contains("invalid JSON schema") ||
+     safe(log.message, "").contains("failed to validate")) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.error_type

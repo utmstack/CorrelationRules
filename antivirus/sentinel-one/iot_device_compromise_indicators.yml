@@ -1,0 +1,48 @@
+- id: 1020
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne IoT Device Compromise Indicator
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: IoT Security
+  technique: T1203 - Exploitation for Client Execution
+  adversary: iot
+  references:
+    - https://www.sentinelone.com/platform/singularity-ranger/
+    - https://attack.mitre.org/techniques/T1203/
+  description: Detects indicators of IoT device compromise including unauthorized firmware modifications, suspicious network behavior from IoT devices, or anomalous IoT device activity patterns
+  where: |
+    safe(log.eventDescription, "") != "" && 
+    (
+      contains(lower(safe(log.eventDescription, "")), "iot") ||
+      contains(lower(safe(log.eventDescription, "")), "embedded") ||
+      contains(lower(safe(log.eventDescription, "")), "firmware") ||
+      contains(lower(safe(log.eventDescription, "")), "smart device") ||
+      contains(lower(safe(log.eventDescription, "")), "industrial") ||
+      contains(lower(safe(log.eventDescription, "")), "scada") ||
+      contains(lower(safe(log.eventDescription, "")), "ics") ||
+      contains(lower(safe(log.eventDescription, "")), "operational technology")
+    ) &&
+    (
+      contains(lower(safe(log.eventDescription, "")), "compromise") ||
+      contains(lower(safe(log.eventDescription, "")), "unauthorized") ||
+      contains(lower(safe(log.eventDescription, "")), "malicious") ||
+      contains(lower(safe(log.eventDescription, "")), "anomaly") ||
+      contains(lower(safe(log.eventDescription, "")), "suspicious") ||
+      contains(lower(safe(log.eventDescription, "")), "backdoor") ||
+      contains(lower(safe(log.eventDescription, "")), "botnet") ||
+      contains(lower(safe(log.eventDescription, "")), "exploit")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.endpointDeviceName.keyword
+          operator: filter_term
+          value: '{{log.endpointDeviceName}}'
+      within: now-12h
+      count: 2
+  deduplicateBy:
+    - log.endpointDeviceName
+    - log.syslogHost

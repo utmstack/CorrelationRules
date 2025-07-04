@@ -1,0 +1,41 @@
+- id: 1013
+  dataTypes:
+    - apache
+  name: HTTP Response Splitting Attack
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Web Application Attack
+  technique: Web Service API Exploitation
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/attacks/HTTP_Response_Splitting
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects HTTP response splitting attacks through identification of CRLF injection attempts in request parameters, which could allow attackers to inject arbitrary HTTP headers or content into the response.
+  where: |
+    safe(origin.path, "").contains("%0d%0a") ||
+    safe(origin.path, "").contains("%0D%0A") ||
+    safe(origin.path, "").contains("%0d%0aSet-Cookie") ||
+    safe(origin.path, "").contains("%0d%0aLocation") ||
+    safe(origin.path, "").contains("\\r\\n") ||
+    safe(origin.path, "").contains("\\r\\nSet-Cookie") ||
+    safe(origin.path, "").contains("\\r\\nLocation") ||
+    safe(log.request, "").contains("%0d%0aHTTP/") ||
+    safe(log.request, "").contains("\\r\\nHTTP/") ||
+    (safe(log.statusCode, 0) == 400 && 
+     (safe(origin.path, "").contains("%0d") || 
+      safe(origin.path, "").contains("%0a") ||
+      safe(origin.path, "").contains("\\r") ||
+      safe(origin.path, "").contains("\\n")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - origin.path

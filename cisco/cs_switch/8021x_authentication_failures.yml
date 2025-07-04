@@ -1,0 +1,31 @@
+- id: 1021
+  dataTypes:
+    - cs_switch
+  name: 802.1X Authentication Failures Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Unauthorized Access
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst9300/software/release/16-6/configuration_guide/sec/b_166_sec_9300_cg/configuring_ieee_802_1x_port_based_authentication.html
+    - https://attack.mitre.org/techniques/T1110/
+  description: Detects multiple 802.1X authentication failures from the same MAC address or interface, which could indicate unauthorized access attempts or misconfigured supplicants
+  where: |
+    safe(log.facility, "") == "DOT1X" && 
+    safe(log.severity, 5) >= 5 && 
+    safe(log.mnemonic, "") == "FAIL" &&
+    safe(origin.mac, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.mac.keyword
+          operator: filter_term
+          value: '{{origin.mac}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.mac
+    - destination.interface

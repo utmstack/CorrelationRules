@@ -1,0 +1,39 @@
+- id: 1022
+  dataTypes:
+    - deceptive-bytes
+  name: Criminal Group Signatures
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 5
+  category: Organized Crime Activity
+  technique: Criminal Group TTPs
+  adversary: origin
+  references:
+    - https://attack.mitre.org/groups/
+    - https://www.ic3.gov/Media/PDF/AnnualReport/2023_IC3Report.pdf
+  description: Identifies attack signatures and behavioral patterns associated with known criminal groups including ransomware operators, financial crime syndicates, and organized cybercrime operations
+  where: >
+    safe(log.eventType, "") in ["threat_detected", "criminal_activity_detected"] &&
+    safe(log.threatCategory, "") == "criminal_group" &&
+    (safe(log.groupSignature, "") != "" || safe(log.knownToolset, "") != "") &&
+    safe(log.deceptionTriggered, false) == true &&
+    (safe(log.ransomwareIndicator, false) == true ||
+     safe(log.financialTarget, false) == true ||
+     safe(log.cryptominerDetected, false) == true ||
+     safe(log.dataExfiltrationAttempt, false) == true) &&
+    safe(log.behaviorScore, 0) >= 75
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.groupSignature.keyword
+          operator: filter_term
+          value: '{{log.groupSignature}}'
+      within: now-6h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.groupSignature

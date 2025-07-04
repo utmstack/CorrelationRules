@@ -1,0 +1,38 @@
+- id: 1009
+  dataTypes:
+    - postgresql
+  name: PostgreSQL WAL Tampering and Corruption
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 5
+  category: Data Integrity Attack
+  technique: Data Destruction
+  adversary: origin
+  references:
+    - https://www.postgresql.org/docs/current/wal-intro.html
+    - https://attack.mitre.org/techniques/T1485/
+  description: Identifies attempts to tamper with PostgreSQL Write-Ahead Log (WAL) files, including deletion, corruption, missing segments, or attempts to manipulate WAL archiving. These attacks can lead to data loss and database corruption.
+  where: >
+    safe(log.messageType, "") in ["ERROR", "FATAL", "PANIC", "WARNING"] &&
+    safe(log.msg, "") != "" &&
+    (log.msg =~ "(?i)could not open file.*pg_(wal|xlog)" ||
+     log.msg =~ "(?i)WAL file.*not found" ||
+     log.msg =~ "(?i)invalid.*WAL.*record" ||
+     log.msg =~ "(?i)WAL segment.*missing" ||
+     log.msg =~ "(?i)archive_command.*failed" ||
+     log.msg =~ "(?i)could not archive.*WAL" ||
+     log.msg =~ "(?i)invalid resource manager ID" ||
+     log.msg =~ "(?i)WAL.*corrupted" ||
+     log.msg =~ "(?i)unexpected pageaddr.*in log segment")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-2h
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - log.errorCode

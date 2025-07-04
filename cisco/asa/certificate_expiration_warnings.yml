@@ -1,0 +1,33 @@
+- id: 1018
+  dataTypes:
+    - asa
+  name: Certificate Expiration and Validation Warnings
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 4
+  category: Initial Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1078/
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog/syslogs7.html
+  description: Detects certificate expiration warnings and validation failures. Expired or invalid certificates can disrupt VPN services and may indicate attempts to bypass authentication.
+  where: |
+    (safe(log.message_id, "") =~ "^717" ||
+     safe(log.message_id, "") == "751006") &&
+    (safe(log.message, "") =~ "(?i)(certificate.*expir|cert.*invalid|certificate.*fail|crl.*fail|certificate.*revoked|cert.*validation.*error)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.message_id.keyword
+          operator: filter_match
+          value: '717*'
+        - field: log.trustpoint.keyword
+          operator: filter_term
+          value: '{{log.trustpoint}}'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - log.trustpoint
+    - log.certificate_subject

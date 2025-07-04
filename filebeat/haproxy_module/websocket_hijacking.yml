@@ -1,0 +1,39 @@
+- id: 1017
+  dataTypes:
+    - haproxy
+  name: WebSocket Connection Hijacking Attempts
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 2
+  category: Session Hijacking
+  technique: Man-in-the-Middle
+  adversary: origin
+  references:
+    - https://www.haproxy.com/blog/websockets-load-balancing-with-haproxy
+    - https://attack.mitre.org/techniques/T1557/
+  description: Detects suspicious WebSocket upgrade requests and potential hijacking attempts including protocol downgrade attacks, malformed upgrade headers, and unauthorized WebSocket connections
+  where: |
+    (safe(log.http_request_headers, "") =~ "(?i)(upgrade.*websocket)" || 
+     safe(log.http_upgrade_header, "") =~ "(?i)websocket") && (
+      safe(log.http_request_headers, "") =~ "(?i)(sec-websocket-version.*[^1][^3])" ||
+      safe(log.http_request_headers, "") !~ "(?i)sec-websocket-key" ||
+      safe(log.http_status_code, 0) == 426 ||
+      safe(log.error_message, "") =~ "(?i)(websocket.*error|upgrade.*fail|tunnel.*mode)" ||
+      (safe(log.http_status_code, 0) == 101 && safe(log.response_headers, "") !~ "(?i)sec-websocket-accept") ||
+      safe(log.connection_state, "") =~ "(?i)(hijack|intercept|mitm)"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.http_method.keyword
+          operator: filter_term
+          value: 'GET'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.host

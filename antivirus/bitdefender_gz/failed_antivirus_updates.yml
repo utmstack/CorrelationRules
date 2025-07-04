@@ -1,0 +1,34 @@
+- id: 1003
+  dataTypes:
+    - antivirus-bitdefender-gz
+  name: Failed Antivirus Updates Across Multiple Endpoints
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: System
+  technique: T1562.001 - Impair Defenses: Disable or Modify Tools
+  adversary: origin
+  references:
+    - https://www.bitdefender.com/business/support/en/77212-237089-event-types.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects when antivirus signature updates fail across multiple endpoints within a time window. This could indicate network connectivity issues, update server problems, or potentially malicious interference with security updates.
+  where: >
+    safe(log.eventType, "") == "supa-update-status" &&
+    safe(log.severity, "") in ["3", "4", "5"] &&
+    safe(log.dvchost, "") != "" &&
+    (safe(log.cs1, "") contains "failed" || 
+     safe(log.cs2, "") contains "failed" ||
+     safe(log.msg, "") contains "failed" ||
+     safe(log.outcome, "") == "failure")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: "supa-update-status"
+      within: now-4h
+      count: 5
+      uniqueField: log.dvchost.keyword
+  deduplicateBy:
+    - log.eventType

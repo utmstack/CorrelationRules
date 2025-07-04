@@ -1,0 +1,31 @@
+- id: 1011
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne Rollback Operation Patterns Detection
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 4
+  category: Ransomware Response
+  technique: Inhibit System Recovery
+  adversary: origin
+  references:
+    - https://www.cybervigilance.uk/insights/sentinelone-how-does-rollback-work
+    - https://attack.mitre.org/techniques/T1490/
+  description: Detects patterns of rollback operations in SentinelOne that may indicate ransomware recovery attempts or suspicious rollback activity. Multiple rollback operations within a short timeframe could indicate widespread ransomware infection or system compromise.
+  where: |
+    safe(log.eventDescription, "") =~ ".*[Rr]ollback.*" && 
+    (safe(log.activityType, "") == "rollback" || 
+     safe(log.RollbackStatus, "") != "" ||
+     safe(log.cat, "") == "SystemEvent")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.accountId.keyword
+          operator: filter_term
+          value: '{{log.accountId}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.accountId
+    - log.syslogHost

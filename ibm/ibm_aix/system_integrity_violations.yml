@@ -1,0 +1,28 @@
+- id: 1008
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX System Integrity Violation Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: System Activity
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/ssw_aix_72/security/security_pdf.pdf
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects attempts to compromise system integrity in IBM AIX, including unauthorized modifications to critical system files, audit tampering, security configuration changes, and privilege escalation attempts
+  where: (safe(log.eventType, "").contains("AUD_") && safe(action, "") == "FILE_Write") || (safe(log.objName, "").contains("/etc/security/") && safe(action, "") == "FILE_Write") || (safe(log.commandType, "") == "sudo" && safe(origin.command, "").contains("passwd")) || (safe(log.msg, "").contains("audit") && safe(log.msg, "").contains("disable")) || (safe(log.osUserID, "") == "root" && safe(origin.user, "") != "root")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - log.objName
+    - log.eventType

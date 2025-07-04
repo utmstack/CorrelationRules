@@ -1,0 +1,48 @@
+- id: 1024
+  dataTypes:
+    - auditd
+  name: AppArmor Profile Violations
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Access Control Violations
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://wiki.archlinux.org/title/AppArmor
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Monitors AppArmor policy violations including denied file access, network operations, and capability usage. These violations may indicate attempts to break out of application confinement or exploit confined services.
+  where: >
+    safe(action, "") == "auditd.log" && 
+    (
+      (safe(log.record_type, "") == "AVC" && strings.contains(safe(log.apparmor, ""), "DENIED")) ||
+      (safe(log.record_type, "") == "APPARMOR_DENIED") ||
+      (strings.contains(safe(log.message, ""), "apparmor=\"DENIED\"")) ||
+      (strings.contains(safe(log.message, ""), "apparmor=\"ALLOWED\"") && strings.contains(safe(log.message, ""), "info=\"profile in complain mode\""))
+    ) &&
+    (
+      strings.contains(safe(log.operation, ""), "open") ||
+      strings.contains(safe(log.operation, ""), "exec") ||
+      strings.contains(safe(log.operation, ""), "mmap") ||
+      strings.contains(safe(log.operation, ""), "create") ||
+      strings.contains(safe(log.operation, ""), "connect") ||
+      strings.contains(safe(log.operation, ""), "capability") ||
+      strings.contains(safe(log.operation, ""), "ptrace")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.profile.keyword
+          operator: filter_term
+          value: '{{log.profile}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.profile
+    - log.operation
+    - log.name

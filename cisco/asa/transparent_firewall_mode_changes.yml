@@ -1,0 +1,38 @@
+- id: 1025
+  dataTypes:
+    - asa
+  name: Transparent Firewall Mode Configuration Changes
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Configuration Security
+  technique: Modify System Process
+  adversary: user
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog.html
+    - https://attack.mitre.org/techniques/T1543/
+  description: Detects changes to transparent firewall mode configuration or issues with transparent mode operation. Mode changes can significantly alter the security behavior of the firewall and should be closely monitored.
+  where: |
+    safe(log.dataType, "") == "asa" && 
+    (
+      (safe(log.messageId, "") in ["111009", "111010"] &&
+       (safe(log.message, "") =~ ".*firewall.*transparent.*" ||
+        safe(log.command, "") =~ ".*firewall.*transparent.*" ||
+        safe(log.message, "") =~ ".*bridge.*group.*" ||
+        safe(log.command, "") =~ ".*bridge.*group.*")) ||
+      safe(log.messageId, "") in ["322004", "412001"] ||
+      (safe(log.message, "") =~ ".*transparent.*firewall.*" ||
+       safe(log.message, "") =~ ".*MAC.*moved.*interface.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: user.name.keyword
+          operator: filter_term
+          value: '{{user.name}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - user.name
+    - device.hostname

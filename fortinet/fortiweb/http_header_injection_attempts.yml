@@ -1,0 +1,40 @@
+- id: 1018
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb HTTP Header Injection Attempts
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Injection Attack
+  technique: HTTP Header Injection
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.2.2/log-message-reference/445549/attack
+    - https://attack.mitre.org/techniques/T1055/
+    - https://owasp.org/www-community/attacks/HTTP_Response_Splitting
+  description: Detects HTTP header injection attempts including CRLF injection, header smuggling, and other header manipulation attacks that could lead to cache poisoning or session hijacking
+  where: |
+    safe(log.type, "") == "attack" && 
+    (safe(log.subtype, "") in ["header_injection", "http_header_injection", "crlf_injection"] ||
+     safe(log.msg, "").contains("header injection") ||
+     safe(log.msg, "").contains("CRLF injection") ||
+     safe(log.msg, "").contains("\\r\\n") ||
+     safe(log.msg, "").contains("%0d%0a") ||
+     safe(log.msg, "").contains("%0D%0A")) &&
+    safe(action, "") in ["Alert", "Block", "Deny"] &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'attack'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - target.ip

@@ -1,0 +1,27 @@
+- id: 1002
+  dataTypes:
+    - kafka
+  name: Consumer Group Manipulation Attempt
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Tampering
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://kafka.apache.org/documentation/#basic_ops_consumer_group
+    - https://attack.mitre.org/techniques/T1565/
+  description: Detects potential manipulation of Kafka consumer groups, including unauthorized group membership changes, offset resets, or group deletion attempts. This could indicate an attacker trying to disrupt message processing or steal data.
+  where: safe(log.component, "") != "" && (contains(log.component, "GroupCoordinator") || contains(log.component, "GroupMetadataManager")) && safe(log.msg, "") != "" && (contains(log.msg, "Group does not exist") || contains(log.msg, "attempt to illegally reset") || contains(log.msg, "Unauthorized request") || contains(log.msg, "Group authorization failed") || contains(log.msg, "offset reset"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.component

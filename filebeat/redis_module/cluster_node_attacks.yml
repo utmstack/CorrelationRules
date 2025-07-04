@@ -1,0 +1,39 @@
+- id: 1006
+  dataTypes:
+    - redis
+  name: Redis Cluster Node Attack Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 5
+  category: Network Security
+  technique: Cluster Node Exploitation
+  adversary: origin
+  references:
+    - https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/
+    - https://attack.mitre.org/techniques/T1210/
+  description: Detects potential attacks against Redis cluster nodes including unauthorized cluster commands, node hijacking attempts, or suspicious cluster bus protocol activity
+  where: |
+    safe(log.msg, "") != "" && (
+      log.msg.contains("CLUSTER FLUSHSLOTS") ||
+      log.msg.contains("CLUSTER ADDSLOTS") ||
+      log.msg.contains("CLUSTER DELSLOTS") ||
+      log.msg.contains("CLUSTER SETSLOT") ||
+      log.msg.contains("CLUSTER BUMPEPOCH") ||
+      log.msg.contains("Possible SECURITY ATTACK detected") ||
+      log.msg.contains("cluster node") && log.msg.contains("failed") ||
+      log.msg.contains("Disconnecting cluster node") ||
+      (log.msg.contains("DENIED") && log.msg.contains("cluster")) ||
+      (safe(log.severity, "") == "warning" && log.msg.contains("cluster"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.msg

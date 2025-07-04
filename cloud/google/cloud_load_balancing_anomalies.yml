@@ -1,0 +1,33 @@
+- id: 1021
+  dataTypes:
+    - google
+  name: Cloud Load Balancing Anomalies Detection
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 5
+  category: Performance Monitoring
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://cloud.google.com/load-balancing/docs/https/https-logging-monitoring
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects anomalies in Google Cloud Load Balancing traffic patterns including high error rates, excessive latency, or unusual traffic spikes that could indicate DDoS attempts, misconfigurations, or service degradation
+  where: |
+    safe(log.resourceType, "") == "http_load_balancer" && 
+    (
+      (safe(statusCode, 0) >= 500 && safe(statusCode, 0) < 600) ||
+      (safe(log.httpRequestLatency, "") != "" && double(safe(log.httpRequestLatency, "0s").replace("s", "")) > 10.0) ||
+      (safe(origin.bytesSent, 0) > 10485760)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.resourceLabelsBackendServiceName.keyword
+          operator: filter_term
+          value: '{{log.resourceLabelsBackendServiceName}}'
+      within: now-5m
+      count: 50
+  deduplicateBy:
+    - log.resourceLabelsBackendServiceName
+    - origin.ip

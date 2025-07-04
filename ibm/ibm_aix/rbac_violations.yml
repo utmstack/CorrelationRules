@@ -1,0 +1,27 @@
+- id: 1001
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX RBAC Violation Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Privilege Escalation
+  technique: Abuse Elevation Control Mechanism
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/aix/7.2?topic=security-role-based-access-control
+    - https://attack.mitre.org/techniques/T1548/
+  description: Detects RBAC (Role-Based Access Control) violations in IBM AIX systems, including unauthorized privilege escalation attempts, failed role assignments, or attempts to execute privileged commands without proper authorization
+  where: (safe(log.eventType, "") == "RBAC_FAIL" || safe(log.msg, "").contains("RBAC") && safe(log.msg, "").contains("denied")) || (safe(log.commandType, "") == "sudo" && safe(log.returnCode, "") != "0") || (safe(action, "").contains("PRIVILEGE") && safe(log.returnCode, "") != "0")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.user
+    - origin.ip

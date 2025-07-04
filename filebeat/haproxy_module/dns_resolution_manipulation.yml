@@ -1,0 +1,36 @@
+- id: 1023
+  dataTypes:
+    - haproxy
+  name: HAProxy DNS Resolution Manipulation Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Network Security
+  technique: DNS Spoofing
+  adversary: origin
+  references:
+    - https://www.haproxy.com/blog/dns-resolution-in-haproxy
+    - https://attack.mitre.org/techniques/T1584/002/
+  description: Detects potential DNS resolution manipulation attempts in HAProxy, including DNS poisoning, resolution failures, or suspicious DNS response patterns that could redirect traffic to malicious servers.
+  where: |
+    safe(action, "") == "haproxy.log" && 
+    safe(log.message, "") contains "DNS" &&
+    (safe(log.message, "") contains "resolution failed" ||
+     safe(log.message, "") contains "DNS error" ||
+     safe(log.message, "") contains "invalid DNS response" ||
+     safe(log.message, "") contains "DNS timeout" ||
+     safe(log.message, "") contains "NXDOMAIN" ||
+     safe(log.message, "") contains "DNS cache" ||
+     safe(log.message, "") matches "DNS .* changed unexpectedly")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 8
+  deduplicateBy:
+    - origin.host
+    - log.message

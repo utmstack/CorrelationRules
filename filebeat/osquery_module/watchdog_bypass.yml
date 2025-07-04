@@ -1,0 +1,32 @@
+- id: 1016
+  dataTypes:
+    - osquery
+  name: Osquery Watchdog Bypass Attempt
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: Resource Manipulation
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/debugging/
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects attempts to bypass or disable the osquery watchdog process which monitors memory and CPU utilization. This could indicate an attacker trying to run resource-intensive queries without detection.
+  where: |
+    safe(action, "") == "osquery.status" && 
+    (
+      safe(log.message, "") =~ "(?i)(watchdog.*disable|disable.*watchdog|bypass.*watchdog)" ||
+      safe(log.eventName, "") =~ "(?i)(watchdog.*kill|watchdog.*stop)" ||
+      (safe(actionResult, "") == "failed" && safe(log.message, "") =~ "(?i)watchdog")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host

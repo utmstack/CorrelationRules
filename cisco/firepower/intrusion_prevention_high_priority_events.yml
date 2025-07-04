@@ -1,0 +1,35 @@
+- id: 1002
+  dataTypes:
+    - firepower
+  name: Intrusion Prevention System High Priority Events
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 5
+  category: Intrusion
+  technique: Exploitation for Client Execution
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/security/secure-firewall/management-center/device-config/710/management-center-device-config-71/intrusion-overview.html
+    - https://attack.mitre.org/techniques/T1203/
+  description: Detects high priority IPS events indicating potential exploitation attempts, zero-day attacks, or critical vulnerabilities being targeted
+  where: |
+    safe(log.eventType, "") == "IPS_EVENT" && 
+    (safe(log.priority, 0) == 1 || 
+     safe(log.severity, 0) <= 2 ||
+     safe(log.impact, "") == "HIGH" ||
+     safe(log.classification, "") =~ "attempted-admin|attempted-user|web-application-attack|exploit-kit")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.signatureId.keyword
+          operator: filter_term
+          value: '{{log.signatureId}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.signatureId

@@ -1,0 +1,36 @@
+- id: 1009
+  dataTypes:
+    - osquery
+  name: Osquery Pack Manipulation Detected
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Impair Defenses
+  adversary: origin
+  references:
+    - https://github.com/osquery/osquery/blob/master/packs/incident-response.conf
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects unauthorized modifications to osquery packs which contain pre-configured queries for security monitoring. Attackers may attempt to remove, disable, or modify packs to evade detection or reduce visibility into their activities.
+  where: |
+    (safe(log.eventName, "") contains_any ["pack", "packs"] ||
+     safe(action, "") contains "pack" ||
+     safe(origin.file, "") contains_any ["pack", "conf"]) &&
+    (safe(actionResult, "") contains_any ["removed", "modified", "failed"] ||
+     safe(log.message, "") contains_any ["unload", "disable", "delete", "remove", "clear", "failed to load"]) &&
+    safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'osquery*'
+      within: now-2h
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - origin.file

@@ -1,0 +1,44 @@
+- id: 1015
+  dataTypes:
+    - json-input
+  name: JWT Token Security Issue Detected
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Authentication Bypass
+  technique: JWT Manipulation
+  adversary: origin
+  references:
+    - https://research.securitum.com/jwt-json-web-token-security/
+    - https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html
+    - https://attack.mitre.org/techniques/T1550/001/
+  description: Detects JWT token security issues including algorithm confusion, none algorithm usage, expired tokens, invalid signatures, or token manipulation attempts
+  where: |
+    (safe(log.alg, "") == "none" ||
+     safe(log.alg, "") == "None" ||
+     safe(log.alg, "") == "NONE" ||
+     (safe(log.jwt_error, "") != "" && 
+      (contains(safe(log.jwt_error, ""), "signature") ||
+       contains(safe(log.jwt_error, ""), "expired") ||
+       contains(safe(log.jwt_error, ""), "invalid"))) ||
+     (safe(log.exp, 0) > 0 && safe(log.exp, 0) < timestamp_seconds(now())) ||
+     (safe(log.iat, 0) > 0 && safe(log.iat, 0) > timestamp_seconds(now())) ||
+     (contains(safe(raw, ""), "eyJhbGciOiJub25lIi") ||
+      contains(safe(raw, ""), "eyJhbGciOiJOb25lIi") ||
+      contains(safe(raw, ""), "eyJhbGciOiJOT05FIi")) ||
+     (safe(log.jti, "") != "" && safe(log.token_reuse, false) == true))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.jti.keyword
+          operator: filter_term
+          value: '{{log.jti}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.jti

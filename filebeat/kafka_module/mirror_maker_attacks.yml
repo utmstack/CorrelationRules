@@ -1,0 +1,28 @@
+- id: 1020
+  dataTypes:
+    - kafka
+  name: Mirror Maker Attack Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 3
+  category: Data Exfiltration
+  technique: Automated Exfiltration
+  adversary: origin
+  references:
+    - https://kafka.apache.org/documentation/#basic_ops_mirror_maker
+    - https://docs.confluent.io/kafka/operations-tools/kafka-tools.html#mirror-maker
+    - https://attack.mitre.org/techniques/T1020/
+  description: Detects potential attacks on Kafka Mirror Maker that could lead to unauthorized data replication, topic mirroring manipulation, or cross-cluster data exfiltration. Monitors for Mirror Maker failures, unauthorized topic patterns, and replication lag issues.
+  where: safe(log.msg, "") != "" && (log.msg.contains("MirrorMaker") || log.msg.contains("mirror maker") || log.msg.contains("replication") || log.msg.contains("mirroring")) && (safe(log.severity, "") == "ERROR" || log.msg.contains("unauthorized") || log.msg.contains("failed") || log.msg.contains("lag") || log.msg.contains("throttled"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-2h
+      count: 8
+  deduplicateBy:
+    - origin.host
+    - log.class

@@ -1,0 +1,30 @@
+- id: 1001
+  dataTypes:
+    - antivirus-sentinel-one
+  name: SentinelOne Behavioral Threat Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Threat Detection
+  technique: Behavioral Analysis
+  adversary: origin
+  references:
+    - https://www.sentinelone.com/platform/behavioral-ai/
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects behavioral threat patterns identified by SentinelOne's AI engine, including suspicious process behaviors, anomalous system calls, and deviations from normal endpoint activity patterns
+  where: |
+    safe(log.eventDescription, "") =~ "(?i)(behavioral|anomaly|suspicious behavior|abnormal|pattern detected)" &&
+    safe(log.msg, "") =~ "(?i)(threat|malicious|suspicious)" &&
+    safe(log.syslogHost, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.syslogHost.keyword
+          operator: filter_term
+          value: '{{log.syslogHost}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - log.syslogHost
+    - log.eventDescription

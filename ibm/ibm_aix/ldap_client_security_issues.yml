@@ -1,0 +1,36 @@
+- id: 1011
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX LDAP Client Security Issues Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Authentication
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.ibm.com/support/pages/aix-how-configure-aix-ldap-or-krb5ldap-client
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects security issues related to LDAP client operations on IBM AIX systems, including authentication failures, connection errors, and potential unauthorized access attempts through LDAP
+  where: >
+    safe(log.eventType, "") == "ldapd" && 
+    (
+      safe(log.msg, "").contains("authentication failed") ||
+      safe(log.msg, "").contains("bind failed") ||
+      safe(log.msg, "").contains("connection refused") ||
+      safe(log.msg, "").contains("invalid credentials") ||
+      safe(log.msg, "").contains("ldap_bind") ||
+      safe(log.returnCode, "") != "0"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - origin.user

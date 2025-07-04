@@ -1,0 +1,31 @@
+- id: 1017
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Patch Compliance Failures
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: Vulnerability Management
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/aix/7.2?topic=management-software-maintenance
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects patch compliance failures and system update issues in IBM AIX systems, including failed patch installations, missing critical updates, or unauthorized patch modifications
+  where: (safe(log.eventType, "") == "PATCH_FAIL" || safe(log.eventType, "") == "UPDATE_FAIL") || (safe(log.commandType, "").contains("installp") && safe(log.returnCode, "") != "0") || (safe(log.msg, "").contains("patch") && (safe(log.msg, "").contains("failed") || safe(log.msg, "").contains("error"))) || (safe(action, "").contains("UPDATE") && safe(log.returnCode, "") != "0") || (safe(origin.command, "").contains("oslevel") && safe(log.msg, "").contains("missing"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: log.commandType.keyword
+          operator: filter_term
+          value: 'installp'
+      within: now-24h
+      count: 2
+  deduplicateBy:
+    - origin.user
+    - origin.command
+    - log.returnCode

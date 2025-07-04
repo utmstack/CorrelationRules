@@ -1,0 +1,41 @@
+- id: 1019
+  dataTypes:
+    - json-input
+  name: JSON Schema Validation Bypass Attempt
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Input Validation Bypass
+  technique: Schema Validation Evasion
+  adversary: origin
+  references:
+    - https://json-schema.org/understanding-json-schema/
+    - https://www.invicti.com/learn/json-injection/
+    - https://attack.mitre.org/techniques/T1027/
+  description: Detects attempts to bypass JSON Schema validation through duplicate keys, type confusion, or malformed JSON structures designed to exploit parser discrepancies between validation and processing stages.
+  where: |
+    safe(log.validation_error, "") != "" ||
+    safe(log.schema_validation, "failed") == "failed" ||
+    (safe(log.content_type, "").contains("application/json") &&
+     (safe(log.body, "").matches(".*\"[^\"]+\"\\s*:\\s*[^,}]+\\s*,\\s*\"\\1\"\\s*:.*") ||
+      safe(log.duplicate_keys_detected, false) == true ||
+      safe(log.json_parse_error, "") != "" ||
+      safe(log.body, "").contains("__proto__") ||
+      safe(log.body, "").contains("constructor") ||
+      safe(log.body, "").contains("prototype") ||
+      safe(log.body_size, 0) > 1048576))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.validation_error.keyword
+          operator: filter_term
+          value: 'schema_violation'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.endpoint

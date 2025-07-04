@@ -1,0 +1,34 @@
+- id: 1016
+  dataTypes:
+    - haproxy
+  name: HTTP/2 Vulnerability Exploitation Attempts
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 5
+  category: Protocol Exploitation
+  technique: Protocol Impersonation
+  adversary: origin
+  references:
+    - https://docs.haproxy.org/2.6/configuration.html#h2-workaround-bogus-websocket-clients
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects potential HTTP/2 vulnerability exploitation attempts including HPACK compression attacks, stream multiplexing abuse, and protocol downgrade attacks that could lead to denial of service or information disclosure
+  where: |
+    safe(log.http_protocol, "") == "HTTP/2.0" && (
+      safe(log.http_request_headers, "") =~ "(?i)(h2c-settings|x-http2-settings|upgrade.*h2c)" ||
+      safe(log.http_status_code, 0) == 431 ||
+      safe(log.error_message, "") =~ "(?i)(h2.*error|stream.*reset|compression.*table|hpack)" ||
+      safe(log.connection_error, "") =~ "(?i)(goaway|protocol.*error|stream.*error)" ||
+      (safe(log.stream_count, 0) > 100 && safe(log.connection_time, 0) < 5000)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - origin.url

@@ -1,0 +1,30 @@
+- id: 1012
+  dataTypes:
+    - auditd
+  name: Audit Rule Modifications
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Defense Evasion
+  technique: Indicator Removal on Host
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1070/002/
+    - https://access.redhat.com/articles/4409591
+  description: Detects attempts to modify audit rules which could indicate an attacker trying to evade detection
+  where: (safe(log.type, "") == "CONFIG_CHANGE" || safe(log.type, "") == "DAEMON_CONFIG") && (safe(log.exe, "") == "/sbin/auditctl" || safe(log.exe, "") == "/usr/sbin/auditctl" || safe(log.exe, "") == "/sbin/augenrules" || safe(log.exe, "") == "/usr/sbin/augenrules")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.type.keyword
+          operator: filter_match
+          value: 'CONFIG_CHANGE DAEMON_CONFIG'
+      within: now-15m
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - log.auid

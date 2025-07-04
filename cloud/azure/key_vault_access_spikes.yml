@@ -1,0 +1,30 @@
+- id: 1002
+  dataTypes:
+    - azure
+  name: Azure Key Vault Excessive Access Detected
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: Collection
+  technique: Data from Cloud Storage Object
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/key-vault/general/logging
+    - https://attack.mitre.org/techniques/T1530/
+  description: Detects unusual spikes in Azure Key Vault access patterns. Monitors for multiple secret retrieval operations from the same source, which could indicate credential harvesting or data exfiltration attempts.
+  where: safe(log.category, "") == "AuditEvent" && (safe(log.operationName, "") == "SecretGet" || safe(log.operationName, "") == "SecretList" || safe(log.operationName, "") == "KeyGet")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.category.keyword
+          operator: filter_term
+          value: 'AuditEvent'
+      within: now-10m
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - log.resourceId

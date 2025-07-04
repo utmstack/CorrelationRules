@@ -1,0 +1,31 @@
+- id: 1004
+  dataTypes:
+    - auditd
+  name: Suspicious Process Execution
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Process Activity
+  technique: T1059
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1059/
+    - https://slack.engineering/syscall-auditing-at-scale/
+  description: Monitors process execution activities for suspicious commands and binaries commonly used by attackers for reconnaissance, lateral movement, or maintaining persistence.
+  where: safe(action, "") == "auditd.log" && safe(log.auditd.log.record_type, "") == "EXECVE" && (contains(safe(log.auditd.log.proctitle, ""), "nc") || contains(safe(log.auditd.log.proctitle, ""), "ncat") || contains(safe(log.auditd.log.proctitle, ""), "netcat") || contains(safe(log.auditd.log.proctitle, ""), "socat") || contains(safe(log.auditd.log.proctitle, ""), "wget") || contains(safe(log.auditd.log.proctitle, ""), "curl") || contains(safe(log.auditd.log.proctitle, ""), "base64") || contains(safe(log.auditd.log.proctitle, ""), "python") || contains(safe(log.auditd.log.proctitle, ""), "perl") || contains(safe(log.auditd.log.proctitle, ""), "ruby") || contains(safe(log.auditd.log.proctitle, ""), "nmap") || contains(safe(log.auditd.log.proctitle, ""), "tcpdump") || contains(safe(log.auditd.log.proctitle, ""), "wireshark"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.auditd.log.uid.keyword
+          operator: filter_term
+          value: '{{log.auditd.log.uid}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.auditd.log.uid
+    - log.auditd.log.proctitle

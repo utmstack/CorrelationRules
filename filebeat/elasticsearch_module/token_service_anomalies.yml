@@ -1,0 +1,37 @@
+- id: 1015
+  dataTypes:
+    - elasticsearch_module
+  name: Token Service Anomalies Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Initial Access
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-get-token.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects anomalous token service behavior including excessive token generation, failed token authentications, or suspicious token operations that could indicate unauthorized access attempts
+  where: |
+    (safe(log.authenticationType, "") == "TOKEN" &&
+     (safe(action, "") == "authentication_failed" ||
+      safe(log.eventType, "") == "access_denied")) ||
+    (safe(action, "").contains("cluster:admin/xpack/security/token/") &&
+     (action.contains("/create") || 
+      action.contains("/invalidate") ||
+      action.contains("/refresh"))) ||
+    (safe(log.component, "") == "Security" && 
+     safe(log.message, "").contains("token") &&
+     safe(severity, "") == "high")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 15
+  deduplicateBy:
+    - origin.ip
+    - origin.user

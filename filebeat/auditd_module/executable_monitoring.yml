@@ -1,0 +1,30 @@
+- id: 1017
+  dataTypes:
+    - auditd
+  name: Suspicious Executable Monitoring
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Execution
+  technique: System Binary Proxy Execution
+  adversary: origin
+  references:
+    - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/security_guide/sec-understanding_audit_log_files
+    - https://attack.mitre.org/techniques/T1218/
+  description: Detects multiple executions of suspicious or high-risk executables that could indicate malicious activity or system compromise
+  where: safe(log.auditd.data.syscall, "") == "execve" && (safe(log.auditd.data.exe, "") contains "/tmp/" || safe(log.auditd.data.exe, "") contains "/dev/shm/" || safe(log.auditd.data.exe, "") contains "wget" || safe(log.auditd.data.exe, "") contains "curl" || safe(log.auditd.data.exe, "") contains "nc" || safe(log.auditd.data.exe, "") contains "ncat")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.auditd.data.syscall.keyword
+          operator: filter_term
+          value: execve
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.host
+    - log.auditd.data.exe

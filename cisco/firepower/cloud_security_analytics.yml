@@ -1,0 +1,42 @@
+- id: 1019
+  dataTypes:
+    - firepower
+  name: Cloud Security Analytics Event Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 3
+  category: Cloud Security
+  technique: Cloud Service Discovery
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/products/security/securex.html
+    - https://attack.mitre.org/techniques/T1526/
+  description: Detects cloud security analytics events including suspicious cloud API usage, unauthorized cloud resource access, and cloud-based threat indicators from SecureX integration
+  where: |
+    (safe(log.eventType, "") == "CLOUD_SECURITY_EVENT" ||
+     safe(log.eventType, "") == "SECUREX_EVENT" ||
+     safe(log.source, "") contains "SecureX" ||
+     safe(log.source, "") contains "Umbrella" ||
+     safe(log.category, "") == "Cloud Security") &&
+    (safe(log.action, "") == "BLOCKED" ||
+     safe(log.action, "") == "ALERT" ||
+     safe(log.severity, "") in ["HIGH", "CRITICAL"] ||
+     safe(log.cloudProvider, "") != "" ||
+     safe(log.cloudService, "") != "" ||
+     safe(log.apiCall, "") != "")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.cloudProvider.keyword
+          operator: filter_term
+          value: '{{log.cloudProvider}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.cloudService
+    - log.apiCall

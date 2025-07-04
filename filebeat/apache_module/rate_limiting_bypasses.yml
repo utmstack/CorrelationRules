@@ -1,0 +1,35 @@
+- id: 1022
+  dataTypes:
+    - apache
+  name: Rate Limiting Bypass Attempts
+  impact:
+    confidentiality: 2
+    integrity: 1
+    availability: 4
+  category: Resource Development
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://httpd.apache.org/docs/2.4/mod/mod_ratelimit.html
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects potential attempts to bypass rate limiting controls through various techniques such as rapid IP rotation, user-agent spoofing, or excessive requests from similar sources. This could indicate automated scanning, brute force attempts, or DDoS preparation.
+  where: >
+    safe(origin.ip, "") != "" && 
+    safe(actionResult, "") == "accepted" &&
+    (safe(log.userAgent, "").contains("curl") || 
+     safe(log.userAgent, "").contains("wget") || 
+     safe(log.userAgent, "").contains("python") ||
+     safe(log.userAgent, "").contains("scanner") ||
+     safe(log.userAgent, "") == "-" ||
+     safe(log.userAgent, "").length() < 10)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.path.keyword
+          operator: filter_term
+          value: '{{origin.path}}'
+      within: now-1m
+      count: 50
+  deduplicateBy:
+    - origin.path
+    - log.userAgent

@@ -1,0 +1,27 @@
+- id: 1016
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky Data Exfiltration Attempts Detection
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+  category: Data Exfiltration
+  technique: Exfiltration Over Alternative Protocol
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1048/
+    - https://support.kaspersky.com/KLMS/8.2/en-US/151684.htm
+  description: Detects potential data exfiltration attempts identified by Kaspersky through suspicious network traffic patterns, large data transfers, or connections to suspicious external destinations
+  where: (safe(log.cat, "") == "NetworkThreat" || safe(log.cs2, "") =~ ".*[Tt]rojan.*" || safe(log.cs2, "") =~ ".*[Bb]ackdoor.*" || safe(log.msg, "") =~ ".*data.*transfer.*" || safe(log.msg, "") =~ ".*exfiltrat.*") && safe(target.ip, "") != "" && safe(log.cefDeviceSeverity, "0") >= "3"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - target.ip

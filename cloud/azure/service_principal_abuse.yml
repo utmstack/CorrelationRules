@@ -1,0 +1,30 @@
+- id: 1017
+  dataTypes:
+    - azure
+  name: Suspicious Service Principal Activity Detected
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Privilege Escalation
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://www.cloud-architekt.net/auditing-of-msi-and-service-principals/
+    - https://attack.mitre.org/techniques/T1098/
+  description: Detects potential abuse of service principals by monitoring for unusual sign-in patterns, permission changes, or suspicious API calls. This could indicate compromised service principal credentials or malicious usage.
+  where: (safe(log.type, "") == "AADServicePrincipalSignInLogs" || (safe(log.operationName, "").contains("ServicePrincipal") && safe(log.category, "") == "Administrative")) && (safe(statusCode, 0) >= 400 || safe(log.resultType, "") == "failure" || safe(log.properties, "").contains("RoleDefinition"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.aadClientId.keyword
+          operator: filter_term
+          value: '{{log.aadClientId}}'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - log.aadClientId
+    - origin.ip

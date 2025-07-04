@@ -1,0 +1,39 @@
+- id: 1008
+  dataTypes:
+    - cs_switch
+  name: IP Source Guard Violation
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Network Security
+  technique: IP Spoofing
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst6500/ios/15-0SY/configuration/guide/15_0_sy_swcg/ip_source_guard.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects IP Source Guard violations which may indicate IP spoofing attempts. IP Source Guard provides security by filtering traffic based on DHCP snooping binding database.
+  where: |
+    (safe(log.eventType, "") == "IPSG" || 
+     safe(log.eventType, "") == "IP_SOURCE_GUARD") && 
+    (safe(log.action, "") == "deny" || 
+     safe(log.action, "") == "drop" ||
+     safe(log.violation, "") == "true" ||
+     contains(safe(log.message, ""), "IP Source Guard") && 
+     (contains(safe(log.message, ""), "deny") || 
+      contains(safe(log.message, ""), "violation") ||
+      contains(safe(log.message, ""), "filtered")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.sourceInterface.keyword
+          operator: filter_term
+          value: '{{log.sourceInterface}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.sourceInterface

@@ -1,0 +1,27 @@
+- id: 1022
+  dataTypes:
+    - ibm-aix
+  name: IBM AIX Performance Anomalies Detection
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: System Performance
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://www.ibm.com/docs/en/aix/7.1.0?topic=overview-error-logging-tasks
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects performance anomalies in IBM AIX systems including high CPU usage, memory exhaustion, and process issues that could indicate resource hijacking or system compromise
+  where: safe(log.eventType, "") != "" && (safe(log.eventType, "").toLowerCase().contains("perf") || safe(log.eventType, "").toLowerCase().contains("cpu") || safe(log.eventType, "").toLowerCase().contains("memory") || safe(log.eventType, "").toLowerCase().contains("vmstat") || safe(log.eventType, "").toLowerCase().contains("iostat") || safe(log.msg, "").toLowerCase().contains("out of memory") || safe(log.msg, "").toLowerCase().contains("cpu threshold") || safe(log.msg, "").toLowerCase().contains("performance degradation"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: from.host.keyword
+          operator: filter_term
+          value: '{{from.host}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - from.host
+    - log.eventType

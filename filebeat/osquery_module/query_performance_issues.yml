@@ -1,0 +1,32 @@
+- id: 1001
+  dataTypes:
+    - osquery
+  name: Osquery Query Performance Issues Detected
+  impact:
+    confidentiality: 0
+    integrity: 1
+    availability: 4
+  category: Performance Monitoring
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/stable/deployment/performance-safety/
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects osquery queries that are consuming excessive CPU time or memory, indicating potential performance issues that could impact system availability. This could be due to poorly optimized queries, excessive JOIN operations, or malicious queries designed to exhaust system resources.
+  where: |
+    (safe(actionResult, "") == "failed" && safe(log.message, "") =~ ".*performance.*") ||
+    (safe(log.eventName, "") == "osquery_schedule" && safe(log.cpu_time, 0) > 10) ||
+    (safe(log.eventName, "") == "watchdog" && safe(log.message, "") =~ ".*(CPU|memory).*limit.*") ||
+    (safe(action, "") == "osquery.result" && safe(log.message, "") =~ ".*query.*timeout.*") ||
+    (safe(log.eventName, "") == "query_performance" && safe(log.duration, 0) > 3000)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.eventName

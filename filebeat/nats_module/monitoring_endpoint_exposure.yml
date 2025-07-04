@@ -1,0 +1,34 @@
+- id: 1021
+  dataTypes:
+    - nats
+  name: NATS Monitoring Endpoint Exposure Detection
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Exposure
+  technique: Network Service Discovery
+  adversary: origin
+  references:
+    - https://docs.nats.io/running-a-nats-service/nats_admin/monitoring
+    - https://attack.mitre.org/techniques/T1046/
+  description: Detects unauthorized access attempts to NATS monitoring endpoints which could expose sensitive server information. The monitoring endpoint provides detailed server metrics and should be restricted to authorized administrators only.
+  where: |
+    safe(origin.url, "") contains "/varz" ||
+    safe(origin.url, "") contains "/connz" ||
+    safe(origin.url, "") contains "/routez" ||
+    safe(origin.url, "") contains "/subsz" ||
+    safe(origin.url, "") contains "/leafz" ||
+    safe(origin.url, "") contains "/gatewayz" ||
+    safe(origin.url, "") contains "/healthz" ||
+    (safe(log.message, "") contains "monitoring" && safe(log.message, "") contains "endpoint")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.host

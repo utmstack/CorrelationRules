@@ -1,0 +1,56 @@
+- id: 1017
+  dataTypes:
+    - apache
+  name: Apache Source Code Disclosure
+  impact:
+    confidentiality: 5
+    integrity: 1
+    availability: 0
+  category: Information Disclosure
+  technique: Source Code Exposure
+  adversary: origin
+  references:
+    - https://owasp.org/www-community/vulnerabilities/Source_code_disclosure
+    - https://attack.mitre.org/techniques/T1005/
+  description: Detects attempts to directly access source code files that should not be publicly accessible, including programming language files, configuration files, and development files
+  where: |
+    safe(origin.path, "") != "" && 
+    (
+      origin.path.endsWith(".php") ||
+      origin.path.endsWith(".asp") ||
+      origin.path.endsWith(".aspx") ||
+      origin.path.endsWith(".jsp") ||
+      origin.path.endsWith(".py") ||
+      origin.path.endsWith(".rb") ||
+      origin.path.endsWith(".pl") ||
+      origin.path.endsWith(".cgi") ||
+      origin.path.endsWith(".inc") ||
+      origin.path.endsWith(".java") ||
+      origin.path.endsWith(".class") ||
+      origin.path.endsWith(".cs") ||
+      origin.path.endsWith(".vb") ||
+      origin.path.endsWith(".config") ||
+      origin.path.endsWith(".properties") ||
+      origin.path.endsWith(".yml") ||
+      origin.path.endsWith(".yaml") ||
+      origin.path.endsWith(".toml") ||
+      origin.path.endsWith(".ini")
+    ) &&
+    safe(log.statusCode, 0) == 200 &&
+    safe(log.userAgent, "") != "" &&
+    !log.userAgent.contains("Googlebot") &&
+    !log.userAgent.contains("bingbot")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.statusCode
+          operator: filter_term
+          value: '200'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - origin.path

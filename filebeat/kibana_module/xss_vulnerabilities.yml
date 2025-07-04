@@ -1,0 +1,45 @@
+- id: 1022
+  dataTypes:
+    - kibana
+  name: XSS Attack Attempt Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 1
+  category: Web Application Attack
+  technique: Cross-Site Scripting
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/kibana/current/security-best-practices.html
+    - https://attack.mitre.org/techniques/T1059/007/
+  description: Detects potential XSS attack attempts in Kibana through malicious script injection in search queries, field formatters, or visualization titles
+  where: |
+    safe(action, "") == "kibana.audit" &&
+    (
+      (safe(log.action, "").contains("saved_object") && safe(log.component, "") == "security") ||
+      safe(log.component, "").contains("visualize") ||
+      safe(log.component, "").contains("discover")
+    ) &&
+    (
+      safe(log.message, "").matches(".*<script.*>.*</script>.*") ||
+      safe(log.message, "").matches(".*javascript:.*") ||
+      safe(log.message, "").matches(".*onerror=.*") ||
+      safe(log.message, "").matches(".*onload=.*") ||
+      safe(log.actionMessage, "").matches(".*<iframe.*") ||
+      safe(log.actionMessage, "").contains("eval(") ||
+      safe(log.actionMessage, "").contains("Function(")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.user.keyword
+          operator: filter_term
+          value: '{{origin.user}}'
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.user
+    - log.message

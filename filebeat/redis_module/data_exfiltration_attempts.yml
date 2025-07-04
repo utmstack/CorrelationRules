@@ -1,0 +1,36 @@
+- id: 1003
+  dataTypes:
+    - redis
+  name: Redis Data Exfiltration Attempt Detected
+  impact:
+    confidentiality: 5
+    integrity: 2
+    availability: 1
+  category: Data Exfiltration
+  technique: Exfiltration Over Alternative Protocol
+  adversary: origin
+  references:
+    - https://book.hacktricks.xyz/network-services-pentesting/6379-pentesting-redis
+    - https://attack.mitre.org/techniques/T1048/
+  description: Detects potential data exfiltration attempts from Redis including mass data dumps, bulk key retrieval operations, or suspicious backup/restore activities that could indicate data theft
+  where: |
+    safe(log.msg, "") != "" && (
+      (safe(log.msg, "").matches("(?i)(DUMP|RESTORE)\\s+") && safe(log.msg, "").length() > 1000) ||
+      (safe(log.msg, "").matches("(?i)KEYS\\s+\\*") && safe(log.severity, "") != "debug") ||
+      (safe(log.msg, "").matches("(?i)(SCAN|HSCAN|SSCAN|ZSCAN)\\s+\\d+\\s+MATCH\\s+\\*\\s+COUNT\\s+[1-9]\\d{3,}")) ||
+      (safe(log.msg, "").matches("(?i)(BGSAVE|SAVE|LASTSAVE)") && safe(log.msg, "").matches("(?i)(remote|external|http|ftp)")) ||
+      (safe(log.msg, "").matches("(?i)SELECT\\s+\\d+") && safe(log.msg, "").matches("(?i)(KEYS\\s+\\*|SCAN\\s+0)")) ||
+      (safe(log.msg, "").matches("(?i)MIGRATE\\s+\\d+\\.\\d+\\.\\d+\\.\\d+")) ||
+      (safe(log.msg, "").matches("(?i)(GET|HGETALL|SMEMBERS|ZRANGE).*") && safe(log.msg, "").matches("(?i)(password|secret|token|api[_-]?key|private[_-]?key)"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - action

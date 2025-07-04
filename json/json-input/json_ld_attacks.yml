@@ -1,0 +1,33 @@
+- id: 1016
+  dataTypes:
+    - json-input
+  name: JSON-LD Context Loading Attack
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Injection Attack
+  technique: JSON-LD Context Poisoning
+  adversary: origin
+  references:
+    - https://github.com/json-ld/json-ld.org/issues/213
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects attempts to load malicious JSON-LD contexts from untrusted HTTP sources or DNS poisoning attempts targeting context URLs. Attackers may try to alter the meaning of data fields through malicious context documents.
+  where: |
+    safe(log.method, "") == "GET" && 
+    safe(log.path, "").contains("@context") && 
+    (safe(log.url, "").startsWith("http://") || 
+     safe(log.context_url, "").startsWith("http://") ||
+     (safe(log.user_agent, "").contains("json-ld") && 
+      safe(log.referrer, "").startsWith("http://")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.context_url

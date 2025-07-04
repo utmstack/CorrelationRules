@@ -1,0 +1,26 @@
+- id: 1005
+  dataTypes:
+    - linux
+  name: Kernel Parameter Modifications
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 4
+  category: Defense Evasion
+  technique: Kernel Modules and Extensions
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+    - https://attack.mitre.org/techniques/T1547/006/
+  description: Detects modifications to kernel parameters or kernel module loading that could indicate rootkit installation or system compromise
+  where: (safe(log.message, "") contains "kernel" && (safe(log.message, "") contains "module" || safe(log.message, "") contains "insmod" || safe(log.message, "") contains "modprobe" || safe(log.message, "") contains "rmmod")) || safe(log.message, "") contains "sysctl" && safe(origin.host, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host

@@ -1,0 +1,40 @@
+- id: 1010
+  dataTypes:
+    - cs_switch
+  name: Port Mirroring Configuration Change
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Network Security
+  technique: Network Sniffing
+  adversary: account
+  references:
+    - https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst6500/ios/15-0SY/configuration/guide/15_0_sy_swcg/span.html
+    - https://attack.mitre.org/techniques/T1040/
+  description: Detects port mirroring (SPAN/RSPAN) configuration changes which could indicate unauthorized network monitoring or data exfiltration attempts.
+  where: |
+    (safe(log.eventType, "") == "CONFIG" || 
+     safe(log.eventType, "") == "SPAN" ||
+     safe(log.facility, "") == "SYS") && 
+    (contains(safe(log.command, ""), "monitor session") || 
+     contains(safe(log.command, ""), "span") ||
+     contains(safe(log.command, ""), "rspan") ||
+     contains(safe(log.message, ""), "SPAN") && 
+     (contains(safe(log.message, ""), "configured") || 
+      contains(safe(log.message, ""), "created") ||
+      contains(safe(log.message, ""), "modified")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: account.name.keyword
+          operator: filter_term
+          value: '{{account.name}}'
+        - field: log.eventType.keyword
+          operator: filter_term
+          value: 'CONFIG'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - account.name
+    - log.sessionId

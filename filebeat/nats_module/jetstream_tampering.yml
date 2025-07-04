@@ -1,0 +1,41 @@
+- id: 1010
+  dataTypes:
+    - nats
+  name: NATS JetStream Tampering Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 4
+  category: Data Integrity
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://docs.nats.io/nats-concepts/jetstream
+    - https://docs.nats.io/running-a-nats-service/configuration/clustering/jetstream_clustering
+    - https://attack.mitre.org/techniques/T1565/001/
+  description: Detects attempts to tamper with NATS JetStream including stream manipulation, consumer deletion, RAFT consensus attacks, or storage corruption attempts
+  where: |
+    safe(action, "") == "nats.log" && (
+      safe(log.msg, "") =~ ".*jetstream.*tamper.*" ||
+      safe(log.msg, "") =~ ".*stream.*unauthorized.*modif.*" ||
+      safe(log.msg, "") =~ ".*consumer.*unauthorized.*delete.*" ||
+      safe(log.msg, "") =~ ".*raft.*consensus.*fail.*" ||
+      safe(log.msg, "") =~ ".*jetstream.*storage.*corrupt.*" ||
+      safe(log.msg, "") =~ ".*jetstream.*integrity.*fail.*" ||
+      safe(log.msg, "") =~ ".*stream.*permission.*denied.*" ||
+      safe(log.msg, "") =~ ".*jetstream.*encryption.*error.*"
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: action.keyword
+          operator: filter_term
+          value: 'nats.log'
+      within: now-30m
+      count: 7
+  deduplicateBy:
+    - origin.host
+    - log.msg

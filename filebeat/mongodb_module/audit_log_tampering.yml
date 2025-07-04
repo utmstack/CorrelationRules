@@ -1,0 +1,31 @@
+- id: 1006
+  dataTypes:
+    - mongodb_module
+  name: MongoDB Audit Log Tampering Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Tampering
+  technique: Indicator Removal on Host
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/core/auditing/
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects attempts to tamper with MongoDB audit logs, including unauthorized access to audit configuration, attempts to disable auditing, or suspicious gaps in audit log sequences. This could indicate an attacker trying to cover their tracks.
+  where: |
+    (safe(log.component, "") == "CONTROL" && safe(log.message, "") =~ ".*audit.*" && (safe(log.message, "") =~ ".*disable.*" || safe(log.message, "") =~ ".*stop.*" || safe(log.message, "") =~ ".*remove.*")) ||
+    (safe(log.component, "") == "ACCESS" && safe(log.message, "") =~ ".*system\\.admin.*" && safe(log.message, "") =~ ".*auditLog.*") ||
+    (safe(severity, "") == "high" && safe(log.message, "") =~ ".*audit.*failed.*") ||
+    (safe(log.component, "") == "COMMAND" && safe(log.message, "") =~ ".*setParameter.*" && safe(log.message, "") =~ ".*auditAuthorizationSuccess.*false.*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.component

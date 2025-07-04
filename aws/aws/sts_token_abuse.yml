@@ -1,0 +1,28 @@
+- id: 1022
+  dataTypes:
+    - aws
+  name: AWS STS Token Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Privilege Escalation
+  technique: T1078.004 - Cloud Accounts
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/IAM/latest/UserGuide/cloudtrail-integration.html
+    - https://attack.mitre.org/techniques/T1078/004/
+    - https://www.elastic.co/security-labs/exploring-aws-sts-assumeroot
+  description: Detects potential abuse of AWS STS AssumeRole operations. This rule identifies when roles are assumed from unusual IP addresses or when there are multiple role assumptions in a short time period, which could indicate lateral movement or privilege escalation.
+  where: safe(log.eventSource, "") == "sts.amazonaws.com" && safe(log.eventName, "") == "AssumeRole" && safe(log.errorCode, "") == "" && safe(log.userIdentitySessionContextAttributesMfaAuthenticated, "") != "true"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.sourceIPAddress.keyword
+          operator: filter_term
+          value: '{{log.sourceIPAddress}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - log.sourceIPAddress
+    - log.requestParametersRoleArn

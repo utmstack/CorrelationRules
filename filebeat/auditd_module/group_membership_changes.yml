@@ -1,0 +1,30 @@
+- id: 1011
+  dataTypes:
+    - auditd
+  name: Group Membership Changes
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 1
+  category: Account Management
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1098/
+    - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/security_guide/sec-understanding_audit_log_files
+  description: Detects modifications to group membership which could be used for privilege escalation or unauthorized access
+  where: safe(log.type, "") == "USER_MGMT" && (safe(log.exe, "") == "/usr/sbin/usermod" || safe(log.exe, "") == "/usr/sbin/gpasswd" || safe(log.exe, "") == "/usr/bin/gpasswd") && safe(log.res, "") == "success"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.type.keyword
+          operator: filter_term
+          value: 'USER_MGMT'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.uid

@@ -1,0 +1,41 @@
+- id: 1021
+  dataTypes:
+    - osquery_module
+  name: File Carving Abuse Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Data Exfiltration
+  technique: Automated Collection
+  adversary: origin
+  references:
+    - https://osquery.readthedocs.io/en/latest/deployment/file-carving/
+    - https://attack.mitre.org/techniques/T1119/
+  description: Detects excessive file carving operations which may indicate data exfiltration attempts. Monitors for multiple carve requests from the same host within a short time period, especially targeting sensitive directories.
+  where: |
+    safe(log.eventName, "") == "carves" && 
+    safe(actionResult, "") == "added" &&
+    (safe(origin.path, "").contains("/etc/") ||
+     safe(origin.path, "").contains("/var/") ||
+     safe(origin.path, "").contains("/home/") ||
+     safe(origin.path, "").contains("/Users/") ||
+     safe(origin.path, "").contains("/root/") ||
+     safe(origin.path, "").contains("passwd") ||
+     safe(origin.path, "").contains("shadow") ||
+     safe(origin.path, "").contains("ssh") ||
+     safe(origin.path, "").contains("private"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.eventName.keyword
+          operator: filter_term
+          value: 'carves'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - origin.path

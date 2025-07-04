@@ -1,0 +1,31 @@
+- id: 1003
+  dataTypes:
+    - auditd
+  name: Unauthorized File Access Attempts
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 1
+  category: File Access
+  technique: T1005
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1005/
+    - https://www.elastic.co/guide/en/beats/filebeat/current/exported-fields-auditd.html
+  description: Detects unauthorized attempts to access sensitive files and directories. This may indicate data exfiltration attempts, privilege escalation, or reconnaissance activities.
+  where: safe(action, "") == "auditd.log" && safe(log.auditd.log.record_type, "") == "PATH" && safe(log.auditd.log.nametype, "") == "NORMAL" && (contains(safe(log.auditd.log.name, ""), "/etc/shadow") || contains(safe(log.auditd.log.name, ""), "/etc/passwd") || contains(safe(log.auditd.log.name, ""), "/etc/sudoers") || contains(safe(log.auditd.log.name, ""), "/.ssh/") || contains(safe(log.auditd.log.name, ""), "/root/") || contains(safe(log.auditd.log.name, ""), "id_rsa") || contains(safe(log.auditd.log.name, ""), ".pem") || contains(safe(log.auditd.log.name, ""), ".key"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.auditd.log.auid.keyword
+          operator: filter_term
+          value: '{{log.auditd.log.auid}}'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.auditd.log.auid
+    - log.auditd.log.name

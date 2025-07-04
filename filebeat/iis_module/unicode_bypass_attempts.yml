@@ -1,0 +1,35 @@
+- id: 1020
+  dataTypes:
+    - iis
+  name: IIS Unicode Bypass Directory Traversal Attack
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Path Traversal
+  technique: Unicode Encoding Bypass
+  adversary: origin
+  references:
+    - https://www.kb.cert.org/vuls/id/111677
+    - https://attack.mitre.org/techniques/T1027/
+  description: Detects Unicode encoding bypass attempts including overlong UTF-8 sequences and alternative Unicode representations used to evade security filters and access restricted files.
+  where: |
+    safe(target.path, "") contains "%c0%af" || safe(target.path, "") contains "%c0%ae" ||
+    safe(target.path, "") contains "%c1%9c" || safe(target.path, "") contains "%c0%2f" ||
+    safe(target.path, "") contains "%c0%5c" || safe(target.path, "") contains "%c1%8s" ||
+    safe(target.path, "") contains "%c1%1c" || safe(target.path, "") contains "%c1%af" ||
+    safe(target.path, "") contains "%e0%80%af" || safe(target.path, "") contains "%f0%80%80%af" ||
+    safe(target.path, "") contains "%u2215" || safe(target.path, "") contains "%u2216" ||
+    safe(target.path, "") contains "%uff0e" || safe(target.path, "") contains "..%c0%af" ||
+    (safe(target.path, "") contains "winnt" && safe(target.path, "") contains "system32") ||
+    (safe(target.path, "") contains "cmd.exe" || safe(target.path, "") contains "command.com")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - target.ip

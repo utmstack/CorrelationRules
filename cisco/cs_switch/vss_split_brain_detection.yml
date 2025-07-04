@@ -1,0 +1,37 @@
+- id: 1017
+  dataTypes:
+    - cs_switch
+  name: VSS Split-Brain Detection
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 5
+  category: Infrastructure
+  technique: System Shutdown/Reboot
+  adversary: origin
+  references:
+    - https://www.cisco.com/c/en/us/support/docs/switches/catalyst-6500-virtual-switching-system-1440/109638-vss-pf-tshoot.html
+    - https://attack.mitre.org/techniques/T1529/
+  description: Detects Virtual Switching System (VSS) split-brain conditions where both switches in a VSS pair become active simultaneously, causing network instability and potential data corruption
+  where: |
+    (safe(log.facility, "") == "VSL" || safe(log.facility, "") == "VSS") && 
+    (contains(safe(log.message, ""), "split-brain") || 
+     contains(safe(log.message, ""), "dual-active") || 
+     contains(safe(log.message, ""), "both active") || 
+     (contains(safe(log.message, ""), "VSL") && contains(safe(log.message, ""), "down")) ||
+     (contains(safe(log.message, ""), "peer") && contains(safe(log.message, ""), "lost"))) &&
+    safe(log.severity, 10) <= 4
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+        - field: log.facility.keyword
+          operator: filter_term
+          value: 'VSL'
+      within: now-5m
+      count: 2
+  deduplicateBy:
+    - origin.hostname
+    - log.message

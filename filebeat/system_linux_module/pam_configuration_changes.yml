@@ -1,0 +1,32 @@
+- id: 1011
+  dataTypes:
+    - linux
+  name: PAM Configuration Changes Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: System Security
+  technique: Defense Evasion
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1556/003/
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+  description: Detects modifications to PAM (Pluggable Authentication Module) configuration files which could indicate an attempt to bypass authentication mechanisms or establish persistence.
+  where: |
+    safe(action, "") == "system.auth" && 
+    safe(log.message, "") contains "pam" &&
+    (safe(log.message, "") contains "/etc/pam.d/" ||
+     safe(log.message, "") contains "pam.conf" ||
+     safe(log.message, "") contains "pam_" && safe(log.message, "") contains "modified")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - origin.file

@@ -1,0 +1,33 @@
+- id: 1013
+  dataTypes:
+    - firewall-fortigate-traffic
+  name: Email Security Threat Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 1
+  category: Phishing
+  technique: T1566 - Phishing
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortimail/7.4.0/log-reference/376951/antispam-logs
+    - https://attack.mitre.org/techniques/T1566/
+  description: Detects email-based security threats including phishing attempts, spam campaigns, and malicious attachments identified by FortiMail security scanners. This rule triggers on banned words, suspicious URLs, and failed authentication checks.
+  where: >
+    (safe(log.type, "") == "spam" && safe(log.msg, "") contains "Detected by BannedWord test") ||
+    (safe(log.msg, "") contains "FortiGuard-WebFilter identified URL") ||
+    (safe(log.msg, "") contains "DMARC: No DKIM signature") ||
+    (safe(log.msg, "") contains "SPF check: Fail") ||
+    (safe(log.msg, "") contains "DKIM invalid") ||
+    (safe(log.subtype, "") == "emailfilter" && safe(action, "") == "blocked")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.from.keyword
+          operator: filter_term
+          value: '{{log.from}}'
+      within: now-6h
+      count: 5
+  deduplicateBy:
+    - log.from
+    - log.subject

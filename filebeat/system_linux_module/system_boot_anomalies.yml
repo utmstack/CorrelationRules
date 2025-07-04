@@ -1,0 +1,31 @@
+- id: 1021
+  dataTypes:
+    - linux
+  name: System Boot Anomalies
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 5
+  category: System Integrity
+  technique: Boot or Logon Initialization Scripts
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1037/
+    - https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-system.html
+  description: Detects anomalous system boot patterns including unexpected reboots, boot failures, kernel panics, or unusual boot sequences that may indicate system compromise or hardware issues
+  where: |
+    (safe(log.message, "") =~ "(?i)(kernel panic|unable to mount root|failed to start|boot failed|emergency mode|rescue mode)" ||
+     safe(log.message, "") =~ "(?i)(unexpected system reboot|power loss detected|fsck failed|filesystem errors detected)" ||
+     (safe(action, "") == "system.syslog" && safe(log.message, "") =~ "(?i)(kernel:.*oops|kernel:.*bug|kernel:.*call trace)") ||
+     (safe(log.program, "") == "systemd" && safe(log.message, "") =~ "(?i)(failed to start|dependency failed|timeout|activating failed)") ||
+     (safe(log.message, "") =~ "(?i)(grub.*error|bootloader.*fail|initramfs.*error|dracut.*warning)"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.host

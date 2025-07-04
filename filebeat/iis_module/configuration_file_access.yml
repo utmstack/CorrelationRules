@@ -1,0 +1,50 @@
+- id: 1003
+  dataTypes:
+    - iis
+  name: IIS Configuration File Access Attempt
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+  category: Discovery
+  technique: System Information Discovery
+  adversary: target
+  references:
+    - https://docs.microsoft.com/en-us/iis/configuration/
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects attempts to access sensitive IIS configuration files that could expose system information or credentials
+  where: |
+    safe(target.path, "") != "" &&
+    (
+      contains(lower(target.path), "web.config") ||
+      contains(lower(target.path), "applicationhost.config") ||
+      contains(lower(target.path), "machine.config") ||
+      contains(lower(target.path), ".config") ||
+      contains(lower(target.path), "global.asa") ||
+      contains(lower(target.path), "global.asax") ||
+      contains(lower(target.path), ".ini") ||
+      contains(lower(target.path), ".xml") ||
+      contains(lower(target.path), ".bak") ||
+      contains(lower(target.path), ".backup") ||
+      contains(lower(target.path), ".old") ||
+      contains(lower(target.path), ".orig") ||
+      contains(lower(target.path), ".save") ||
+      contains(lower(target.path), ".swp") ||
+      contains(lower(target.path), ".tmp") ||
+      contains(lower(target.path), "connectionstrings") ||
+      contains(lower(target.path), "appsettings")
+    ) &&
+    safe(action, "") == "get" &&
+    safe(statusCode, 0) != 404 &&
+    safe(statusCode, 0) != 403
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.ip.keyword
+          operator: filter_term
+          value: '{{target.ip}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - target.ip
+    - target.path

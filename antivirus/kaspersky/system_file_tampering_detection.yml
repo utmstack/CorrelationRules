@@ -1,0 +1,40 @@
+- id: 1006
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky System File Tampering Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 4
+  category: File Integrity Monitoring
+  technique: System Binary Proxy Execution
+  adversary: origin
+  references:
+    - https://support.kaspersky.com/kwts/6.1/267200
+    - https://attack.mitre.org/techniques/T1218/
+    - https://attack.mitre.org/techniques/T1036/
+  description: Detects attempts to tamper with critical system files, Windows services, or protected system components. This includes unauthorized modifications to system binaries, service configurations, or attempts to manipulate security-critical files.
+  where: |
+    safe(log.signatureID, "") != "" && 
+    (
+      contains(safe(log.msg, ""), "system file") ||
+      contains(safe(log.msg, ""), "critical file") ||
+      contains(safe(log.msg, ""), "protected file") ||
+      contains(safe(log.msg, ""), "service tamper") ||
+      contains(safe(log.cs1, ""), "SYSTEM_MOD") ||
+      contains(safe(log.cs4, ""), "SystemFile") ||
+      contains(safe(log.descMsg, ""), "system modification") ||
+      contains(safe(log.descMsg, ""), "unauthorized change") ||
+      (safe(log.cat, "") == "Behavior Detection" && contains(safe(log.msg, ""), "modify"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.cs4

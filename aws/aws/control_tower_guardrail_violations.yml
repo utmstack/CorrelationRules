@@ -1,0 +1,27 @@
+- id: 1030
+  dataTypes:
+    - aws
+  name: AWS Control Tower Guardrail Violations
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Compliance
+  technique: Security Control Bypass
+  adversary: origin
+  references:
+    - https://docs.aws.amazon.com/controltower/latest/userguide/guardrails.html
+    - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects violations of AWS Control Tower guardrails which are preventive or detective controls that help govern resources and monitor compliance across AWS accounts
+  where: safe(log.eventSource, "") == "controltower.amazonaws.com" && (safe(log.eventName, "").contains("GuardrailViolation") || safe(log.eventName, "") == "DisableGuardrail" || (safe(log.eventSource, "") == "config.amazonaws.com" && safe(log.configRuleName, "").startsWith("AWSControlTower")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.userIdentityAccountId.keyword
+          operator: filter_term
+          value: '{{log.userIdentityAccountId}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - log.userIdentityAccountId
+    - log.awsRegion

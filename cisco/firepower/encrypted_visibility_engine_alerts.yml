@@ -1,0 +1,37 @@
+- id: 1015
+  dataTypes:
+    - firepower
+  name: Encrypted Visibility Engine (EVE) Malicious Traffic Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Encrypted Threats
+  technique: Encrypted Channel
+  adversary: origin
+  references:
+    - https://secure.cisco.com/secure-firewall/docs/encrypted-visibility-engine
+    - https://attack.mitre.org/techniques/T1573/
+  description: Detects when Encrypted Visibility Engine identifies malicious encrypted traffic based on TLS fingerprinting, threat scores, and machine learning analysis without decryption
+  where: |
+    safe(log.eventType, "") == "EVE_EVENT" && 
+    (safe(log.eveThreatScore, 0) >= 70 || 
+     safe(log.eveDisposition, "") == "MALICIOUS" ||
+     safe(log.eveAction, "") == "BLOCK") &&
+    (safe(log.tlsFingerprint, "") != "" || 
+     safe(log.encryptedMalwareConfidence, 0) >= 80)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.tlsFingerprint

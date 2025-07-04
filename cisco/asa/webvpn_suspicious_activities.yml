@@ -1,0 +1,33 @@
+- id: 1019
+  dataTypes:
+    - asa
+  name: WebVPN Suspicious Activities and Session Anomalies
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Lateral Movement
+  technique: Remote Services
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1021/
+    - https://www.cisco.com/c/en/us/td/docs/security/asa/syslog/b_syslog/syslogs8.html
+  description: Detects suspicious WebVPN activities including failed sessions, resource exhaustion, and abnormal session patterns that may indicate unauthorized access attempts or denial of service.
+  where: |
+    safe(log.message_id, "") =~ "^716" &&
+    (safe(log.message_id, "") == "716007" ||
+     safe(log.message, "") =~ "(?i)(webvpn.*unable.*create|session.*limit.*reached|webvpn.*fail|maximum.*login.*reached|webvpn.*error)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.message_id.keyword
+          operator: filter_match
+          value: '716*'
+      within: now-2h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - origin.user

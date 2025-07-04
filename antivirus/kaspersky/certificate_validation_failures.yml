@@ -1,0 +1,47 @@
+- id: 1008
+  dataTypes:
+    - antivirus-kaspersky
+  name: Kaspersky Certificate Validation Failures
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Certificate Security
+  technique: Subvert Trust Controls
+  adversary: origin
+  references:
+    - https://support.kaspersky.com/KATA/3.6/en-US/175942.htm
+    - https://attack.mitre.org/techniques/T1553/
+    - https://attack.mitre.org/techniques/T1553/004/
+  description: Detects certificate validation failures that may indicate attempts to bypass security controls, man-in-the-middle attacks, or use of fraudulent certificates. This includes invalid SSL certificates, expired certificates, or suspicious certificate chains.
+  where: |
+    safe(log.signatureID, "") != "" && 
+    (
+      contains(safe(log.msg, ""), "certificate") ||
+      contains(safe(log.msg, ""), "SSL") ||
+      contains(safe(log.msg, ""), "TLS") ||
+      contains(safe(log.cs1, ""), "CERT_") ||
+      contains(safe(log.cs4, ""), "Certificate") ||
+      contains(safe(log.descMsg, ""), "certificate validation") ||
+      contains(safe(log.descMsg, ""), "invalid cert") ||
+      (safe(log.cat, "") == "Certcheck" || safe(log.cat, "") == "Certificate Check")
+    ) &&
+    (
+      contains(safe(log.msg, ""), "invalid") ||
+      contains(safe(log.msg, ""), "expired") ||
+      contains(safe(log.msg, ""), "suspicious") ||
+      contains(safe(log.msg, ""), "failed") ||
+      contains(safe(log.msg, ""), "untrusted") ||
+      contains(safe(log.cs1, ""), "FAIL")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: target.host.keyword
+          operator: filter_term
+          value: '{{target.host}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - target.host
+    - log.msg

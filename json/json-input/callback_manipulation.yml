@@ -1,0 +1,43 @@
+- id: 1025
+  dataTypes:
+    - json-input
+  name: JSON Callback Manipulation Attack
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Code Injection
+  technique: JSONP Injection
+  adversary: origin
+  references:
+    - https://securitycafe.ro/2017/01/18/practical-jsonp-injection/
+    - https://cheatsheetseries.owasp.org/cheatsheets/AJAX_Security_Cheat_Sheet.html
+    - https://attack.mitre.org/techniques/T1059/007/
+  description: Detects attempts to manipulate JSON callbacks (JSONP) to execute arbitrary JavaScript code. This includes injecting malicious callback functions, manipulating existing callbacks, or exploiting JSONP endpoints for cross-site scripting attacks.
+  where: >
+    (safe(log.callback, "") contains "<script" ||
+     safe(log.callback, "") contains "javascript:" ||
+     safe(log.callback, "") contains "eval(" ||
+     safe(log.jsonp_callback, "") !~ "^[a-zA-Z_$][a-zA-Z0-9_$]*$" ||
+     safe(log.error, "") contains "invalid callback" ||
+     safe(log.security_event, "") == "jsonp_injection" ||
+     (safe(log.request_parameter, "") == "callback" && 
+      (safe(log.parameter_value, "") contains "alert(" || 
+       safe(log.parameter_value, "") contains "document." ||
+       safe(log.parameter_value, "") contains "window.")) ||
+     safe(log.csp_violation, "") contains "jsonp" ||
+     safe(log.blocked_action, "") == "callback_execution")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.target_domain.keyword
+          operator: filter_term
+          value: '{{log.target_domain}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.callback

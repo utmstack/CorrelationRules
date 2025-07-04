@@ -1,0 +1,29 @@
+- id: 1022
+  dataTypes:
+    - firewall-fortigate-traffic
+  name: High Availability Split-Brain Condition Detected
+  impact:
+    confidentiality: 0
+    integrity: 5
+    availability: 5
+  category: System Integrity
+  technique: Service Disruption
+  adversary: origin
+  references:
+    - https://community.fortinet.com/t5/FortiGate/Technical-Tip-High-Availability-Split-Brain/ta-p/214842
+    - https://docs.fortinet.com/document/fortigate/7.6.0/new-features/474848/backup-heartbeat-interface-mitigates-split-brain-scenarios
+  description: Split-brain condition detected in FortiGate HA cluster where both units are acting as primary. This critical condition causes IP conflicts, network disruption, and potential data corruption. Immediate remediation is required.
+  where: safe(log.type, "") == "event" && safe(log.subtype, "") == "ha" && (safe(log.msg, "") contains "backup heartbeat interfaces are used" || (safe(log.ha_role, "") == "primary" && safe(log.logdesc, "") contains "HA device interface peer information") || safe(log.msg, "") contains "both devices acting as primary")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.subtype.keyword
+          operator: filter_term
+          value: 'ha'
+        - field: log.ha_role.keyword
+          operator: filter_term
+          value: 'primary'
+      within: now-5m
+      count: 2
+  deduplicateBy:
+    - log.devintfname

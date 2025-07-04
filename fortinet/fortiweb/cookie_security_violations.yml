@@ -1,0 +1,43 @@
+- id: 1010
+  dataTypes:
+    - firewall-fortiweb
+  name: FortiWeb Cookie Security Violation Detected
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 1
+  category: Web Application Security
+  technique: Cookie Manipulation
+  adversary: origin
+  references:
+    - https://docs.fortinet.com/document/fortiweb/7.2.2/log-message-reference/252057/event
+    - https://help.fortinet.com/fweb/583/Content/FortiWeb/fortiweb-admin/cookie_security.htm
+    - https://attack.mitre.org/techniques/T1539/
+  description: Detects cookie security violations including cookie poisoning, cookie tampering, missing security attributes, and unauthorized cookie manipulation attempts on FortiWeb protected applications
+  where: |
+    safe(origin.ip, "") != "" && 
+    safe(log.type, "") == "attack" &&
+    (
+      safe(log.subtype, "") == "cookie-security" ||
+      safe(log.msg, "") contains "cookie" ||
+      safe(log.msg, "") contains "Cookie" ||
+      safe(log.msg, "") contains "poisoning" ||
+      safe(log.msg, "") contains "tampering" ||
+      safe(log.attack_type, "") == "cookie_poisoning" ||
+      safe(log.trigger_policy, "") contains "cookie"
+    ) &&
+    safe(action, "") in ["deny", "alert", "block"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.subtype.keyword
+          operator: filter_term
+          value: 'cookie-security'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.cookie_name

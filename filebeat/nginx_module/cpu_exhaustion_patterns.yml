@@ -1,0 +1,55 @@
+- id: 1025
+  dataTypes:
+    - nginx
+  name: CPU Exhaustion Attack Pattern
+  impact:
+    confidentiality: 0
+    integrity: 1
+    availability: 5
+  category: Denial of Service
+  technique: Service Exhaustion Flood
+  adversary: origin
+  references:
+    - https://www.cybersecurity-help.cz/vulnerabilities/20196/
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects CPU exhaustion attack patterns targeting nginx, including HTTP/2 vulnerabilities, complex regex processing, compression bombs, and SSL/TLS renegotiation attacks that consume excessive CPU resources.
+  where: |
+    safe(origin.ip, "") != "" &&
+    (
+      (safe(log.severityLabel, "") == "error" && 
+       safe(log.message, "") != "" &&
+       (
+         log.message.contains("SSL_do_handshake() failed") ||
+         log.message.contains("peer closed connection in SSL handshake") ||
+         log.message.contains("SSL renegotiation disabled") ||
+         log.message.contains("decompression failed") ||
+         log.message.contains("regex") && log.message.contains("timed out") ||
+         log.message.contains("worker process") && log.message.contains("respawned")
+       )
+      ) ||
+      (safe(protocol, "") == "HTTP/2.0" && 
+       safe(statusCode, 0) >= 400 &&
+       safe(log.message, "") != "" &&
+       (
+         log.message.contains("client sent invalid") ||
+         log.message.contains("HTTP/2 error")
+       )
+      ) ||
+      (safe(action, "") != "" && 
+       safe(log.request, "") != "" &&
+       (
+         log.request.contains("%") && log.request.contains("%") && log.request.contains("%") ||
+         log.request.contains("..") && log.request.contains("..") && log.request.contains("..")
+       )
+      )
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 30
+  deduplicateBy:
+    - origin.ip

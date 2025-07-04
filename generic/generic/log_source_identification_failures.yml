@@ -1,0 +1,29 @@
+- id: 1016
+  dataTypes:
+    - generic
+  name: Log Source Identification Failures
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 2
+  category: System
+  technique: Resource Consumption
+  adversary: origin
+  references:
+    - https://www.splunk.com/en_us/blog/learn/syslog.html
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects when log sources cannot be properly identified due to missing or malformed headers, potentially indicating misconfigured systems or attempts to hide the true source of logs
+  where: |
+    (safe(log.facility, "") == "" || safe(log.severity, "") == "") &&
+    safe(log.message, "") != "" &&
+    (safe(log.hostname, "") == "" || safe(log.hostname, "") == "unknown")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip

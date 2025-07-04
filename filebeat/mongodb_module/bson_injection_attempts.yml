@@ -1,0 +1,30 @@
+- id: 1015
+  dataTypes:
+    - mongodb
+  name: MongoDB BSON Injection Attack Pattern
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Injection Attack
+  technique: T1190 - Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://www.mongodb.com/docs/manual/reference/bson-types/
+    - https://attack.mitre.org/techniques/T1190/
+  description: Detects potential BSON injection attempts through malformed queries, special operators abuse, or type confusion attacks
+  where: safe(log.component, "") == "QUERY" && (safe(log.msg, "") contains("$ne") || safe(log.msg, "") contains("$gt") || safe(log.msg, "") contains("$regex") || safe(log.msg, "") contains("$where") || safe(log.msg, "") contains("{$") || safe(log.msg, "") contains("null}")) && safe(severity, "") == "high"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.component.keyword
+          operator: filter_term
+          value: 'QUERY'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.host
+    - log.ctx

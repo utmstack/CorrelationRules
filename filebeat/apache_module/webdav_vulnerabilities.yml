@@ -1,0 +1,61 @@
+- id: 1010
+  dataTypes:
+    - apache
+  name: WebDAV Vulnerability Exploitation
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Web Application Attack
+  technique: Exploitation of Remote Services
+  adversary: origin
+  references:
+    - https://httpd.apache.org/docs/2.4/mod/mod_dav.html
+    - https://attack.mitre.org/techniques/T1210/
+  description: Detects attempts to exploit WebDAV vulnerabilities including unauthorized file uploads, LOCK method abuse for denial of service, PROPFIND information disclosure, or attempts to modify server configuration through WebDAV.
+  where: |
+    (
+      safe(action, "") == "put" && 
+      (
+        safe(origin.path, "").endsWith(".php") || 
+        safe(origin.path, "").endsWith(".jsp") || 
+        safe(origin.path, "").endsWith(".asp") || 
+        safe(origin.path, "").endsWith(".aspx") ||
+        safe(origin.path, "").endsWith(".exe") ||
+        safe(origin.path, "").endsWith(".sh") ||
+        safe(origin.path, "").endsWith(".pl")
+      )
+    ) ||
+    (
+      safe(log.userAgent, "").contains("PROPFIND") || 
+      safe(log.userAgent, "").contains("PROPPATCH") ||
+      safe(log.userAgent, "").contains("MKCOL") ||
+      safe(log.userAgent, "").contains("COPY") ||
+      safe(log.userAgent, "").contains("MOVE") ||
+      safe(log.userAgent, "").contains("LOCK") ||
+      safe(log.userAgent, "").contains("UNLOCK")
+    ) ||
+    (
+      safe(origin.path, "").contains("_vti_") || 
+      safe(origin.path, "").contains("/_dav/") ||
+      safe(origin.path, "").contains("/webdav/")
+    ) ||
+    (
+      safe(action, "") == "delete" && 
+      (
+        safe(origin.path, "").contains(".htaccess") || 
+        safe(origin.path, "").contains("web.config") ||
+        safe(origin.path, "").contains(".htpasswd")
+      )
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-20m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - action

@@ -1,0 +1,33 @@
+- id: 1024
+  dataTypes:
+    - nats
+  name: NATS Operator Security Issues Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Privilege Escalation
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/jwt
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects security issues related to NATS operator functionality including operator JWT violations, signing key issues, or attempts to impersonate operator roles which could compromise the entire NATS security model.
+  where: |
+    safe(log.message, "") contains "operator JWT" ||
+    safe(log.message, "") contains "operator key" ||
+    safe(log.message, "") contains "operator signing" ||
+    safe(log.message, "") contains "operator claim" ||
+    safe(log.message, "") contains "invalid operator" ||
+    safe(log.message, "") contains "operator mismatch" ||
+    (safe(log.message, "") contains "operator" && (safe(log.message, "") contains "unauthorized" || safe(log.message, "") contains "denied"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.host
