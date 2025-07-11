@@ -1,0 +1,31 @@
+- id: 1001
+  dataTypes:
+  - hids
+  name: HIDS Agent Disconnection Detected
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 3
+  category: System Availability
+  technique: Defense Evasion
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1562/001/
+  description: Detects when HIDS agents disconnect from the management server, which
+    could indicate an attacker attempting to disable security monitoring or a system
+    failure
+  where: "safe(log.eventType, \"\") == \"agent_disconnected\" || \nsafe(log.status,\
+    \ \"\") == \"disconnected\" ||\nsafe(log.agent_status, \"\") == \"offline\" ||\n\
+    (safe(log.message, \"\") contains \"agent disconnected\" || \n safe(log.message,\
+    \ \"\") contains \"lost connection to agent\")\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    within: now-10m
+    count: 3
+  deduplicateBy:
+  - origin.ip
+  - destination.hostname

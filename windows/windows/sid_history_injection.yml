@@ -1,0 +1,31 @@
+- id: 1008
+  dataTypes:
+    - wineventlog
+  name: SID History Injection Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 2
+  category: Privilege Escalation
+  technique: SID History Injection
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1134/005/
+    - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4765
+    - https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4766
+    - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=4765
+  description: Detects attempts to add SID History to an account, which can be used for privilege escalation. SID History injection allows attackers to inherit permissions from privileged accounts without being members of privileged groups. Both successful (4765) and failed (4766) attempts are monitored.
+  where: |
+    safe(log.winlogEventId, "") in ["4765", "4766"] &&
+    safe(log.winlogChannel, "") == "Security"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.winlogEventDataTargetUserName.keyword
+          operator: filter_term
+          value: '{{log.winlogEventDataTargetUserName}}'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - log.winlogEventDataTargetUserName
+    - origin.host

@@ -1,0 +1,44 @@
+- id: 1022
+  dataTypes:
+    - cef
+  name: CEF User Agent Anomaly Detection
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: Web Security
+  technique: T1071.001 - Application Layer Protocol: Web Protocols
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1071/001/
+    - https://learn.microsoft.com/en-us/azure/sentinel/cef-name-mapping
+  description: Detects anomalous user agent strings in CEF logs that may indicate malicious scripts, bots, vulnerability scanners, or attempts to bypass security controls through user agent spoofing.
+  where: |
+    safe(log.dataType, "") == "cef" && 
+    safe(log.requestClientApplication, "") != "" &&
+    (
+      contains(lower(safe(log.requestClientApplication, "")), "sqlmap") ||
+      contains(lower(safe(log.requestClientApplication, "")), "nikto") ||
+      contains(lower(safe(log.requestClientApplication, "")), "havij") ||
+      contains(lower(safe(log.requestClientApplication, "")), "acunetix") ||
+      contains(lower(safe(log.requestClientApplication, "")), "nessus") ||
+      contains(lower(safe(log.requestClientApplication, "")), "metasploit") ||
+      contains(lower(safe(log.requestClientApplication, "")), "python-requests") ||
+      contains(lower(safe(log.requestClientApplication, "")), "curl/") ||
+      contains(lower(safe(log.requestClientApplication, "")), "wget/") ||
+      contains(safe(log.requestClientApplication, ""), "${") ||
+      contains(safe(log.requestClientApplication, ""), "{{") ||
+      size(safe(log.requestClientApplication, "")) > 500 ||
+      size(safe(log.requestClientApplication, "")) < 10
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.requestClientApplication

@@ -1,0 +1,34 @@
+- id: 1016
+  dataTypes:
+    - rfc-5425
+  name: SNI Spoofing Attempts Detected
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Network Security
+  technique: Server Name Indication Spoofing
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5425
+    - https://attack.mitre.org/techniques/T1090/
+  description: Detects potential SNI (Server Name Indication) spoofing attempts where the SNI field does not match the certificate common name or where multiple different SNI values are used from the same source in a short time period
+  where: |
+    safe(log.tls_sni, "") != "" && 
+    safe(log.tls_cert_cn, "") != "" && 
+    safe(log.tls_sni, "") != safe(log.tls_cert_cn, "") &&
+    !safe(log.tls_cert_san, "").contains(safe(log.tls_sni, ""))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.tls_sni.keyword
+          operator: filter_term_not
+          value: '{{log.tls_sni}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.tls_sni

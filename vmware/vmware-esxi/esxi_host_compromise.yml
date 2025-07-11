@@ -1,0 +1,43 @@
+- id: 1008
+  dataTypes:
+    - vmware-esxi
+  name: ESXi Host Compromise Indicators
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Execution
+  technique: Command and Scripting Interpreter
+  adversary: origin
+  references:
+    - https://www.forescout.com/blog/vmware-esxi-servers-a-major-attack-vector-for-ransomware/
+    - https://cloud.google.com/blog/topics/threat-intelligence/vmware-esxi-zero-day-bypass
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects indicators of ESXi host compromise including ransomware preparation activities, suspicious file operations on virtual machines, logging tampering, and abnormal system changes. Monitors for encryption tools, VM power operations, and file system modifications.
+  where: |
+    (safe(log.message, "") contains("encrypt.sh") ||
+     safe(log.message, "") contains("encrypt") ||
+     safe(log.message, "") contains(".vmdk") ||
+     safe(log.message, "") contains(".vswp") ||
+     safe(log.message, "") contains("esxcli vm process list") ||
+     safe(log.message, "") contains("esxcli vm process kill") ||
+     safe(log.message, "") contains("Device I/O error") ||
+     safe(log.message, "") contains("Medium Error Detected") ||
+     safe(log.message, "") contains("Uncorrectable error in data") ||
+     safe(log.message, "") contains("Disk error detected") ||
+     safe(log.message, "") contains("Unable to read partition table") ||
+     safe(log.message, "") contains("logging service disabled") ||
+     safe(log.message, "") contains("log events removed") ||
+     (safe(log.process, "") == "vmkernel" && safe(log.message, "") contains("SCSI sense")) ||
+     (safe(log.eventInfo, "") contains("ransom") || safe(log.eventInfo, "") contains("encrypt"))) &&
+    safe(origin.hostname, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.hostname

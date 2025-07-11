@@ -1,0 +1,40 @@
+- id: 1008
+  dataTypes:
+    - rfc-5425
+  name: RFC-5425 Octet Counting Mismatches
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 3
+  category: Protocol Violations
+  technique: Data Integrity Attack
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5425#section-4.3.1
+    - https://datatracker.ietf.org/doc/html/rfc6587#section-3.4.1
+    - https://attack.mitre.org/techniques/T1565/002/
+  description: Detects mismatches in octet counting for RFC-5425 framed messages, which could indicate message tampering, injection attacks, or attempts to bypass message boundaries. This is critical for maintaining message integrity.
+  where: |
+    safe(log.protocol, "") == "rfc-5425" && 
+    safe(log.framing, "") == "octet-counting" && (
+      safe(log.declared_octets, 0) != safe(log.actual_octets, 0) ||
+      safe(log.octet_count_error, false) == true ||
+      (safe(log.declared_octets, 0) > 0 && safe(log.declared_octets, 0) < safe(log.min_message_size, 480)) ||
+      safe(log.octet_overflow, false) == true ||
+      safe(log.negative_octet_count, false) == true
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.framing.keyword
+          operator: filter_term
+          value: 'octet-counting'
+      within: now-10m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.connection_id

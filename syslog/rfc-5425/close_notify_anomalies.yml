@@ -1,0 +1,41 @@
+- id: 1025
+  dataTypes:
+  - rfc-5425
+  name: RFC-5425 TLS Close Notify Anomalies
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+  category: TLS Security
+  technique: Connection Termination Attack
+  adversary: origin
+  references:
+  - https://datatracker.ietf.org/doc/html/rfc5425
+  - https://attack.mitre.org/techniques/T1499/001/
+  description: Detects anomalous patterns in TLS close_notify alerts that may indicate
+    truncation attacks, premature connection termination, or DoS attempts in RFC-5425
+    syslog communications
+  where: "(safe(log.tls_alert_code, 0) == 0 && safe(log.tls_alert_level, \"\") ==\
+    \ \"fatal\" ||\n safe(log.tls_close_notify_count, 0) > 10 ||\n safe(log.message,\
+    \ \"\") =~ \".*close.*notify.*without.*data.*\" ||\n safe(log.tls_error, \"\"\
+    ) =~ \".*unexpected.*close.*\" ||\n safe(log.tls_alert_description, \"\") == \"\
+    close_notify\" && safe(log.bytes_sent, 0) < 100 ||\n safe(log.connection_duration,\
+    \ 0) < 1000 && safe(log.tls_alert_description, \"\") == \"close_notify\" ||\n\
+    \ safe(log.tls_error, \"\") =~ \".*truncat.*attack.*\" ||\n safe(log.message,\
+    \ \"\") =~ \".*premature.*terminat.*\" ||\n safe(log.tls_bidirectional_close,\
+    \ false) == false ||\n safe(log.tls_close_without_alert, false) == true) &&\n\
+    safe(log.protocol, \"\") == \"syslog-tls\"\n"
+  afterEvents:
+  - indexPattern: v11-log-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.tls_alert_description.keyword
+      operator: filter_term
+      value: close_notify
+    within: now-5m
+    count: 20
+  deduplicateBy:
+  - origin.ip
+  - destination.port

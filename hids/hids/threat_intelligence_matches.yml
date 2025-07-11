@@ -1,0 +1,36 @@
+- id: 1016
+  dataTypes:
+  - hids
+  name: Threat Intelligence IOC Match Detected
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+  category: Threat Intelligence
+  technique: Indicator Removal on Host
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1070/
+  - https://www.crowdstrike.com/cybersecurity-101/threat-intelligence/indicators-of-compromise-ioc/
+  description: Detects when HIDS identifies a match against known threat intelligence
+    indicators of compromise (IOCs) including malicious IPs, domains, file hashes,
+    or behavioral patterns
+  where: "safe(log.eventType, \"\") == \"threat_intel_match\" || \nsafe(log.alert_type,\
+    \ \"\") == \"ioc_match\" ||\n(safe(log.threat_score, 0) >= 80 && safe(log.ioc_type,\
+    \ \"\") != \"\") ||\n(safe(log.match_type, \"\") in [\"hash_match\", \"ip_match\"\
+    , \"domain_match\", \"url_match\"] && safe(log.threat_confidence, \"\") == \"\
+    high\")\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.ioc_value.keyword
+      operator: filter_term
+      value: '{{log.ioc_value}}'
+    within: now-1h
+    count: 3
+  deduplicateBy:
+  - origin.ip
+  - log.ioc_value

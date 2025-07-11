@@ -1,0 +1,37 @@
+- id: 1023
+  dataTypes:
+  - hids
+  name: HIDS Cluster Synchronization Failures
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 3
+  category: System Availability
+  technique: T1498 - Network Denial of Service
+  adversary: destination
+  references:
+  - https://documentation.wazuh.com/current/development/wazuh-cluster.html
+  - https://attack.mitre.org/techniques/T1498/
+  description: Detects cluster synchronization issues between HIDS nodes that could
+    lead to inconsistent security policies and missed detections
+  where: "safe(log.component, \"\") == \"cluster\" &&  (safe(log.message, \"\") contains\
+    \ \"synchronization failed\" ||\n safe(log.message, \"\") contains \"timeout error\"\
+    \ ||\n safe(log.message, \"\") contains \"max_zip_size\" ||\n safe(log.message,\
+    \ \"\") contains \"cluster connection lost\" ||\n safe(log.error_type, \"\") ==\
+    \ \"SYNC_ERROR\" ||\n safe(log.cluster_status, \"\") == \"disconnected\" ||\n\
+    \ safe(log.message, \"\") contains \"worker disconnected\" ||\n safe(log.message,\
+    \ \"\") contains \"master unreachable\")\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: destination.ip.keyword
+      operator: filter_term
+      value: '{{destination.ip}}'
+    - field: log.component.keyword
+      operator: filter_term
+      value: cluster
+    within: now-1h
+    count: 5
+  deduplicateBy:
+  - destination.ip
+  - log.cluster_node

@@ -1,0 +1,43 @@
+- id: 1020
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Meta SD-ID Violations
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Metadata Manipulation
+  technique: System Information Spoofing
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-7.1.3
+  description: Detects violations in the meta SD-ID structured data element, including invalid sequence IDs, system uptime values, or language codes that may indicate log tampering or system impersonation
+  where: |
+    safe(log.sd_id, "") == "meta" && (
+      (safe(log.sequenceId, "") != "" && 
+       (int(safe(log.sequenceId, "0")) < int(safe(log.prev_sequenceId, "1")) || 
+        int(safe(log.sequenceId, "0")) > int(safe(log.prev_sequenceId, "0")) + 1000)) ||
+      (safe(log.sysUpTime, "") != "" && 
+       (int(safe(log.sysUpTime, "0")) < 0 || 
+        int(safe(log.sysUpTime, "0")) > 315360000)) ||
+      (safe(log.language, "") != "" && 
+       (!safe(log.language, "") matches "^[a-z]{2,3}(-[A-Z]{2})?$" ||
+        safe(log.language, "") in ["xx", "zz", "test", "null", "undefined"])) ||
+      (safe(log.structured_data, "") matches "\\[meta[^\\]]*\\].*\\[meta[^\\]]*\\]") ||
+      (safe(log.structured_data, "") matches "\\[meta[^\\]]*sequenceId=\"[^0-9\"]+\"") ||
+      (safe(log.structured_data, "") matches "\\[meta[^\\]]*sysUpTime=\"-[0-9]+\"")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.hostname.keyword
+          operator: filter_term
+          value: '{{log.hostname}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.hostname

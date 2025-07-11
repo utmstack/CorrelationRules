@@ -1,0 +1,42 @@
+- id: 1013
+  dataTypes:
+  - hids
+  name: Docker Container Security Events
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+  category: Container Security
+  technique: T1610 - Deploy Container
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1610/
+  - https://docs.docker.com/engine/security/
+  - https://documentation.wazuh.com/current/user-manual/capabilities/container-security/index.html
+  description: Monitors Docker container security events including unauthorized container
+    deployment, privilege escalation within containers, container escape attempts,
+    or suspicious container configurations
+  where: "safe(log.eventType, \"\") in [\"docker_event\", \"container_security\"]\
+    \ &&\n(\n  safe(log.action, \"\") in [\"container_create\", \"container_start\"\
+    ] && safe(log.privileged, false) == true ||\n  safe(log.action, \"\") == \"container_exec\"\
+    \ && safe(log.user, \"\") == \"root\" ||\n  safe(log.capabilities, \"\") contains_any\
+    \ [\"CAP_SYS_ADMIN\", \"CAP_SYS_PTRACE\", \"CAP_SYS_MODULE\"] ||\n  safe(log.mountSource,\
+    \ \"\") in [\"/\", \"/etc\", \"/var\", \"/proc\", \"/sys\"] ||\n  safe(log.imageTag,\
+    \ \"\") in [\"latest\", \"dev\", \"test\"] && safe(log.environment, \"\") == \"\
+    production\" ||\n  safe(log.containerEscape, false) == true ||\n  safe(log.seccompProfile,\
+    \ \"\") == \"unconfined\"\n)\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.containerID.keyword
+      operator: filter_term
+      value: '{{log.containerID}}'
+    within: now-30m
+    count: 3
+  deduplicateBy:
+  - origin.ip
+  - log.containerID
+  - log.action

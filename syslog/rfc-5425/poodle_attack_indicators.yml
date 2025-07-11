@@ -1,0 +1,37 @@
+- id: 1012
+  dataTypes:
+  - rfc-5425
+  name: POODLE Attack Indicators
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Protocol Downgrade Attack
+  technique: POODLE Attack (CVE-2014-3566)
+  adversary: origin
+  references:
+  - https://www.cisa.gov/news-events/alerts/2014/10/17/ssl-30-protocol-vulnerability-and-poodle-attack
+  - https://attack.mitre.org/techniques/T1499/
+  - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-3566
+  description: Detects potential POODLE (Padding Oracle On Downgraded Legacy Encryption)
+    attack indicators through forced SSL 3.0 downgrade attempts and CBC padding exploitation.
+  where: "(safe(log.ssl_version, \"\") == \"3.0\" || safe(log.tls_version, \"\") ==\
+    \ \"SSLv3\") &&\n(safe(log.cipher_suite, \"\") contains \"CBC\" || \n safe(log.cipher,\
+    \ \"\") contains \"_CBC_\") &&\n(safe(log.downgrade_attempt, false) == true ||\n\
+    \ safe(log.message, \"\") contains \"protocol downgrade\" ||\n safe(log.handshake_failure,\
+    \ false) == true && safe(log.retry_count, 0) > 2)\n"
+  afterEvents:
+  - indexPattern: v11-log-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: destination.ip.keyword
+      operator: filter_term
+      value: '{{destination.ip}}'
+    within: now-10m
+    count: 5
+  deduplicateBy:
+  - origin.ip
+  - destination.ip
+  - destination.port

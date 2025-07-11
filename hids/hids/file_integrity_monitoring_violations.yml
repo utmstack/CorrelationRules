@@ -1,0 +1,42 @@
+- id: 1009
+  dataTypes:
+  - hids
+  name: File Integrity Monitoring Violation
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: File Monitoring
+  technique: Indicator Removal
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1070/
+  - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
+  description: Detects file integrity monitoring (FIM) violations indicating unauthorized
+    modifications to critical system files, configuration files, or monitored directories.
+    This could indicate malware installation, configuration tampering, or persistence
+    mechanisms.
+  where: "safe(log.module, \"\") == \"syscheck\" && safe(log.event_type, \"\") !=\
+    \ \"\" && (safe(log.event_type, \"\") == \"modified\" ||\n safe(log.event_type,\
+    \ \"\") == \"deleted\" ||\n safe(log.event_type, \"\") == \"added\") &&\nsafe(log.file_path,\
+    \ \"\") != \"\" && (safe(log.file_path, \"\") =~ \".*(\\/etc\\/|\\/boot\\/|\\\
+    /bin\\/|\\/sbin\\/|\\/usr\\/bin\\/|\\/usr\\/sbin\\/|system32|syswow64|drivers).*\"\
+    \ ||\n safe(log.file_path, \"\") =~ \".*(passwd|shadow|sudoers|hosts|resolv\\\\\
+    .conf|sshd_config|httpd\\\\.conf|nginx\\\\.conf).*\" ||\n safe(log.file_path,\
+    \ \"\") =~ \".*\\\\.(exe|dll|sys|drv|so|dylib|kext)$\") &&\nsafe(origin.hostname,\
+    \ \"\") != \"\"\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.hostname.keyword
+      operator: filter_term
+      value: '{{origin.hostname}}'
+    - field: log.file_path.keyword
+      operator: filter_term
+      value: '{{log.file_path}}'
+    within: now-1h
+    count: 3
+  deduplicateBy:
+  - origin.hostname
+  - log.file_path
+  - log.event_type

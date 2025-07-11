@@ -1,0 +1,39 @@
+- id: 1011
+  dataTypes:
+    - vmware-esxi
+  name: Distributed Switch Security Policy Modification
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Network Security
+  technique: VLAN Hopping
+  adversary: origin
+  references:
+    - https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.vsphere.security.doc/GUID-E9A41435-4081-47D9-9B34-48CABE7BF60C.html
+    - https://attack.mitre.org/techniques/T1599/
+  description: Detects unauthorized changes to distributed switch security policies including promiscuous mode, MAC address changes, or forged transmits settings which could indicate attempts to bypass network security controls
+  where: |
+    safe(log.message, "") != "" && 
+    (
+      (safe(log.message, "") =~ "(?i)promiscuous.*mode.*change" ||
+       safe(log.message, "") =~ "(?i)promiscuous.*accept" ||
+       safe(log.message, "") =~ "(?i)forged.*transmit.*change" ||
+       safe(log.message, "") =~ "(?i)forged.*transmit.*accept" ||
+       safe(log.message, "") =~ "(?i)mac.*address.*change.*policy" ||
+       safe(log.message, "") =~ "(?i)security.*policy.*modified" ||
+       safe(log.message, "") =~ "(?i)vds.*security.*setting") &&
+      (safe(log.process, "") =~ "(?i)hostd" ||
+       safe(log.process, "") =~ "(?i)vpxd" ||
+       safe(log.process, "") =~ "(?i)vmkernel")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.hostname

@@ -1,0 +1,44 @@
+- id: 1014
+  dataTypes:
+    - vmware-esxi
+  name: Management Network Exposure Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Network Security
+  technique: Network Service Scanning
+  adversary: origin
+  references:
+    - https://cloud.google.com/blog/topics/threat-intelligence/vmware-detection-containment-hardening
+    - https://attack.mitre.org/techniques/T1046/
+  description: Detects attempts to expose or access ESXi management interfaces from unauthorized networks, including suspicious SSH/HTTPS access attempts, management network misconfigurations, or attempts to bypass network segmentation
+  where: |
+    safe(log.message, "") != "" && 
+    (
+      (safe(log.message, "") =~ "(?i)management.*network.*access.*denied" ||
+       safe(log.message, "") =~ "(?i)ssh.*connection.*refused" ||
+       safe(log.message, "") =~ "(?i)https.*unauthorized.*access" ||
+       safe(log.message, "") =~ "(?i)management.*interface.*exposed" ||
+       safe(log.message, "") =~ "(?i)admin.*port.*scan" ||
+       safe(log.message, "") =~ "(?i)firewall.*rule.*bypass.*attempt" ||
+       safe(log.message, "") =~ "(?i)management.*vlan.*breach" ||
+       safe(log.message, "") =~ "(?i)esxi.*shell.*unauthorized" ||
+       safe(log.message, "") =~ "(?i)dcui.*access.*violation") &&
+      (safe(log.process, "") =~ "(?i)hostd" ||
+       safe(log.process, "") =~ "(?i)vmkernel" ||
+       safe(log.process, "") =~ "(?i)sshd" ||
+       safe(log.process, "") =~ "(?i)rhttpproxy")
+    ) ||
+    (safe(severity, "") == "warning" && 
+     safe(log.message, "") =~ "(?i)management.*security")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.hostname

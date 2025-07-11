@@ -1,0 +1,43 @@
+- id: 1024
+  dataTypes:
+    - wineventlog
+  name: DCShadow Attack Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Rogue Domain Controller
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1207/
+    - https://www.dcshadow.com/
+    - https://blog.alsid.eu/dcshadow-explained-4510f52fc19d
+  description: Detects DCShadow attacks where attackers register a rogue domain controller to push malicious Active Directory changes. Monitors for suspicious domain controller registration and replication events.
+  where: |
+    (
+      (safe(log.eventCode, "") == "4742" && 
+       safe(log.winlogChannel, "") == "Security" &&
+       safe(log.winlog.event_data.ServicePrincipalNames, "") =~ ".*GC/.*" &&
+       safe(log.winlog.event_data.UserAccountControl, "") =~ ".*SERVER_TRUST_ACCOUNT.*") ||
+      (safe(log.eventCode, "") == "4662" && 
+       safe(log.winlogChannel, "") == "Security" &&
+       safe(log.winlog.event_data.ObjectType, "") == "{bf967a92-0de6-11d0-a285-00aa003049e2}" &&
+       safe(log.winlog.event_data.Properties, "") =~ ".*1131f6ac-9c07-11d1-f79f-00c04fc2dcd2.*") ||
+      (safe(log.eventCode, "") == "5137" && 
+       safe(log.winlogChannel, "") == "Security" &&
+       safe(log.winlog.event_data.ObjectClass, "") == "server" &&
+       safe(log.winlog.event_data.ObjectDN, "") =~ ".*CN=Servers,CN=.*")
+    ) &&
+    safe(origin.host, "") !~ ".*DC.*"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-2h
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - log.winlogEventDataSubjectUserName

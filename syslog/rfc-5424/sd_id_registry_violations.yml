@@ -1,0 +1,37 @@
+- id: 1017
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 SD-ID Registry Violations
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 1
+  category: Protocol Violation
+  technique: Standards Evasion
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-7
+    - https://www.iana.org/assignments/syslog-structured-data-id-values/syslog-structured-data-id-values.xhtml
+  description: Detects use of unregistered SD-IDs without @ sign or manipulation of IANA-registered SD-IDs like timeQuality, origin, or meta, which may indicate attempts to bypass security controls or inject malicious structured data
+  where: |
+    safe(log.structured_data, "") != "" && safe(log.structured_data, "") != "-" && (
+      (safe(log.sd_id, "") matches "^[^@]+$" && safe(log.sd_id, "") !in ["timeQuality", "origin", "meta"]) ||
+      (safe(log.sd_id, "") == "timeQuality" && (safe(log.tzKnown, "") !in ["0", "1"] || safe(log.isSynced, "") !in ["0", "1"])) ||
+      (safe(log.sd_id, "") matches "^(timeQuality|origin|meta)[0-9]+$") ||
+      (safe(log.structured_data, "") matches "\\[(timeQuality|origin|meta)\\s") ||
+      (safe(log.structured_data, "") matches "\\[[^@\\]]+[@=\\]\\s\"]")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.sd_id.keyword
+          operator: filter_term
+          value: '{{log.sd_id}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.sd_id

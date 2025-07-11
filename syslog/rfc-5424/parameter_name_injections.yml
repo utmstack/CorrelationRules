@@ -1,0 +1,40 @@
+- id: 1011
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Parameter Name Injection Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Input Validation
+  technique: Command Injection
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-6.3
+    - https://attack.mitre.org/techniques/T1059/
+  description: Detects attempts to inject malicious content through RFC-5424 structured data parameter names, which could lead to log injection attacks or command execution
+  where: |
+    safe(log.structured_data, "") != "" && (
+      log.structured_data.contains("';") ||
+      log.structured_data.contains('";') ||
+      log.structured_data.contains("$(") ||
+      log.structured_data.contains("${") ||
+      log.structured_data.contains("`") ||
+      log.structured_data.contains("&&") ||
+      log.structured_data.contains("||") ||
+      log.structured_data.contains("|") ||
+      log.structured_data.contains("../") ||
+      log.structured_data.contains("..\\") ||
+      log.structured_data.matches(".*\\[\\w+\\s+(\\w+=[^\\]]*[;<>&|`$]+[^\\]]*)\\].*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.hostname

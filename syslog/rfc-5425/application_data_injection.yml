@@ -1,0 +1,41 @@
+- id: 1024
+  dataTypes:
+  - rfc-5425
+  name: RFC-5425 Application Data Injection Attack
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: TLS Security
+  technique: Data Injection
+  adversary: origin
+  references:
+  - https://datatracker.ietf.org/doc/html/rfc5425
+  - https://attack.mitre.org/techniques/T1055/
+  description: Detects potential application data injection attacks in TLS-secured
+    syslog communications, including plaintext injection and message manipulation
+    attempts
+  where: "(safe(log.syslog_frame_length, 0) > 8192 ||\n safe(log.syslog_msg_length,\
+    \ 0) != safe(log.actual_msg_length, 0) ||\n safe(log.message, \"\") =~ \".*[\\\
+    \\x00-\\\\x08\\\\x0B\\\\x0C\\\\x0E-\\\\x1F].*\" ||\n safe(log.tls_content_type,\
+    \ \"\") == \"application_data\" && safe(log.tls_encrypted, false) == false ||\n\
+    \ safe(log.syslog_frame_error, \"\") =~ \".*length.*mismatch.*\" ||\n safe(log.message,\
+    \ \"\") =~ \".*injection.*detect.*\" ||\n safe(log.syslog_msg, \"\") =~ \".*<script.*>.*</script>.*\"\
+    \ ||\n safe(log.structured_data, \"\") =~ \".*[\\\\x00-\\\\x1F\\\\x7F].*\" ||\n\
+    \ safe(log.tls_error, \"\") =~ \".*plaintext.*inject.*\" ||\n safe(log.syslog_priority,\
+    \ 0) > 191) &&\nsafe(log.protocol, \"\") == \"syslog-tls\"\n"
+  afterEvents:
+  - indexPattern: v11-log-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.syslog_frame_length
+      operator: filter_range
+      value:
+        gte: 8192
+    within: now-5m
+    count: 5
+  deduplicateBy:
+  - origin.ip
+  - log.syslog_msg_length

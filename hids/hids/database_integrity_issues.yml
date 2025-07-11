@@ -1,0 +1,35 @@
+- id: 1021
+  dataTypes:
+  - hids
+  name: Database Integrity Check Failures
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 3
+  category: System Integrity
+  technique: T1565.001 - Data Manipulation
+  adversary: origin
+  references:
+  - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/how-it-works.html
+  - https://attack.mitre.org/techniques/T1565/001/
+  description: Detects database integrity check failures in HIDS systems that could
+    indicate tampering with the FIM database or corruption issues
+  where: "safe(log.module, \"\") == \"fim\" &&  (safe(log.message, \"\") contains\
+    \ \"database corruption\" || \n safe(log.message, \"\") contains \"integrity check\
+    \ failed\" ||\n safe(log.message, \"\") contains \"SQLite error\" ||\n safe(log.error_type,\
+    \ \"\") == \"DB_ERROR\" ||\n safe(log.level, \"\") == \"error\" && safe(log.component,\
+    \ \"\") == \"fim_db\")\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.module.keyword
+      operator: filter_term
+      value: fim
+    within: now-30m
+    count: 3
+  deduplicateBy:
+  - origin.ip
+  - destination.ip

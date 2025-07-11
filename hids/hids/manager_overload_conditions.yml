@@ -1,0 +1,38 @@
+- id: 1025
+  dataTypes:
+  - hids
+  name: HIDS Manager Overload Detection
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 3
+  category: System Performance
+  technique: T1499 - Endpoint Denial of Service
+  adversary: destination
+  references:
+  - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/advanced-settings.html
+  - https://attack.mitre.org/techniques/T1499/
+  description: Detects HIDS manager overload conditions that could lead to missed
+    security events or system unavailability
+  where: "safe(log.component, \"\") == \"wazuh-db\" || safe(log.component, \"\") ==\
+    \ \"analysisd\" && (safe(log.message, \"\") contains \"saturating the service\
+    \ socket\" ||\n safe(log.message, \"\") contains \"queue full\" ||\n safe(log.message,\
+    \ \"\") contains \"dropping events\" ||\n safe(log.message, \"\") contains \"\
+    maximum load reached\" ||\n safe(log.cpu_usage, 0) > 90 ||\n safe(log.memory_usage,\
+    \ 0) > 90 ||\n safe(log.queue_size, 0) > 10000 ||\n safe(log.message, \"\") contains\
+    \ \"process_priority\" ||\n safe(log.message, \"\") contains \"resource exhaustion\"\
+    )\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: destination.ip.keyword
+      operator: filter_term
+      value: '{{destination.ip}}'
+    - field: log.component.keyword
+      operator: filter_term
+      value: wazuh-db
+    within: now-10m
+    count: 3
+  deduplicateBy:
+  - destination.ip
+  - log.component

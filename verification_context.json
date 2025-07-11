@@ -1,0 +1,189 @@
+{
+  "batch_num": 5,
+  "total_batches": 243,
+  "timestamp": 1752179379.634783,
+  "verification_rules": {
+    "afterEvents_usage": {
+      "description": "Check if afterEvents is used appropriately",
+      "immediate_alerts": [
+        "malware",
+        "virus",
+        "trojan",
+        "ransomware",
+        "threat detection",
+        "user locked",
+        "account locked",
+        "critical",
+        "high severity",
+        "exploit",
+        "backdoor",
+        "rootkit",
+        "spyware",
+        "adware",
+        "blocked",
+        "quarantine",
+        "infection",
+        "compromise",
+        "data loss",
+        "data theft",
+        "unauthorized access denied",
+        "firewall block",
+        "ips block",
+        "threat mitigated"
+      ],
+      "pattern_alerts": [
+        "brute force",
+        "multiple failed",
+        "repeated attempts",
+        "scanning",
+        "enumeration",
+        "reconnaissance",
+        "pattern",
+        "anomaly",
+        "spike",
+        "threshold",
+        "unusual activity",
+        "mass",
+        "bulk",
+        "rapid",
+        "successive",
+        "frequency"
+      ]
+    },
+    "cia_scores": {
+      "description": "Ensure CIA scores are between 1-3",
+      "valid_range": [
+        1,
+        2,
+        3
+      ]
+    },
+    "log_patterns": {
+      "description": "Validate index patterns match the technology",
+      "patterns": {
+        "azure": "v11-log-azure-*",
+        "o365": "v11-log-o365-*",
+        "office365": "v11-log-o365-*",
+        "iis": "v11-log-iis-*",
+        "meraki": "v11-log-firewall-meraki-*",
+        "windows": "v11-log-wineventlog-*",
+        "macos": "v11-log-macos-*",
+        "sentinel-one": "v11-log-antivirus-sentinel-one-*",
+        "esmc-eset": "v11-log-antivirus-esmc-eset-*",
+        "linux": "v11-log-linux-*",
+        "paloalto": "v11-log-firewall-paloalto-*",
+        "sonicwall": "v11-log-firewall-sonicwall-*",
+        "cisco": "v11-log-cisco-switch-*",
+        "syslog": "v11-log-syslog-*",
+        "ibm": "v11-log-ibm-aix-*",
+        "google": "v11-log-google-*",
+        "aws": "v11-log-aws-*",
+        "bitdefender": "v11-log-antivirus-bitdefender-*",
+        "kaspersky": "v11-log-antivirus-kaspersky-*",
+        "deceptive-bytes": "v11-log-deceptivebytes-*",
+        "fortinet": "v11-log-firewall-fortinet-*",
+        "fortiweb": "v11-log-firewall-fortiweb-*",
+        "github": "v11-log-github-*",
+        "hids": "v11-log-hids-*",
+        "mikrotik": "v11-log-firewall-mikrotik-*",
+        "netflow": "v11-log-netflow-*",
+        "nids": "v11-log-nids-*",
+        "pfsense": "v11-log-firewall-pfsense-*",
+        "sophos": "v11-log-firewall-sophos-*",
+        "vmware": "v11-log-vmware-*"
+      }
+    },
+    "deduplication": {
+      "description": "Check deduplication fields make sense",
+      "guidance": {
+        "brute_force": [
+          "user",
+          "account",
+          "username"
+        ],
+        "dos_attack": [
+          "ip",
+          "source_ip",
+          "attacker_ip"
+        ],
+        "malware": [
+          "host",
+          "hostname",
+          "computer",
+          "device",
+          "user"
+        ],
+        "blacklist_connection": [
+          "host",
+          "hostname",
+          "source_host",
+          "destination_ip",
+          "dest_ip"
+        ],
+        "unauthorized_access": [
+          "user",
+          "account",
+          "resource"
+        ],
+        "data_exfiltration": [
+          "user",
+          "host",
+          "destination"
+        ],
+        "privilege_escalation": [
+          "user",
+          "account",
+          "process"
+        ],
+        "lateral_movement": [
+          "source_host",
+          "destination_host",
+          "user"
+        ],
+        "configuration_change": [
+          "user",
+          "object",
+          "setting"
+        ],
+        "compliance_violation": [
+          "resource",
+          "policy",
+          "rule"
+        ]
+      }
+    },
+    "cel_compliance": {
+      "description": "Validate CEL expression syntax",
+      "operators": [
+        "==",
+        "!=",
+        ">",
+        "<",
+        ">=",
+        "<=",
+        "&&",
+        "||",
+        "!",
+        "in",
+        "contains",
+        "startsWith",
+        "endsWith",
+        "matches"
+      ],
+      "functions": [
+        "safe",
+        "size",
+        "has",
+        "type",
+        "string",
+        "int",
+        "double",
+        "bool",
+        "duration",
+        "timestamp",
+        "list",
+        "map"
+      ]
+    }
+  }
+}

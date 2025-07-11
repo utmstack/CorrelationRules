@@ -1,0 +1,27 @@
+- id: 1026
+  dataTypes:
+    - wineventlog
+  name: GPO Tampering Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Policy Violation
+  technique: Domain Policy Modification
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/component-updates/command-line-process-auditing
+    - https://attack.mitre.org/techniques/T1484/001/
+  description: Detects modifications to Group Policy Objects which could indicate an adversary attempting to escalate privileges or deploy malware across the domain
+  where: safe(log.winlogEventId, "") == "5136" && safe(log.winlogProviderName, "") == "Microsoft-Windows-Security-Auditing" && contains(safe(log.winlogEventDataObjectDN, ""), "CN=Policies,CN=System")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.winlogEventDataSubjectUserSid.keyword
+          operator: filter_term
+          value: '{{log.winlogEventDataSubjectUserSid}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - log.winlogEventDataSubjectUserSid
+    - origin.host

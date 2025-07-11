@@ -1,0 +1,40 @@
+- id: 1008
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Process ID Anomaly Detection
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 1
+  category: Security Monitoring
+  technique: Process Injection
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424
+    - https://attack.mitre.org/techniques/T1055/
+  description: Detects anomalous process IDs in RFC-5424 syslog messages including negative PIDs, excessively large PIDs, non-numeric values, or rapid PID changes from the same application that could indicate log manipulation or forged messages
+  where: |
+    safe(log.procid, "") != "" && 
+    safe(log.procid, "") != "-" &&
+    (
+      safe(log.procid, "").matches(".*[^0-9].*") ||
+      (safe(log.procid, "").matches("^[0-9]+$") && int(safe(log.procid, "0")) > 4194304) ||
+      (safe(log.procid, "").matches("^[0-9]+$") && int(safe(log.procid, "1")) == 0) ||
+      safe(log.procid, "").length() > 128 ||
+      safe(log.procid, "").matches("^0+[0-9]+$")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.app_name.keyword
+          operator: filter_term
+          value: '{{log.app_name}}'
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.app_name
+    - log.procid

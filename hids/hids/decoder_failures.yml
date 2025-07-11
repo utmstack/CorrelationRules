@@ -1,0 +1,43 @@
+- id: 1020
+  dataTypes:
+  - hids
+  name: HIDS Log Decoder Failure or Parsing Error
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 3
+  category: System Health
+  technique: Obfuscated Files or Information
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1027/
+  - https://blog.sekoia.io/hunting-for-iocs-from-singles-searches-to-an-automated-and-repeatable-process/
+  description: Detects decoder failures or parsing errors in HIDS log processing which
+    could indicate log tampering, format changes, corrupted data, or potential evasion
+    attempts
+  where: 'safe(log.eventType, "") in ["decoder_error", "parse_failure", "format_error"]
+    ||
+
+    safe(log.error_type, "") in ["decoding_failed", "parsing_error", "invalid_format",
+    "malformed_log"] ||
+
+    (safe(log.decoder_status, "") == "failed" && safe(log.raw_log, "") != "") ||
+
+    (safe(log.parse_errors, 0) > 5 && safe(log.log_source, "") != "")
+
+    '
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.hostname.keyword
+      operator: filter_term
+      value: '{{origin.hostname}}'
+    - field: log.decoder_name.keyword
+      operator: filter_term
+      value: '{{log.decoder_name}}'
+    within: now-10m
+    count: 20
+  deduplicateBy:
+  - origin.hostname
+  - log.decoder_name
+  - log.error_type

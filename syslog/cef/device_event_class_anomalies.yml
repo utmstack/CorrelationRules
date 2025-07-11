@@ -1,0 +1,36 @@
+- id: 1016
+  dataTypes:
+    - cef
+  name: CEF Device Event Class ID Anomalies
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Anomaly Detection
+  technique: System Activity Monitoring
+  adversary: origin
+  references:
+    - https://www.microfocus.com/documentation/arcsight/arcsight-smartconnectors-8.4/pdfdoc/cef-implementation-standard/cef-implementation-standard.pdf
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects unusual or suspicious device event class IDs in CEF logs that may indicate malicious activity, system compromise, or attempts to evade detection through log manipulation
+  where: |
+    safe(log.deviceEventClassId, "") != "" && 
+    (
+      safe(log.deviceEventClassId, "") == "0" ||
+      safe(log.deviceEventClassId, "") == "999999" ||
+      safe(log.deviceEventClassId, "") matches "^[A-Za-z]+$" ||
+      safe(log.deviceEventClassId, "").contains("test") ||
+      safe(log.deviceEventClassId, "").contains("debug") ||
+      safe(log.deviceEventClassId, "").length() > 10
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.deviceEventClassId

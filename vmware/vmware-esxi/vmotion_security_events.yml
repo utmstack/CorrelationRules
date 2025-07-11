@@ -1,0 +1,32 @@
+- id: 1003
+  dataTypes:
+    - vmware-esxi
+  name: vMotion Security Events Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 4
+  category: Virtualization Security
+  technique: Migration Security
+  adversary: origin
+  references:
+    - https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.vsphere.vcenterhost.doc/GUID-3B41119A-1276-404B-8BFB-A32409052449.html
+    - https://lantern.splunk.com/Splunk_Platform/UCE/IT_Modernization/Infrastructure_Monitoring/Monitoring_VMware_virtualization_infrastructure/VMotion_events_for_a_specific_virtual_machine
+  description: Detects suspicious vMotion activities including unauthorized migrations, failed vMotion attempts, or vMotion operations from untrusted sources
+  where: |
+    (safe(log.message, "") =~ "(?i)vmotion" && safe(log.message, "") =~ "(?i)(failed|error|denied|unauthorized)") ||
+    (safe(log.eventInfo, "") =~ "(?i)VmMigratedEvent" && safe(severity, "") =~ "(?i)(error|critical)") ||
+    (safe(log.message, "") =~ "(?i)(migrate|migration)" && safe(log.message, "") =~ "(?i)(abort|timeout|invalid|unauthorized)") ||
+    (safe(log.process, "") =~ "(?i)(vpxa|hostd)" && safe(log.message, "") =~ "(?i)vmotion" && safe(log.message, "") =~ "(?i)(security|violation|breach)") ||
+    (safe(log.message, "") =~ "(?i)vmotion.*network" && safe(log.message, "") =~ "(?i)(untrusted|insecure|compromise)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.hostname
+    - log.eventInfo

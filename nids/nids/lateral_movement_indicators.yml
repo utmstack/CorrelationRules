@@ -1,0 +1,43 @@
+- id: 1014
+  dataTypes:
+    - nids
+  name: Lateral Movement Indicators
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Lateral Movement
+  technique: T1021 - Remote Services
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1021/
+    - https://attack.mitre.org/tactics/TA0008/
+    - https://www.snort.org/rule_docs/
+  description: Detects indicators of lateral movement within the network including SMB/RDP scanning, authentication attempts across multiple systems, suspicious remote access patterns, and administrative tool usage
+  where: |
+    (safe(log.alert.signature, "") contains "lateral movement" || 
+     safe(log.alert.signature, "") contains "psexec" || 
+     safe(log.alert.signature, "") contains "wmi" ||
+     safe(log.alert.signature, "") contains "rdp brute" ||
+     safe(log.alert.signature, "") contains "smb scan" ||
+     safe(log.alert.category, "") == "network-scan" ||
+     safe(log.alert.category, "") == "misc-activity" ||
+     (safe(destination.port, 0) in [445, 3389, 135, 139, 5985, 5986] && safe(log.event.type, "") == "alert") ||
+     (safe(log.smb.command, "") in ["SMB2_COMMAND_TREE_CONNECT", "SMB2_COMMAND_SESSION_SETUP"] && safe(log.smb.status, "") != "STATUS_SUCCESS") ||
+     (safe(log.protocol, "") == "RDP" && safe(log.rdp.event_type, "") == "connection_attempt") ||
+     safe(log.service, "") in ["wmi", "winrm", "psexec", "dcom"]) &&
+    safe(origin.ip, "") != "" &&
+    safe(destination.ip, "") != "" &&
+    safe(origin.ip, "") matches "^(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.)"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - destination.port

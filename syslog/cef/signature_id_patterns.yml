@@ -1,0 +1,40 @@
+- id: 1008
+  dataTypes:
+    - cef
+  name: CEF Signature ID Pattern Anomalies
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 1
+  category: Anomaly Detection
+  technique: T1027 - Obfuscated Files or Information
+  adversary: origin
+  references:
+    - https://www.microfocus.com/documentation/arcsight/arcsight-cef-23/
+    - https://attack.mitre.org/techniques/T1027/
+  description: Detects anomalous signature ID patterns in CEF logs that may indicate evasion attempts or log injection
+  where: |
+    safe(log.signatureId, "") != "" &&
+    (
+      safe(log.signatureId, "").matches(".*[a-zA-Z].*[0-9].*[a-zA-Z].*") ||
+      safe(log.signatureId, "").contains("${") ||
+      safe(log.signatureId, "").contains("$(") ||
+      safe(log.signatureId, "").contains("../") ||
+      safe(log.signatureId, "").contains("\\x") ||
+      safe(log.signatureId, "").length() > 100 ||
+      safe(log.signatureId, "").matches(".*\\s{2,}.*") ||
+      safe(log.signatureId, "").startsWith("-") ||
+      safe(log.signatureId, "").contains("UNION") ||
+      safe(log.signatureId, "").contains("SELECT")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.signatureId

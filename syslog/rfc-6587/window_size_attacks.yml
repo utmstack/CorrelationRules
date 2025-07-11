@@ -1,0 +1,37 @@
+- id: 1008
+  dataTypes:
+    - rfc-6587
+  name: TCP Window Size Attack Detection
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 5
+  category: Network Security
+  technique: TCP Window Manipulation
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc793#section-3.2
+    - https://attack.mitre.org/techniques/T1498/001/
+  description: Detects TCP window size manipulation attacks including zero window probes, window scaling attacks, and Silly Window Syndrome that can lead to performance degradation or denial of service
+  where: |
+    (safe(log.tcp_window_size, -1) == 0 && 
+     safe(log.tcp_flags, "") !~ "SYN|FIN|RST") ||
+    (safe(log.tcp_window_scale, 0) > 14) ||
+    (safe(log.tcp_window_size, 0) > 0 && safe(log.tcp_window_size, 0) < 100 &&
+     safe(log.tcp_segment_len, 0) > 0) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.port.keyword
+          operator: filter_term
+          value: '{{destination.port}}'
+      within: now-15m
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - destination.port
+    - log.tcp_stream

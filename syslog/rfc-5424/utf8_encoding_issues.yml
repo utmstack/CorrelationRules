@@ -1,0 +1,47 @@
+- id: 1013
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 UTF-8 Encoding Violation Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Encoding Attack
+  technique: Obfuscation
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-6.4
+    - https://attack.mitre.org/techniques/T1027/
+  description: Detects invalid UTF-8 encoding in RFC-5424 messages which could indicate evasion attempts or malformed log injection
+  where: |
+    safe(log.message, "") != "" && (
+      log.message.contains("\xc0\x80") ||
+      log.message.contains("\xe0\x80\x80") ||
+      log.message.contains("\xf0\x80\x80\x80") ||
+      log.message.contains("\xf8") ||
+      log.message.contains("\xfc") ||
+      log.message.contains("\xfe") ||
+      log.message.contains("\xff") ||
+      log.message.matches(".*[\\xc0-\\xc1][\\x80-\\xbf].*") ||
+      log.message.matches(".*[\\xe0][\\x80-\\x9f][\\x80-\\xbf].*") ||
+      log.message.matches(".*[\\xf0][\\x80-\\x8f][\\x80-\\xbf]{2}.*") ||
+      log.message.matches(".*[\\xf4][\\x90-\\xbf][\\x80-\\xbf]{2}.*") ||
+      log.message.matches(".*[\\x80-\\xbf].*") ||
+      log.message.matches(".*[\\xc2-\\xdf]([^\\x80-\\xbf]|$).*") ||
+      log.message.matches(".*[\\xe0-\\xef]([^\\x80-\\xbf]{2}|[\\x80-\\xbf][^\\x80-\\xbf]|[\\x80-\\xbf]$|$).*") ||
+      log.message.matches(".*[\\xf0-\\xf4]([^\\x80-\\xbf]{3}|[\\x80-\\xbf]{1,2}[^\\x80-\\xbf]|[\\x80-\\xbf]{1,2}$|$).*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.app_name.keyword
+          operator: filter_term
+          value: '{{log.app_name}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.hostname

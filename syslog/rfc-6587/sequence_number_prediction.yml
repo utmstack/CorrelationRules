@@ -1,0 +1,42 @@
+- id: 1009
+  dataTypes:
+    - rfc-6587
+  name: TCP Sequence Number Prediction Attack Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Network Security
+  technique: TCP Session Hijacking
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc793#section-3.3
+    - https://attack.mitre.org/techniques/T1557/
+  description: Detects attempts to predict TCP sequence numbers which could indicate session hijacking, blind TCP reset attacks, or data injection attempts through sequence number guessing
+  where: |
+    (safe(log.tcp_seq_gap, 0) > 0 && 
+     safe(log.tcp_analysis_flags, "") =~ "out.*of.*order|retransmission") ||
+    (safe(log.tcp_seq_number, 0) > 0 && 
+     safe(log.tcp_expected_seq, 0) > 0 &&
+     abs(safe(log.tcp_seq_number, 0) - safe(log.tcp_expected_seq, 0)) > 1000000) ||
+    (safe(log.tcp_flags, "") == "RST" && 
+     safe(log.tcp_seq_valid, true) == false) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+        - field: destination.port.keyword
+          operator: filter_term
+          value: '{{destination.port}}'
+      within: now-5m
+      count: 15
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - destination.port

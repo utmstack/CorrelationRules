@@ -1,0 +1,35 @@
+- id: 1022
+  dataTypes:
+    - vmware-esxi
+  name: Guest Introspection Bypass Attempt
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Exploitation for Defense Evasion
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1211/
+    - https://cloud.google.com/blog/topics/threat-intelligence/vmware-esxi-zero-day-bypass
+    - https://www.vmware.com/security/advisories/VMSA-2023-0013.html
+  description: Detects potential exploitation of CVE-2023-20867 or similar guest introspection bypass vulnerabilities by monitoring for anomalous vpxuser authentication attempts and Guest Operations without proper authentication
+  where: |
+    (safe(log.message, "") =~ "(?i)vpxuser" && safe(log.message, "") =~ "(?i)failed") ||
+    (safe(log.message, "") =~ "(?i)GuestOps" && safe(log.message, "") !~ "(?i)authentication") ||
+    (safe(log.message, "") =~ "(?i)Guest Introspection" && safe(severity, "") == "error") ||
+    (safe(log.message, "") =~ "(?i)esxupdate" && safe(log.message, "") =~ "(?i)VIB installation") ||
+    (safe(log.process, "") =~ "(?i)mux" && safe(log.message, "") =~ "(?i)bypass")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+        - field: log.message
+          operator: filter_wildcard
+          value: '*GuestOps*'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.hostname

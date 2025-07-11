@@ -1,0 +1,37 @@
+- id: 1014
+  dataTypes:
+    - wineventlog
+  name: Event Log Clearing Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 3
+  category: Defense Evasion
+  technique: Clear Windows Event Logs
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1070/001/
+    - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=1102
+  description: Detects when Windows event logs are cleared, which is often done by attackers to cover their tracks and remove evidence of malicious activities
+  where: |
+    safe(log.winlogEventId, "") == "1102" ||
+    safe(log.eventCode, "") == "1102" ||
+    (safe(log.winlogEventId, "") == "104" && 
+     safe(log.winlogChannel, "").contains("System")) ||
+    (safe(log.winlogEventId, "") == "4688" &&
+     (safe(log.winlogEventDataCommandLine, "").contains("wevtutil") &&
+      safe(log.winlogEventDataCommandLine, "").contains(" cl ")) ||
+     (safe(log.winlogEventDataCommandLine, "").contains("Clear-EventLog") ||
+      safe(log.winlogEventDataCommandLine, "").contains("Remove-EventLog") ||
+      safe(log.winlogEventDataCommandLine, "").contains("Limit-EventLog")))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 1
+  deduplicateBy:
+    - origin.host
+    - log.winlogEventDataSubjectUserName

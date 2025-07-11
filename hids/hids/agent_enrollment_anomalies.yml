@@ -1,0 +1,37 @@
+- id: 1024
+  dataTypes:
+  - hids
+  name: Agent Enrollment Anomalies
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Endpoint Security
+  technique: T1133 - External Remote Services
+  adversary: origin
+  references:
+  - https://documentation.wazuh.com/current/user-manual/agent/agent-enrollment/troubleshooting.html
+  - https://attack.mitre.org/techniques/T1133/
+  description: Detects anomalous agent enrollment patterns including duplicate agent
+    names, failed enrollments, or suspicious enrollment attempts
+  where: "safe(log.action, \"\") == \"agent_enrollment\" &&  (safe(log.message, \"\
+    \") contains \"duplicate agent name\" ||\n safe(log.message, \"\") contains \"\
+    enrollment failed\" ||\n safe(log.message, \"\") contains \"certificate mismatch\"\
+    \ ||\n safe(log.message, \"\") contains \"Missing root certificate\" ||\n safe(log.error_code,\
+    \ \"\") == \"1404\" ||\n safe(log.enrollment_status, \"\") == \"failed\" ||\n\
+    \ safe(log.message, \"\") contains \"same hostname\" ||\n safe(log.message, \"\
+    \") contains \"key mismatch\")\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.action.keyword
+      operator: filter_term
+      value: agent_enrollment
+    within: now-30m
+    count: 5
+  deduplicateBy:
+  - origin.ip
+  - log.agent_name

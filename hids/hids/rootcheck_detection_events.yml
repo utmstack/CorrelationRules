@@ -1,0 +1,32 @@
+- id: 1002
+  dataTypes:
+  - hids
+  name: Rootkit Detection by HIDS
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+  category: Malware Detection
+  technique: Rootkit
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1014/
+  - https://www.ossec.net/docs/manual/rootcheck/
+  description: Detects rootkit activity identified by HIDS rootcheck module, indicating
+    potential system compromise with kernel-level persistence
+  where: "safe(log.module, \"\") == \"rootcheck\" ||\nsafe(log.eventType, \"\") ==\
+    \ \"rootkit_detected\" ||\nsafe(log.alert_type, \"\") == \"rootkit\" ||\n(safe(log.message,\
+    \ \"\") contains \"rootkit\" && \n (safe(log.message, \"\") contains \"detected\"\
+    \ || \n  safe(log.message, \"\") contains \"found\")) ||\nsafe(log.rule_id, \"\
+    \") contains \"rootcheck\"\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    within: now-24h
+    count: 1
+  deduplicateBy:
+  - origin.ip
+  - log.rootkit_name

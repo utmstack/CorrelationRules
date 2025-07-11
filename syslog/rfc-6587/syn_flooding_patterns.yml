@@ -1,0 +1,34 @@
+- id: 1012
+  dataTypes:
+    - rfc-6587
+  name: SYN Flooding Attack Pattern
+  impact:
+    confidentiality: 0
+    integrity: 1
+    availability: 5
+  category: Network Attack
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://www.cloudflare.com/learning/ddos/syn-flood-ddos-attack/
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects SYN flood attack patterns where an attacker sends high volumes of SYN packets to overwhelm the target server and exhaust resources by creating half-open connections.
+  where: |
+    safe(log.tcp_flags, "") == "SYN" && 
+    safe(log.syn_count, 0) > 1000 &&
+    safe(log.syn_ack_ratio, 1.0) < 0.1 &&
+    safe(log.packets_per_second, 0) > 100
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.tcp_flags.keyword
+          operator: filter_term
+          value: SYN
+      within: now-1m
+      count: 500
+  deduplicateBy:
+    - origin.ip
+    - destination.port

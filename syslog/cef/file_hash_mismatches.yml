@@ -1,0 +1,35 @@
+- id: 1021
+  dataTypes:
+    - cef
+  name: CEF File Hash Mismatch Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: File Integrity
+  technique: T1565.001 - Data Manipulation: Stored Data Manipulation
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1565/001/
+    - https://www.microfocus.com/documentation/arcsight/arcsight-smartconnectors-8.4/pdfdoc/cef-implementation-standard/cef-implementation-standard.pdf
+  description: Detects file hash mismatches in CEF logs which may indicate file tampering, malware infection, or unauthorized modifications to critical files. Monitors custom string fields (cs1-cs6) for hash values and their labels.
+  where: |
+    safe(log.dataType, "") == "cef" && 
+    (
+      (safe(log.cs1Label, "") in ["hash", "fileHash", "md5", "sha1", "sha256"] && safe(log.cs1, "") != "" && contains(safe(log.msg, ""), "mismatch")) ||
+      (safe(log.cs2Label, "") in ["hash", "fileHash", "md5", "sha1", "sha256"] && safe(log.cs2, "") != "" && contains(safe(log.msg, ""), "mismatch")) ||
+      (safe(log.cs3Label, "") in ["hash", "fileHash", "md5", "sha1", "sha256"] && safe(log.cs3, "") != "" && contains(safe(log.msg, ""), "mismatch")) ||
+      (safe(log.fileHash, "") != "" && contains(safe(log.msg, ""), "mismatch")) ||
+      (safe(log.oldFileHash, "") != "" && safe(log.fileHash, "") != "" && safe(log.oldFileHash, "") != safe(log.fileHash, ""))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-24h
+      count: 3
+  deduplicateBy:
+    - origin.hostname
+    - log.fname

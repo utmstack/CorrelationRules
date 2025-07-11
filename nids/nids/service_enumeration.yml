@@ -1,0 +1,62 @@
+- id: 1010
+  dataTypes:
+    - nids
+  name: Service Enumeration
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 1
+  category: Network Intrusion
+  technique: Network Service Discovery
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1046/
+    - https://attack.mitre.org/techniques/T1018/
+    - https://docs.suricata.io/en/latest/output/eve/eve-json-format.html
+  description: Detects service enumeration attempts including banner grabbing, version scanning, SMB enumeration, RPC enumeration, and service fingerprinting
+  where: |
+    (
+      (safe(log.event_type, "") == "alert" && 
+       (contains(safe(log.alert.signature, ""), "enumeration") ||
+        contains(safe(log.alert.signature, ""), "banner") ||
+        contains(safe(log.alert.signature, ""), "version scan") ||
+        contains(safe(log.alert.signature, ""), "service scan"))) ||
+      (safe(log.app_proto, "") == "smb" && 
+       (contains(safe(log.smb.command, ""), "TRANS") ||
+        contains(safe(log.smb.command, ""), "QUERY"))) ||
+      (safe(destination.port, 0) == 135 && 
+       safe(log.proto, "") == "TCP") ||
+      (safe(destination.port, 0) == 445 && 
+       safe(log.proto, "") == "TCP" && 
+       safe(log.flow.pkts_toserver, 0) > 20) ||
+      (safe(log.app_proto, "") == "http" && 
+       (contains(safe(log.http.http_user_agent, ""), "nmap") ||
+        contains(safe(log.http.http_user_agent, ""), "scanner") ||
+        contains(safe(log.http.http_user_agent, ""), "nikto"))) ||
+      (safe(log.proto, "") == "TCP" && 
+       safe(log.flow.state, "") == "established" && 
+       safe(log.flow.bytes_toserver, 0) < 100 && 
+       safe(log.flow.bytes_toclient, 0) > 500 && 
+       safe(log.flow.duration, 0) < 2)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 25
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.app_proto.keyword
+          operator: filter_term
+          value: '{{log.app_proto}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.app_proto

@@ -1,0 +1,45 @@
+- id: 1007
+  dataTypes:
+    - nids
+  name: Tunneling Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Network Intrusion
+  technique: Protocol Tunneling
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1572/
+    - https://docs.suricata.io/en/latest/output/eve/eve-json-format.html
+  description: Detects various tunneling techniques including SSH tunneling, HTTP tunneling, VPN over non-standard ports, and protocol mismatches
+  where: |
+    (
+      (safe(log.event_type, "") == "alert" && 
+       (contains(safe(log.alert.signature, ""), "SSH") && 
+        safe(destination.port, 0) != 22)) ||
+      (safe(log.app_proto, "") == "ssh" && 
+       safe(destination.port, 0) != 22) ||
+      (safe(log.proto, "") == "TCP" && 
+       safe(destination.port, 0) == 443 && 
+       safe(log.app_proto, "") != "tls") ||
+      (safe(log.event_type, "") == "alert" && 
+       contains(safe(log.alert.signature, ""), "tunnel")) ||
+      (safe(destination.port, 0) == 53 && 
+       safe(log.proto, "") == "TCP" && 
+       safe(log.flow.bytes_toserver, 0) > 5000)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.port
+          operator: filter_term
+          value: '{{destination.port}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - destination.port

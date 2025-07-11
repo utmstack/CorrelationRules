@@ -1,0 +1,41 @@
+- id: 1009
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Suspicious Message ID Pattern Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 1
+  category: Security Monitoring
+  technique: Log Evasion
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424
+    - https://attack.mitre.org/techniques/T1562/002/
+  description: Detects suspicious patterns in RFC-5424 message ID fields that could indicate log injection, evasion attempts, or forged messages including overly long IDs, special characters, or patterns commonly used in attacks
+  where: |
+    safe(log.msgid, "") != "" && 
+    safe(log.msgid, "") != "-" &&
+    (
+      safe(log.msgid, "").matches(".*(DROP|PASS|BLOCK|ALLOW|ACCEPT|REJECT).*") && safe(log.msgid, "").matches(".*[;|&`$()<>].*") ||
+      safe(log.msgid, "").length() > 32 ||
+      safe(log.msgid, "").matches(".*\\s+.*") ||
+      safe(log.msgid, "").matches(".*[\\x00-\\x1F\\x7F].*") ||
+      safe(log.msgid, "").matches(".*(script|eval|exec|system|cmd).*") ||
+      safe(log.msgid, "").matches("^[0-9a-fA-F]{32,}$") ||
+      safe(log.msgid, "").matches(".*\\.\\./.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.app_name.keyword
+          operator: filter_term
+          value: '{{log.app_name}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.msgid

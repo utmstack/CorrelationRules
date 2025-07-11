@@ -1,0 +1,39 @@
+- id: 1011
+  dataTypes:
+  - hids
+  name: Process Monitoring Alerts
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+  category: Process Activity
+  technique: T1055 - Process Injection
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1055/
+  - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
+  description: Detects suspicious process activities including unauthorized process
+    creation, injection attempts, or abnormal process behavior patterns that may indicate
+    malware or unauthorized system manipulation
+  where: "safe(log.eventType, \"\") == \"process_monitoring\" &&\n(\n  safe(log.processName,\
+    \ \"\") in [\"cmd.exe\", \"powershell.exe\", \"wscript.exe\", \"cscript.exe\"\
+    , \"mshta.exe\", \"rundll32.exe\", \"regsvr32.exe\"] ||\n  safe(log.parentProcess,\
+    \ \"\") in [\"winword.exe\", \"excel.exe\", \"outlook.exe\", \"powerpnt.exe\"\
+    ] ||\n  safe(log.commandLine, \"\") contains_any [\"base64\", \"encoded\", \"\
+    bypass\", \"hidden\", \"obfuscated\"] ||\n  safe(log.processIntegrity, \"\") ==\
+    \ \"low\" ||\n  safe(log.injectionDetected, false) == true\n)\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.hostname.keyword
+      operator: filter_term
+      value: '{{log.hostname}}'
+    within: now-15m
+    count: 3
+  deduplicateBy:
+  - origin.ip
+  - log.hostname
+  - log.processName

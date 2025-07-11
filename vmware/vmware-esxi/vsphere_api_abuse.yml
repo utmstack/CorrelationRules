@@ -1,0 +1,41 @@
+- id: 1020
+  dataTypes:
+    - vmware-esxi
+  name: vSphere API Abuse Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: API Security
+  technique: Exploitation of Remote Services
+  adversary: origin
+  references:
+    - https://cloud.google.com/blog/topics/threat-intelligence/vmware-esxi-zero-day-bypass
+    - https://attack.mitre.org/techniques/T1210/
+  description: Detects potential vSphere API abuse including unauthorized access attempts, suspicious API calls, and exploitation attempts. Monitors for authentication failures, unusual vpxuser activity, and rapid API requests.
+  where: |
+    (safe(log.message, "") contains "authentication of user" && 
+     (safe(log.message, "") contains "failed" || 
+      safe(log.message, "") contains "denied")) ||
+    (safe(log.message, "") contains "vpxuser" && 
+     (safe(log.message, "") contains "shell" ||
+      safe(log.message, "") contains "command")) ||
+    (safe(log.process, "") == "vpxd" && 
+     (safe(severity, "") == "error" ||
+      safe(log.message, "") contains "unauthorized" ||
+      safe(log.message, "") contains "permission denied")) ||
+    (safe(log.message, "") contains "API" && 
+     (safe(log.message, "") contains "abuse" ||
+      safe(log.message, "") contains "flood" ||
+      safe(log.message, "") contains "excessive"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.hostname
+    - log.eventInfo

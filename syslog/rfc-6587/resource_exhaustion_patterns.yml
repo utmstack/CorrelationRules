@@ -1,0 +1,37 @@
+- id: 1025
+  dataTypes:
+    - rfc-6587
+  name: TCP Resource Exhaustion Attack Detection
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Network Security
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc6587
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects patterns indicative of resource exhaustion attacks against TCP syslog collectors including connection flooding, slow loris attacks, and memory exhaustion through large message queues
+  where: |
+    (safe(log.tcp_connection_rate, 0) > 100 &&
+     safe(log.tcp_connection_duration, 0) < 1000) ||
+    (safe(log.tcp_half_open_connections, 0) > 1000) ||
+    (safe(log.tcp_slow_send_rate, false) == true &&
+     safe(log.tcp_bytes_per_second, 0) < 10 &&
+     safe(log.tcp_connection_duration, 0) > 300000) ||
+    (safe(log.syslog_queue_size, 0) > 10000 &&
+     safe(log.syslog_message_rate, 0) > 1000) ||
+    (safe(log.tcp_zero_window_probes, 0) > 50) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 100
+  deduplicateBy:
+    - origin.ip
+    - destination.port

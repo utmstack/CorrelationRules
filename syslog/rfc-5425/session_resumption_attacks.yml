@@ -1,0 +1,38 @@
+- id: 1004
+  dataTypes:
+  - rfc-5425
+  name: TLS Session Resumption Attack Detection
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Network Security
+  technique: Session Hijacking
+  adversary: origin
+  references:
+  - https://datatracker.ietf.org/doc/html/rfc5425
+  - https://attack.mitre.org/techniques/T1563/
+  description: Detects potential TLS session resumption attacks in RFC-5425 syslog
+    connections where attackers attempt to reuse or hijack existing TLS sessions
+  where: "(safe(log.message, \"\") contains \"session resumption failed\" ||\n safe(log.message,\
+    \ \"\") contains \"session id mismatch\" ||\n safe(log.message, \"\") contains\
+    \ \"session ticket expired\" ||\n safe(log.message, \"\") contains \"session cache\"\
+    \ ||\n safe(log.message, \"\") contains \"resumption handshake failed\" ||\n safe(log.message,\
+    \ \"\") contains \"session not found\" ||\n safe(log.message, \"\") contains \"\
+    invalid session ticket\" ||\n safe(log.message, \"\") contains \"session reuse\"\
+    ) &&\nsafe(log.severity, 10) <= 4 &&\n(safe(log.structured_data, \"\") contains\
+    \ \"tls\" || safe(log.app_name, \"\") contains \"syslog\")\n"
+  afterEvents:
+  - indexPattern: v11-log-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.hostname.keyword
+      operator: filter_term
+      value: '{{log.hostname}}'
+    within: now-30m
+    count: 10
+  deduplicateBy:
+  - origin.ip
+  - log.session_id

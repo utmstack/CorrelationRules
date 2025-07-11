@@ -1,0 +1,38 @@
+- id: 1015
+  dataTypes:
+  - rfc-5425
+  name: Certificate Pinning Violations
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Certificate Validation
+  technique: Certificate Pinning Bypass
+  adversary: origin
+  references:
+  - https://docs.digicert.com/en/certcentral/certificate-tools/discovery-user-guide/tls-ssl-endpoint-vulnerabilities.html
+  - https://attack.mitre.org/techniques/T1553/004/
+  description: Detects violations of certificate pinning policies indicating potential
+    man-in-the-middle attacks or certificate substitution attempts.
+  where: "(safe(log.certificate_validation, \"\") == \"failed\" ||\n safe(log.pin_validation_failed,\
+    \ false) == true ||\n safe(log.certificate_pinning_error, false) == true) &&\n\
+    (safe(log.expected_pin, \"\") != \"\" && safe(log.actual_pin, \"\") != \"\" &&\
+    \ \n safe(log.expected_pin, \"\") != safe(log.actual_pin, \"\") ||\n safe(log.message,\
+    \ \"\") contains \"certificate pin\" && safe(log.message, \"\") contains \"mismatch\"\
+    \ ||\n safe(log.message, \"\") contains \"HPKP\" && safe(log.message, \"\") contains\
+    \ \"violation\" ||\n safe(log.certificate_chain_modified, false) == true)\n"
+  afterEvents:
+  - indexPattern: v11-log-*
+    with:
+    - field: destination.hostname.keyword
+      operator: filter_term
+      value: '{{destination.hostname}}'
+    - field: certificate.subject.keyword
+      operator: filter_term
+      value: '{{certificate.subject}}'
+    within: now-1h
+    count: 3
+  deduplicateBy:
+  - origin.ip
+  - destination.hostname
+  - certificate.fingerprint

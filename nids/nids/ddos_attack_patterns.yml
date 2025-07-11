@@ -1,0 +1,46 @@
+- id: 1008
+  dataTypes:
+    - nids
+  name: DDoS Attack Patterns
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Network Intrusion
+  technique: Distributed Denial of Service
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1498/
+    - https://attack.mitre.org/techniques/T1499/
+    - https://docs.suricata.io/en/latest/output/eve/eve-json-format.html
+  description: Detects various DDoS attack patterns including SYN floods, UDP floods, ICMP floods, HTTP floods, and amplification attacks
+  where: |
+    (
+      (safe(log.event_type, "") == "alert" && 
+       (contains(safe(log.alert.signature, ""), "SYN flood") ||
+        contains(safe(log.alert.signature, ""), "DDoS") ||
+        contains(safe(log.alert.signature, ""), "amplification"))) ||
+      (safe(log.proto, "") == "TCP" && 
+       safe(log.tcp.flags, "") == "S" && 
+       safe(log.flow.pkts_toserver, 0) > 100 && 
+       safe(log.flow.duration, 0) < 5) ||
+      (safe(log.proto, "") == "UDP" && 
+       safe(log.flow.pkts_toserver, 0) > 1000 && 
+       safe(log.flow.duration, 0) < 10) ||
+      (safe(log.proto, "") == "ICMP" && 
+       safe(log.flow.pkts_toserver, 0) > 500 && 
+       safe(log.flow.duration, 0) < 5) ||
+      (safe(destination.port, 0) == 123 && 
+       safe(log.flow.bytes_toclient, 0) > safe(log.flow.bytes_toserver, 0) * 10)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-5m
+      count: 1000
+  deduplicateBy:
+    - destination.ip
+    - log.proto

@@ -1,0 +1,39 @@
+- id: 1022
+  dataTypes:
+  - rfc-5425
+  name: RFC-5425 TLS Alert Protocol Abuse
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+  category: TLS Security
+  technique: Alert Protocol Manipulation
+  adversary: origin
+  references:
+  - https://datatracker.ietf.org/doc/html/rfc5425
+  - https://attack.mitre.org/techniques/T1499/
+  description: Detects suspicious patterns in TLS alert messages that may indicate
+    protocol abuse, DoS attempts, or exploitation attempts in RFC-5425 syslog communications
+  where: "(safe(log.tls_alert_level, \"\") == \"fatal\" ||\n safe(log.tls_alert_count,\
+    \ 0) > 10 ||\n safe(log.tls_alert_code, 0) in [10, 21, 22, 50, 51, 60, 70, 71,\
+    \ 80, 86, 90, 100, 110, 111, 112, 113, 114, 115] ||\n safe(log.message, \"\")\
+    \ =~ \".*unexpected.*alert.*\" ||\n safe(log.tls_alert_description, \"\") in [\"\
+    unexpected_message\", \"decompression_failure\", \"decrypt_error\", \"export_restriction\"\
+    , \"protocol_version\", \"insufficient_security\", \"internal_error\", \"decode_error\"\
+    , \"unsupported_extension\", \"certificate_unobtainable\", \"unrecognized_name\"\
+    , \"bad_certificate_status_response\", \"bad_certificate_hash_value\"]) &&\nsafe(log.protocol,\
+    \ \"\") == \"syslog-tls\"\n"
+  afterEvents:
+  - indexPattern: v11-log-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.tls_alert_level.keyword
+      operator: filter_term
+      value: fatal
+    within: now-10m
+    count: 5
+  deduplicateBy:
+  - origin.ip
+  - log.tls_alert_code

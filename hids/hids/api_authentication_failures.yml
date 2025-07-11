@@ -1,0 +1,35 @@
+- id: 1022
+  dataTypes:
+  - hids
+  name: HIDS API Authentication Failures
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 1
+  category: Authentication
+  technique: T1110 - Brute Force
+  adversary: origin
+  references:
+  - https://documentation.wazuh.com/current/user-manual/api/reference.html
+  - https://attack.mitre.org/techniques/T1110/
+  description: Detects multiple API authentication failures that could indicate brute
+    force attempts or unauthorized access attempts to HIDS management interface
+  where: "safe(log.api_endpoint, \"\") != \"\" &&  (safe(log.status_code, 0) == 401\
+    \ || \n safe(log.status_code, 0) == 403 ||\n safe(log.message, \"\") contains\
+    \ \"Authentication error\" ||\n safe(log.message, \"\") contains \"Wrong key or\
+    \ corrupt payload\" ||\n safe(log.error_code, \"\") == \"1404\" ||\n safe(log.message,\
+    \ \"\") contains \"Invalid credentials\" ||\n safe(log.message, \"\") contains\
+    \ \"authentication failed\")\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.api_endpoint.keyword
+      operator: exists
+    within: now-15m
+    count: 10
+  deduplicateBy:
+  - origin.ip
+  - log.api_endpoint

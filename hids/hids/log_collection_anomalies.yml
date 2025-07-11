@@ -1,0 +1,34 @@
+- id: 1007
+  dataTypes:
+  - hids
+  name: HIDS Log Collection Anomaly Detected
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: System Monitoring
+  technique: Defense Evasion
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1562/002/
+  - https://documentation.wazuh.com/current/user-manual/agent/agent-management/index.html
+  description: Detects anomalies in HIDS log collection, such as agent communication
+    failures, log overflow, or collection errors. This could indicate attempts to
+    evade detection or system issues affecting monitoring capabilities.
+  where: "safe(log.module, \"\") == \"logcollector\" && (safe(log.status, \"\") ==\
+    \ \"error\" ||\n safe(log.status, \"\") == \"failed\" ||\n safe(log.error_type,\
+    \ \"\") == \"overflow\" ||\n safe(log.error_type, \"\") == \"connection_lost\"\
+    \ ||\n safe(log.message, \"\") =~ \".*log.*collection.*fail.*\" ||\n safe(log.message,\
+    \ \"\") =~ \".*unable.*to.*read.*log.*\" ||\n safe(log.message, \"\") =~ \".*log.*rotation.*error.*\"\
+    ) &&\nsafe(origin.hostname, \"\") != \"\"\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.hostname.keyword
+      operator: filter_term
+      value: '{{origin.hostname}}'
+    within: now-30m
+    count: 5
+  deduplicateBy:
+  - origin.hostname
+  - log.error_type

@@ -1,0 +1,41 @@
+- id: 1023
+  dataTypes:
+    - cef
+  name: CEF Request/Response Violation Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Application Security
+  technique: T1190 - Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1190/
+    - https://docs.paloaltonetworks.com/strata-logging-service/log-reference/network-logs/network-url-log/network-url-cef-fields
+  description: Detects request/response violations in CEF logs including oversized requests, malformed data, protocol violations, or suspicious response codes that may indicate attacks or application errors.
+  where: |
+    safe(log.dataType, "") == "cef" &&
+    (
+      (safe(log.severity, "") in ["8", "9", "10"] && contains(lower(safe(log.name, "")), "violation")) ||
+      (safe(log.requestMethod, "") != "" && safe(log.requestMethod, "") not in ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]) ||
+      (safe(log.bytesIn, 0) > 10485760) ||
+      (safe(log.bytesOut, 0) > 104857600) ||
+      (safe(log.responseCode, "") in ["400", "413", "414", "431", "500", "502", "503", "504"]) ||
+      (contains(lower(safe(log.msg, "")), "request too large")) ||
+      (contains(lower(safe(log.msg, "")), "header too long")) ||
+      (contains(lower(safe(log.msg, "")), "malformed request")) ||
+      (contains(lower(safe(log.msg, "")), "protocol violation")) ||
+      (safe(log.request, "") != "" && size(safe(log.request, "")) > 8192) ||
+      (safe(log.requestCookies, "") != "" && size(safe(log.requestCookies, "")) > 4096)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.request

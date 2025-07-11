@@ -1,0 +1,35 @@
+- id: 1004
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Version Field Anomalies
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 1
+  category: Protocol Violation
+  technique: Protocol Impersonation
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-6.2.2
+    - https://attack.mitre.org/techniques/T1001/003/
+  description: Detects anomalies in the RFC-5424 version field. The version field must be "1" for RFC-5424 compliant messages. Non-standard versions may indicate log forgery, protocol confusion attacks, or misconfigured systems.
+  where: |
+    safe(log.version, "") != "" &&
+    safe(log.version, "") != "1" &&
+    (safe(log.version, "").toInt(0) > 1 ||
+     safe(log.version, "").toInt(0) < 1 ||
+     !safe(log.version, "").matches("^[0-9]+$"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.hostname.keyword
+          operator: filter_term
+          value: '{{log.hostname}}'
+      within: now-2h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.version

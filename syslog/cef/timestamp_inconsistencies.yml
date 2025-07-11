@@ -1,0 +1,50 @@
+- id: 1015
+  dataTypes:
+    - cef
+  name: CEF Timestamp Inconsistencies
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Time Manipulation
+  technique: Timestomping
+  adversary: origin
+  references:
+    - https://www.microfocus.com/documentation/arcsight/arcsight-smartconnectors-8.3/cef-implementation-standard/Content/CEF/Chapter%202%20ArcSight%20Extension.htm
+    - https://attack.mitre.org/techniques/T1070/006/
+  description: Detects timestamp inconsistencies in CEF logs that may indicate log tampering, system time issues, or attempts to hide malicious activity by manipulating timestamps
+  where: |
+    (
+      (safe(log.rt, 0) > 0 && safe(log.rt, 0) > timestamp() + 86400000) ||
+      (safe(log.start, 0) > 0 && safe(log.start, 0) > timestamp() + 86400000) ||
+      (safe(log.end, 0) > 0 && safe(log.end, 0) > timestamp() + 86400000) ||
+      (safe(log.rt, 0) > 0 && safe(log.rt, 0) < timestamp() - 31536000000) ||
+      (safe(log.deviceCustomDate1, 0) > 0 && 
+       (safe(log.deviceCustomDate1, 0) > timestamp() + 86400000 || 
+        safe(log.deviceCustomDate1, 0) < timestamp() - 31536000000)) ||
+      (safe(log.deviceCustomDate2, 0) > 0 && 
+       (safe(log.deviceCustomDate2, 0) > timestamp() + 86400000 || 
+        safe(log.deviceCustomDate2, 0) < timestamp() - 31536000000)) ||
+      (safe(log.start, 0) > 0 && safe(log.end, 0) > 0 && 
+       safe(log.start, 0) > safe(log.end, 0)) ||
+      (safe(log.rt, 0) > 0 && safe(log.start, 0) > 0 && 
+       safe(log.rt, 0) < safe(log.start, 0)) ||
+      (safe(timestamp(), 0) - safe(log.rt, 0) > 604800000 && safe(log.rt, 0) > 0) ||
+      (safe(log.message, "").matches(".*rt=[0-9]{10}\\s.*") && 
+       safe(log.message, "").matches(".*rt=[0-9]{10}[0-9]{4,}.*"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.deviceProduct.keyword
+          operator: filter_term
+          value: '{{log.deviceProduct}}'
+      within: now-2h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.deviceProduct
+    - log.deviceVendor

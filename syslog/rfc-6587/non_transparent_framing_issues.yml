@@ -1,0 +1,38 @@
+- id: 1002
+  dataTypes:
+    - syslog
+  name: RFC-6587 Non-Transparent Framing Issues
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 4
+  category: Protocol Violation
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc6587#section-3.4.2
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects issues with non-transparent framing method including improper line feed termination, mixed framing methods, or missing delimiters that could lead to message boundary confusion
+  where: |
+    safe(log.transport, "") == "tcp" && 
+    safe(log.framing, "") == "non-transparent" &&
+    (
+      safe(log.missing_lf, false) == true ||
+      safe(log.mixed_framing, false) == true ||
+      safe(log.incomplete_frame, false) == true ||
+      (safe(log.message, "") != "" && !safe(log.message, "").endsWith("\n"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.facility.keyword
+          operator: filter_term
+          value: '{{log.facility}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - destination.ip

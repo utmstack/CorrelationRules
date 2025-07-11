@@ -1,0 +1,37 @@
+- id: 1006
+  dataTypes:
+    - nids
+  name: Covert Channel Detection
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+  category: Network Intrusion
+  technique: Covert Channel Communication
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1048/
+    - https://docs.suricata.io/en/latest/output/eve/eve-json-format.html
+  description: Detects potential covert channel communication through unusual protocols, DNS tunneling, or ICMP data exfiltration patterns
+  where: |
+    (
+      (safe(log.event_type, "") == "alert" && 
+       contains(safe(log.alert.signature, ""), "DNS tunneling")) ||
+      (safe(log.proto, "") == "ICMP" && 
+       safe(log.flow.bytes_toserver, 0) > 1000) ||
+      (safe(log.proto, "") == "DNS" && 
+       safe(log.dns.query.length, 0) > 100) ||
+      (safe(log.app_proto, "") == "dns" && 
+       contains(safe(log.dns.query.rrname, ""), ".base64.") )
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - destination.ip

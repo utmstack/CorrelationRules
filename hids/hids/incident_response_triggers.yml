@@ -1,0 +1,41 @@
+- id: 1017
+  dataTypes:
+  - hids
+  name: HIDS Incident Response Action Triggered
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+  category: Incident Response
+  technique: System Shutdown/Reboot
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1529/
+  - https://www.paloaltonetworks.com/blog/security-operations/security-orchestration-use-case-automating-ioc-enrichment/
+  description: Detects when HIDS initiates incident response actions such as quarantine,
+    network isolation, process termination, or automated remediation workflows
+  where: 'safe(log.action, "") in ["quarantine", "isolate", "terminate", "remediate",
+    "block", "kill_process", "disable_user"] ||
+
+    safe(log.response_action, "") != "" ||
+
+    safe(log.eventType, "") == "incident_response" ||
+
+    (safe(log.automated_response, "") == "true" && safe(log.response_status, "") in
+    ["initiated", "executed", "completed"])
+
+    '
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.hostname.keyword
+      operator: filter_term
+      value: '{{origin.hostname}}'
+    - field: log.response_action.keyword
+      operator: filter_term
+      value: '{{log.response_action}}'
+    within: now-15m
+    count: 5
+  deduplicateBy:
+  - origin.hostname
+  - log.incident_id

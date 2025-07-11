@@ -1,0 +1,40 @@
+- id: 1014
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 BOM Handling Error Detection
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 3
+  category: Protocol Violation
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-6.4
+    - https://attack.mitre.org/techniques/T1565/
+  description: Detects improper Byte Order Mark (BOM) usage in RFC-5424 messages which could indicate parser exploitation attempts or data corruption
+  where: |
+    safe(log.raw_message, "") != "" && (
+      log.raw_message.startsWith("\xef\xbb\xbf\xef\xbb\xbf") ||
+      log.raw_message.contains("BOM'") ||
+      log.raw_message.contains("'BOM") ||
+      (log.raw_message.startsWith("\xef\xbb\xbf") && !log.message.startsWith("BOM")) ||
+      log.raw_message.matches(".*\\xef\\xbb\\xbf[^B][^O][^M].*") ||
+      log.raw_message.matches(".*[^']BOM[^'].*") ||
+      log.raw_message.contains("\xfe\xff") ||
+      log.raw_message.contains("\xff\xfe") ||
+      log.raw_message.contains("\x00\x00\xfe\xff") ||
+      log.raw_message.contains("\xff\xfe\x00\x00") ||
+      (safe(log.message, "").startsWith("BOM") && !log.raw_message.startsWith("\xef\xbb\xbf"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.msg_id

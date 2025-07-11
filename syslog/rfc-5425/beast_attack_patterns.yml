@@ -1,0 +1,37 @@
+- id: 1013
+  dataTypes:
+  - rfc-5425
+  name: BEAST Attack Patterns
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 1
+  category: Cryptographic Attack
+  technique: BEAST Attack (CVE-2011-3389)
+  adversary: origin
+  references:
+  - https://www.acunetix.com/blog/articles/tls-vulnerabilities-attacks-final-part/
+  - https://attack.mitre.org/techniques/T1600/
+  - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2011-3389
+  description: Detects potential BEAST (Browser Exploit Against SSL/TLS) attack patterns
+    targeting CBC mode vulnerabilities in TLS 1.0 through chosen plaintext attacks.
+  where: "safe(log.tls_version, \"\") == \"1.0\" &&\n(safe(log.cipher_suite, \"\"\
+    ) contains \"CBC\" || \n safe(log.cipher, \"\") contains \"_CBC_\") &&\n(safe(log.iv_reuse,\
+    \ false) == true ||\n safe(log.predictable_iv, false) == true ||\n safe(log.message,\
+    \ \"\") contains \"IV prediction\" ||\n safe(log.chosen_plaintext_indicator, false)\
+    \ == true ||\n (safe(log.request_pattern, \"\") != \"\" && safe(log.request_similarity,\
+    \ 0) > 0.9))\n"
+  afterEvents:
+  - indexPattern: v11-log-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: user.name.keyword
+      operator: filter_term
+      value: '{{user.name}}'
+    within: now-15m
+    count: 10
+  deduplicateBy:
+  - origin.ip
+  - user.name

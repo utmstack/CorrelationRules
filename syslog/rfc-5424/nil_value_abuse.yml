@@ -1,0 +1,30 @@
+- id: 1016
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Nil Value Abuse
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 1
+  category: Protocol Violation
+  technique: Input Validation Bypass
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-6
+  description: Detects abuse of NILVALUE (-) in RFC-5424 structured data fields where actual values are expected, potentially indicating data obfuscation or protocol manipulation attempts
+  where: |
+    (safe(log.structured_data, "") == "-" && safe(log.app_name, "") != "-" && safe(log.msg_id, "") != "-") ||
+    (safe(log.hostname, "") == "-" && safe(origin.ip, "") != "") ||
+    (safe(log.app_name, "") == "-" && safe(log.process_id, "") != "-") ||
+    (safe(log.msg_id, "") == "-" && size(safe(log.structured_data, "")) > 10)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.hostname

@@ -1,0 +1,36 @@
+- id: 1004
+  dataTypes:
+  - hids
+  name: Security Policy Compliance Violation
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 1
+  category: Policy Violation
+  technique: Valid Accounts
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1078/
+  description: Detects violations of security policies enforced by HIDS, including
+    unauthorized software installation, configuration changes, or access violations
+  where: "safe(log.eventType, \"\") == \"policy_violation\" ||\nsafe(log.module, \"\
+    \") == \"policy_monitoring\" ||\nsafe(log.alert_level, \"\") == \"policy\" ||\n\
+    (safe(log.message, \"\") contains \"policy violation\" || \n safe(log.message,\
+    \ \"\") contains \"compliance failure\" ||\n safe(log.message, \"\") contains\
+    \ \"unauthorized configuration\") ||\n(safe(log.rule_group, \"\") == \"policy_rules\"\
+    \ ||\n safe(log.rule_group, \"\") == \"compliance\")\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: origin.user.keyword
+      operator: filter_term
+      value: '{{origin.user}}'
+    within: now-4h
+    count: 3
+  deduplicateBy:
+  - origin.ip
+  - origin.user
+  - log.policy_name

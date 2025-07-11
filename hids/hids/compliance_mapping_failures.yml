@@ -1,0 +1,45 @@
+- id: 1015
+  dataTypes:
+    - hids
+  name: Compliance Mapping Failures
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Compliance
+  technique: T1562.001 - Impair Defenses: Disable or Modify Tools
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1562/001/
+    - https://documentation.wazuh.com/current/user-manual/ruleset/compliance-mapping.html
+    - https://www.pcisecuritystandards.org/
+  description: Identifies compliance mapping failures and violations across various frameworks including PCI-DSS, HIPAA, GDPR, SOC2, and CIS benchmarks indicating potential security control failures or misconfigurations
+  where: |
+    safe(log.eventType, "") in ["compliance_check", "compliance_failure", "audit_violation"] &&
+    (
+      safe(log.complianceFramework, "") in ["PCI-DSS", "HIPAA", "GDPR", "SOC2", "CIS", "NIST"] &&
+      safe(log.status, "") in ["failed", "violation", "non-compliant"] ||
+      safe(log.controlID, "") != "" && safe(log.severity, "") in ["high", "critical"] ||
+      safe(log.category, "") contains_any ["access_control", "encryption", "logging", "authentication", "configuration"] &&
+      safe(log.remediationRequired, false) == true ||
+      safe(log.consecutiveFailures, 0) > 3 ||
+      safe(log.impactScore, 0) > 7
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.complianceFramework.keyword
+          operator: filter_term
+          value: '{{log.complianceFramework}}'
+        - field: log.controlID.keyword
+          operator: filter_term
+          value: '{{log.controlID}}'
+      within: now-24h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.complianceFramework
+    - log.controlID

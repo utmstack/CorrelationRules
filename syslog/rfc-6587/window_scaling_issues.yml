@@ -1,0 +1,38 @@
+- id: 1019
+  dataTypes:
+    - rfc-6587
+  name: TCP Window Scaling Attack
+  impact:
+    confidentiality: 0
+    integrity: 1
+    availability: 4
+  category: Network Security
+  technique: Traffic Manipulation
+  adversary: origin
+  references:
+    - https://www.linkedin.com/advice/0/how-can-tcp-traffic-analysis-help-identify-mitigate-iscyf
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects TCP window scaling attacks where attackers manipulate window size values to throttle or block data flow, causing denial of service. Monitors for discrepancies in window scale values and abnormal window sizes.
+  where: |
+    safe(origin.ip, "") != "" &&
+    (
+      (safe(log.tcp_window_scale, 0) > 14) ||
+      (safe(log.tcp_window_size, 0) == 0 && safe(log.tcp_flags, "") contains "ACK") ||
+      (safe(log.tcp_window_size, 0) > 1048576) ||
+      (safe(log.tcp_flags, "") contains "SYN" && safe(log.tcp_window_scale, 0) != safe(log.tcp_window_scale_reply, 0) && abs(safe(log.tcp_window_scale, 0) - safe(log.tcp_window_scale_reply, 0)) > 5)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.port.keyword
+          operator: filter_term
+          value: '{{destination.port}}'
+      within: now-5m
+      count: 15
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - destination.port

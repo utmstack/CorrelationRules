@@ -1,0 +1,45 @@
+- id: 1010
+  dataTypes:
+  - hids
+  name: Windows Registry Modification Detected
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 3
+  category: Registry Monitoring
+  technique: Boot or Logon Autostart Execution
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1547/
+  - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/registry-monitoring.html
+  description: Detects modifications to Windows registry keys commonly used for persistence,
+    privilege escalation, or system configuration changes. Monitors critical registry
+    hives and keys that are often targeted by malware and attackers.
+  where: "safe(log.module, \"\") == \"syscheck\" && safe(log.registry_path, \"\")\
+    \ != \"\" && (safe(log.registry_path, \"\") =~ \".*\\\\\\\\(Run|RunOnce|RunOnceEx|RunServices|RunServicesOnce).*\"\
+    \ ||\n safe(log.registry_path, \"\") =~ \".*\\\\\\\\(CurrentVersion\\\\\\\\Explorer\\\
+    \\\\\\Shell Folders|User Shell Folders).*\" ||\n safe(log.registry_path, \"\"\
+    ) =~ \".*\\\\\\\\(Services|Drivers|AppInit_DLLs|Winlogon|Windows\\\\\\\\CurrentVersion\\\
+    \\\\\\Policies).*\" ||\n safe(log.registry_path, \"\") =~ \".*\\\\\\\\(Image File\
+    \ Execution Options|Debugger|GlobalFlag).*\" ||\n safe(log.registry_path, \"\"\
+    ) =~ \".*\\\\\\\\(Control Panel\\\\\\\\Desktop\\\\\\\\SCRNSAVE\\\\.EXE|ScreenSaveActive).*\"\
+    \ ||\n safe(log.registry_path, \"\") =~ \".*\\\\\\\\(Software\\\\\\\\Classes\\\
+    \\\\\\exefile\\\\\\\\shell\\\\\\\\open\\\\\\\\command).*\") &&\nsafe(log.event_type,\
+    \ \"\") != \"\" && (safe(log.event_type, \"\") == \"modified\" ||\n safe(log.event_type,\
+    \ \"\") == \"added\" ||\n safe(log.event_type, \"\") == \"deleted\") &&\nsafe(origin.hostname,\
+    \ \"\") != \"\"\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.hostname.keyword
+      operator: filter_term
+      value: '{{origin.hostname}}'
+    - field: log.registry_path.keyword
+      operator: filter_term
+      value: '{{log.registry_path}}'
+    within: now-15m
+    count: 5
+  deduplicateBy:
+  - origin.hostname
+  - log.registry_path
+  - log.event_type

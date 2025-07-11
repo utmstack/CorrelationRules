@@ -1,0 +1,35 @@
+- id: 1018
+  dataTypes:
+    - vmware-esxi
+  name: VM Template Tampering Detection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Template Security
+  technique: Template Modification
+  adversary: origin
+  references:
+    - https://docs.vmware.com/en/VMware-vSphere/8.0/vsphere-security/GUID-F35D7005-58EB-48AC-99D5-B9942EB2A8EF.html
+    - https://attack.mitre.org/techniques/T1608/
+  description: Detects unauthorized modifications to VM templates that could lead to deployment of compromised virtual machines. Monitors for template conversion operations and template file modifications.
+  where: |
+    (safe(log.message, "") contains "ConvertToTemplate" ||
+     safe(log.message, "") contains "MarkAsTemplate" ||
+     safe(log.message, "") contains "MarkAsVirtualMachine" ||
+     safe(log.message, "") contains "CloneVM_Task" && safe(log.message, "") contains "template") ||
+    (safe(log.message, "") contains ".vmtx" && 
+     (safe(log.message, "") contains "modify" || 
+      safe(log.message, "") contains "change" ||
+      safe(log.message, "") contains "delete"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-30m
+      count: 2
+  deduplicateBy:
+    - origin.hostname
+    - log.message

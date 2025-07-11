@@ -1,0 +1,42 @@
+- id: 1012
+  dataTypes:
+    - cef
+  name: CEF Encoding Issues Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Data Integrity
+  technique: Data Encoding
+  adversary: origin
+  references:
+    - https://www.microfocus.com/documentation/arcsight/arcsight-smartconnectors-8.4/pdfdoc/cef-implementation-standard/cef-implementation-standard.pdf
+    - https://attack.mitre.org/techniques/T1132/
+  description: Detects encoding issues in CEF messages that may indicate data corruption, attack attempts to bypass parsing, or misconfigured systems not properly encoding UTF-8 characters
+  where: |
+    (
+      safe(log.message, "").contains("\\xc0") || safe(log.message, "").contains("\\xc1") ||
+      safe(log.message, "").contains("\\xfe") || safe(log.message, "").contains("\\xff") ||
+      safe(log.message, "").contains("\\x00") ||
+      safe(log.name, "").matches(".*[\\x80-\\xff].*") ||
+      safe(log.deviceProduct, "").matches(".*[\\x00-\\x1f].*") ||
+      safe(log.deviceVendor, "").matches(".*[\\x00-\\x1f].*") ||
+      (safe(log.message, "").contains("&#") && safe(log.message, "").matches(".*&#[0-9]{4,};.*")) ||
+      safe(log.message, "").matches(".*(%[0-9a-fA-F]{2}){10,}.*") ||
+      (safe(log.cef_version, "") != "0" && safe(log.cef_version, "") != "1") ||
+      safe(log.message, "").matches(".*\\\\u[0-9a-fA-F]{4}.*\\\\u[0-9a-fA-F]{4}.*\\\\u[0-9a-fA-F]{4}.*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.deviceProduct.keyword
+          operator: filter_term
+          value: '{{log.deviceProduct}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.deviceProduct

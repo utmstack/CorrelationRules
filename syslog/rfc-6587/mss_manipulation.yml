@@ -1,0 +1,33 @@
+- id: 1016
+  dataTypes:
+    - rfc-6587
+  name: TCP MSS Manipulation Attack
+  impact:
+    confidentiality: 1
+    integrity: 2
+    availability: 5
+  category: Network Security
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://access.redhat.com/security/vulnerabilities/tcpsack
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects TCP MSS manipulation attacks where attackers send crafted packets with abnormally low MSS values to trigger excessive resource consumption. This can force systems to segment responses into multiple tiny TCP segments, drastically increasing bandwidth usage and consuming CPU resources.
+  where: |
+    safe(log.tcp_mss, 0) > 0 && safe(log.tcp_mss, 0) < 48 &&
+    safe(origin.ip, "") != "" &&
+    (safe(log.tcp_flags, "") contains "SYN" || safe(log.tcp_options, "") contains "mss")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.tcp_mss
+          operator: less_than
+          value: 48
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - destination.ip

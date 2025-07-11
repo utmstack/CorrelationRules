@@ -1,0 +1,31 @@
+- id: 1021
+  dataTypes:
+    - nids
+  name: Threat Intelligence IOC Match
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Threat Intelligence
+  technique: Command and Control
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1071/
+    - https://www.snort.org/faq/what-is-snort
+  description: Detects network traffic matching known malicious indicators from threat intelligence feeds including malicious IPs, domains, and URLs
+  where: |
+    safe(log.alert_category, "") == "threat_intel" && 
+    safe(origin.ip, "") != "" && 
+    (safe(log.threat_type, "") in ["malicious_ip", "c2_server", "known_malware", "botnet"]) &&
+    safe(log.priority, 0) >= 1
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-24h
+      count: 1
+  deduplicateBy:
+    - origin.ip
+    - log.threat_id

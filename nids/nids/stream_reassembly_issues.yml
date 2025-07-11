@@ -1,0 +1,39 @@
+- id: 1025
+  dataTypes:
+    - nids
+  name: Stream Reassembly Anomaly
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: Network Anomaly
+  technique: Data Obfuscation
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1001/
+    - https://blog.snort.org/2020/10/stream-tcp-reassembly.html
+  description: Detects issues with TCP stream reassembly that may indicate evasion attempts, fragmentation attacks, or network performance problems
+  where: |
+    safe(log.event_type, "") == "stream" &&
+    safe(origin.ip, "") != "" &&
+    (safe(log.stream_event, "") in ["overlap", "gap", "retransmission", "out_of_order", "reassembly_error"]) &&
+    (safe(log.alert_msg, "") contains "stream" || 
+     safe(log.alert_msg, "") contains "reassembly" ||
+     safe(log.alert_msg, "") contains "overlap" ||
+     safe(log.alert_msg, "") contains "segment")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-5m
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - origin.port
+    - destination.port

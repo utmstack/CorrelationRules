@@ -1,0 +1,40 @@
+- id: 1004
+  dataTypes:
+    - cef
+  name: CEF Severity Mismatches
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 2
+  category: Anomaly Detection
+  technique: Event Manipulation
+  adversary: system
+  references:
+    - https://www.splunk.com/en_us/blog/learn/common-event-format-cef.html
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects mismatches between CEF severity levels and event content, which could indicate log tampering, misconfiguration, or attempts to downgrade the importance of security events.
+  where: |
+    (safe(log.cef_severity, 0) <= 3 && 
+     (safe(log.cef_name, "") contains_any ["attack", "breach", "critical", "exploit", "malware", "ransomware"] ||
+      safe(log.cef_extensions, "") contains_any ["attack", "exploit", "malware"])) ||
+    (safe(log.cef_severity, 0) >= 8 && 
+     (safe(log.cef_name, "") contains_any ["info", "debug", "test", "heartbeat", "keepalive"] ||
+      safe(log.cef_device_event_class_id, "") starts_with "info")) ||
+    (safe(log.cef_severity, -1) < 0 || safe(log.cef_severity, -1) > 10) ||
+    (safe(log.previous_severity, -1) != -1 && 
+     abs(safe(log.cef_severity, 0) - safe(log.previous_severity, 0)) > 5)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.cef_device_vendor.keyword
+          operator: filter_term
+          value: '{{log.cef_device_vendor}}'
+        - field: log.cef_device_product.keyword
+          operator: filter_term
+          value: '{{log.cef_device_product}}'
+      within: now-2h
+      count: 20
+  deduplicateBy:
+    - log.cef_device_vendor
+    - log.cef_device_product
+    - log.cef_device_event_class_id

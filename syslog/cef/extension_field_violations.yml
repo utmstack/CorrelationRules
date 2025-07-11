@@ -1,0 +1,39 @@
+- id: 1003
+  dataTypes:
+    - cef
+  name: CEF Extension Field Violations
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 1
+  category: Format Violation
+  technique: Log Manipulation
+  adversary: system
+  references:
+    - https://www.secef.net/wp-content/uploads/sites/10/2017/04/CommonEventFormatv23.pdf
+    - https://attack.mitre.org/techniques/T1070/002/
+  description: Detects violations in CEF extension fields including invalid key-value pairs, malformed extensions, or suspicious field names that could indicate log injection or tampering attempts.
+  where: |
+    (safe(log.cef_extensions, "") contains "=" && 
+     !safe(log.cef_extensions, "") matches "^[a-zA-Z0-9]+=[^=]+(\\s+[a-zA-Z0-9]+=[^=]+)*$") ||
+    safe(log.cef_extensions, "") contains "<script" ||
+    safe(log.cef_extensions, "") contains "javascript:" ||
+    safe(log.cef_extensions, "") contains "../" ||
+    safe(log.cef_extensions, "") matches ".*[\\x00-\\x1F].*" ||
+    (safe(log.extension_field_count, 0) > 100) ||
+    (safe(log.cef_extensions, "") != "" && 
+     length(safe(log.cef_extensions, "")) > 8192)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.cef_device_vendor.keyword
+          operator: filter_term
+          value: '{{log.cef_device_vendor}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.cef_device_vendor

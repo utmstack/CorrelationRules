@@ -1,0 +1,31 @@
+- id: 1027
+  dataTypes:
+    - vmware-esxi
+  name: CPU/Memory Reservation Abuse Detection
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 4
+  category: Resource Manipulation
+  technique: System Resource Modifications
+  adversary: origin
+  references:
+    - https://docs.vmware.com/en/VMware-vSphere/8.0/vsphere-resource-management/GUID-98BD5A8A-260A-494F-BAAE-74781F5C4B87.html
+    - https://attack.mitre.org/techniques/T1489/
+  description: Detects unauthorized or excessive CPU/memory reservation modifications that could lead to resource starvation for other VMs or indicate privilege abuse
+  where: |
+    safe(log.process, "") == "hostd" && 
+    safe(log.message, "") != "" && 
+    (log.message.contains("reservation") || log.message.contains("resource allocation")) &&
+    (log.message.contains("changed") || log.message.contains("modified") || log.message.contains("exceeded") || log.message.contains("limit"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.hostname
+    - log.eventInfo

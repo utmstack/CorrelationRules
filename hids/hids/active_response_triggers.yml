@@ -1,0 +1,33 @@
+- id: 1006
+  dataTypes:
+  - hids
+  name: HIDS Active Response Triggered
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 3
+  category: Response Action
+  technique: Active Defense
+  adversary: origin
+  references:
+  - https://documentation.wazuh.com/current/user-manual/capabilities/active-response/index.html
+  - https://www.ossec.net/docs/manual/ar/index.html
+  description: Detects when a HIDS active response is triggered, indicating automatic
+    defensive action taken against potential threats. This could include blocking
+    IPs, killing processes, or modifying firewall rules.
+  where: "safe(log.module, \"\") == \"active-response\" && safe(log.action, \"\")\
+    \ != \"\" && (safe(log.action, \"\") == \"firewall-block\" ||\n safe(log.action,\
+    \ \"\") == \"host-deny\" ||\n safe(log.action, \"\") == \"process-kill\" ||\n\
+    \ safe(log.action, \"\") == \"account-disable\") &&\nsafe(origin.ip, \"\") !=\
+    \ \"\"\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    within: now-10m
+    count: 3
+  deduplicateBy:
+  - origin.ip
+  - log.action

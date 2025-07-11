@@ -1,0 +1,43 @@
+- id: 1018
+  dataTypes:
+  - hids
+  name: Security Orchestration Workflow Execution
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 2
+  category: Security Automation
+  technique: Automated Collection
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1119/
+  - https://fidelissecurity.com/threatgeek/threat-detection-response/real-time-ioc-detection-and-response/
+  description: Detects SOAR (Security Orchestration, Automation and Response) workflow
+    executions triggered by HIDS events including automated enrichment, playbook runs,
+    and multi-tool coordination
+  where: 'safe(log.eventType, "") in ["soar_workflow", "playbook_execution", "orchestration_event"]
+    ||
+
+    safe(log.workflow_status, "") in ["started", "running", "completed", "failed"]
+    ||
+
+    (safe(log.automation_type, "") != "" && safe(log.playbook_name, "") != "") ||
+
+    safe(log.orchestration_action, "") in ["enrich_ioc", "correlate_events", "automate_response",
+    "execute_playbook"]
+
+    '
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: log.workflow_id.keyword
+      operator: filter_term
+      value: '{{log.workflow_id}}'
+    - field: origin.hostname.keyword
+      operator: filter_term
+      value: '{{origin.hostname}}'
+    within: now-30m
+    count: 10
+  deduplicateBy:
+  - log.workflow_id
+  - log.playbook_name

@@ -1,0 +1,42 @@
+- id: 1014
+  dataTypes:
+    - hids
+  name: Cloud Workload Protection Alerts
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Cloud Security
+  technique: T1078.004 - Valid Accounts: Cloud Accounts
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1078/004/
+    - https://documentation.wazuh.com/current/cloud-security/index.html
+  description: Detects security threats in cloud workloads including unauthorized API calls, suspicious instance modifications, security group changes, or anomalous cloud resource access patterns
+  where: |
+    safe(log.eventType, "") in ["cloud_workload_protection", "cwp_alert", "cloud_security"] &&
+    (
+      safe(log.severity, "") in ["critical", "high"] ||
+      safe(log.cloudProvider, "") in ["aws", "azure", "gcp"] && safe(log.action, "") contains_any ["unauthorized", "denied", "failed"] ||
+      safe(log.resourceType, "") in ["instance", "vm", "container"] && safe(log.modification, "") contains_any ["security_group", "firewall", "network_acl"] ||
+      safe(log.anomalyScore, 0) > 80 ||
+      safe(log.threatIntelMatch, false) == true ||
+      safe(log.cryptominingDetected, false) == true ||
+      safe(log.lateralMovement, false) == true ||
+      safe(log.privilegeEscalation, false) == true
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.cloudAccountID.keyword
+          operator: filter_term
+          value: '{{log.cloudAccountID}}'
+      within: now-2h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.cloudAccountID
+    - log.resourceID

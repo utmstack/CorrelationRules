@@ -66,53 +66,117 @@ def extract_technology_from_path(file_path: Path) -> Tuple[str, str]:
         return parts[0], parts[1]
     return "unknown", "unknown"
 
-def get_filter_path_for_technology(tech_category: str, tech_name: str) -> Optional[Path]:
+def get_filter_fields_for_technology(tech_category: str, tech_name: str) -> Tuple[Optional[str], List[str]]:
     """
-    Get the filter file path for a given technology if it exists
+    Get the filter fields for a given technology from the filter_fields_output.txt file
+    Returns: (filter_file_name, list_of_fields)
     """
     # Import the mappings from the generation script to stay consistent
     from generate_correlation_rules import get_technology_mappings
     
     tech_mappings = get_technology_mappings()
+    filter_file_name = None
     
     # Find the filter path for this technology
     if tech_category in tech_mappings:
         for tech, filter_path in tech_mappings[tech_category]:
             if tech == tech_name and filter_path:
-                full_path = BASE_DIR / filter_path
-                if full_path.exists():
-                    return full_path
+                filter_file_name = filter_path
+                break
     
     # Fallback to manual mappings for any missing ones
-    filter_mappings = {
-        ("antivirus", "bitdefender_gz"): "filters_from_github/antivirus/bitdefender_gz.yml",
-        ("antivirus", "sentinel-one"): "filters_from_github/antivirus/sentinel-one.yml",
-        ("antivirus", "kaspersky"): "filters_from_github/antivirus/kaspersky.yml",
-        ("antivirus", "esmc-eset"): "filters_from_github/antivirus/esmc-eset.yml",
-        ("antivirus", "deceptive-bytes"): "filters_from_github/deceptivebytes/deceptive-bytes.yml",
-        ("aws", "aws"): "filters_from_github/aws/aws.yml",
-        ("cloud", "azure"): "filters_from_github/azure/azure-eventhub.yml",
-        ("cloud", "google"): "filters_from_github/google/gcp.yml",
-    }
+    if not filter_file_name:
+        filter_mappings = {
+            ("antivirus", "bitdefender_gz"): "filters_from_github/antivirus/bitdefender_gz.yml",
+            ("antivirus", "sentinel-one"): "filters_from_github/antivirus/sentinel-one.yml",
+            ("antivirus", "kaspersky"): "filters_from_github/antivirus/kaspersky.yml",
+            ("antivirus", "esmc-eset"): "filters_from_github/antivirus/esmc-eset.yml",
+            ("antivirus", "deceptive-bytes"): "filters_from_github/deceptivebytes/deceptive-bytes.yml",
+            ("aws", "aws"): "filters_from_github/aws/aws.yml",
+            ("cloud", "azure"): "filters_from_github/azure/azure-eventhub.yml",
+            ("cloud", "google"): "filters_from_github/google/gcp.yml",
+        }
+        filter_file_name = filter_mappings.get((tech_category, tech_name))
     
-    filter_file = filter_mappings.get((tech_category, tech_name))
-    if filter_file:
-        full_path = BASE_DIR / filter_file
-        if full_path.exists():
-            return full_path
-    return None
+    if not filter_file_name:
+        return None, []
+    
+    # Extract just the relative path from filters_from_github
+    if 'filters_from_github/' in filter_file_name:
+        search_name = filter_file_name.split('filters_from_github/')[-1]
+    else:
+        search_name = filter_file_name
+    
+    # Remove ./ prefix if present
+    if search_name.startswith('./'):
+        search_name = search_name[2:]
+    
+    # Read the filter fields from the output file
+    fields = []
+    filter_fields_file = BASE_DIR / "filter_fields_output.txt"
+    
+    if not filter_fields_file.exists():
+        logger.warning(f"Filter fields output file not found: {filter_fields_file}")
+        return filter_file_name, []
+    
+    try:
+        with open(filter_fields_file, 'r') as f:
+            content = f.read()
+        
+        # Find the section for this filter file by looking for the exact file line
+        file_marker = f"File: {search_name}"
+        if file_marker in content:
+            # Find the position of this file marker
+            start_pos = content.find(file_marker)
+            # Find the next file marker (or end of file)
+            next_file_pos = content.find("\nFile:", start_pos + 1)
+            if next_file_pos == -1:
+                section = content[start_pos:]
+            else:
+                section = content[start_pos:next_file_pos]
+            
+            # Extract fields from this section
+            lines = section.split('\n')
+            in_fields_section = False
+            for line in lines:
+                if line.strip() == "Fields created:":
+                    in_fields_section = True
+                elif line.strip() == "Dynamic fields from JSON parsing:":
+                    # We'll continue collecting fields but skip dynamic indicators
+                    continue
+                elif line.strip().startswith("=") and in_fields_section:
+                    # End of section
+                    break
+                elif in_fields_section and line.strip().startswith("- "):
+                    field = line.strip()[2:]  # Remove "- " prefix
+                    if not field.startswith("*"):  # Skip dynamic field indicators
+                        fields.append(field)
+                
+    except Exception as e:
+        logger.error(f"Error reading filter fields: {e}")
+        
+    return filter_file_name, fields
 
-def create_verification_prompt(rule_file: Path, tech_category: str, tech_name: str, filter_path: Optional[Path]) -> str:
+def create_verification_prompt(rule_file: Path, tech_category: str, tech_name: str, filter_name: Optional[str], filter_fields: List[str]) -> str:
     """
     Create a detailed prompt for Claude to verify a correlation rule
     """
+    fields_section = ""
+    if filter_fields:
+        fields_section = f"""
+3. Available fields from the filter ({filter_name}):
+{chr(10).join(f'   - {field}' for field in sorted(filter_fields))}
+"""
+    else:
+        fields_section = "3. No filter fields information available for this technology"
+    
     prompt = f"""You are tasked with verifying and grounding a correlation rule for {tech_name} in the UTMStack system.
 
 IMPORTANT: Follow these verification steps EXACTLY:
 
 1. Read the rule file at: {rule_file}
 2. Read the rulesdoc.md file to understand the correct rule syntax and structure
-3. {"Read the filter file at: " + str(filter_path) + " to understand available fields" if filter_path else "No filter file available for this technology"}
+{fields_section}
 4. Use WebSearch to find vendor documentation for {tech_name} to verify:
    - Correct field names and values
    - Event types and their exact names/values
@@ -121,7 +185,7 @@ IMPORTANT: Follow these verification steps EXACTLY:
 
 5. Verify the following aspects of the rule:
    a) Syntax compliance with rulesdoc.md structure
-   b) Field names match vendor documentation or filter output
+   b) Field names match vendor documentation or available filter fields
    c) CEL expressions use correct field paths and values
    d) Event types and values are accurate per vendor docs
    e) Impact scores are appropriate for the threat
@@ -150,7 +214,7 @@ IMPORTANT: Follow these verification steps EXACTLY:
 
 Technology: {tech_category}/{tech_name}
 Rule file: {rule_file}
-Filter file: {filter_path if filter_path else "None"}
+Filter: {filter_name if filter_name else "None"}
 
 Please proceed with the verification now."""
     
@@ -163,14 +227,14 @@ async def verify_single_rule(rule_file: Path, working_dir: str) -> Tuple[bool, s
     try:
         # Extract technology info
         tech_category, tech_name = extract_technology_from_path(rule_file)
-        filter_path = get_filter_path_for_technology(tech_category, tech_name)
+        filter_name, filter_fields = get_filter_fields_for_technology(tech_category, tech_name)
         
         logger.info(f"Verifying rule: {rule_file}")
         logger.debug(f"Technology: {tech_category}/{tech_name}")
-        logger.debug(f"Filter file: {filter_path}")
+        logger.debug(f"Filter: {filter_name}, Fields: {len(filter_fields)}")
         
         # Create verification prompt
-        prompt = create_verification_prompt(rule_file, tech_category, tech_name, filter_path)
+        prompt = create_verification_prompt(rule_file, tech_category, tech_name, filter_name, filter_fields)
         
         # Configure options for Claude Code
         options = ClaudeCodeOptions(

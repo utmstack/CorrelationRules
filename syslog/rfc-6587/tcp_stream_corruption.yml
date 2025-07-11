@@ -1,0 +1,41 @@
+- id: 1005
+  dataTypes:
+    - syslog
+  name: RFC-6587 TCP Stream Corruption
+  impact:
+    confidentiality: 2
+    integrity: 5
+    availability: 4
+  category: Data Corruption
+  technique: Network Traffic Manipulation
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc6587#section-4.3
+    - https://attack.mitre.org/techniques/T1565/002/
+    - https://capec.mitre.org/data/definitions/540.html
+  description: Detects TCP stream corruption in syslog transmission including out-of-order messages, partial frames, invalid UTF-8 sequences, or connection state inconsistencies that may indicate man-in-the-middle attacks or intentional disruption
+  where: |
+    safe(log.transport, "") == "tcp" &&
+    (
+      safe(log.tcp_corruption, false) == true ||
+      safe(log.invalid_utf8, false) == true ||
+      safe(log.partial_frame, false) == true ||
+      safe(log.out_of_order, false) == true ||
+      safe(log.connection_reset, false) == true ||
+      (safe(log.sequence_gap, 0) > 0 && safe(log.sequence_gap, 0) > 100)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.tcp_stream_id

@@ -1,0 +1,40 @@
+- id: 1025
+  dataTypes:
+    - wineventlog
+  name: AdminSDHolder Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Persistence
+  technique: Account Manipulation
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1098/
+    - https://adsecurity.org/?p=1906
+    - https://docs.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory
+  description: Detects modifications to the AdminSDHolder object which can be used for persistence by granting elevated privileges. The SDProp process propagates these permissions to protected groups every 60 minutes.
+  where: |
+    safe(log.eventCode, "") in ["4662", "5136", "4670"] && 
+    safe(log.winlogChannel, "") == "Security" &&
+    (
+      safe(log.winlog.event_data.ObjectName, "") =~ ".*CN=AdminSDHolder,CN=System.*" ||
+      safe(log.winlog.event_data.ObjectDN, "") =~ ".*CN=AdminSDHolder,CN=System.*"
+    ) &&
+    (
+      safe(log.winlog.event_data.OperationType, "") in ["Object Access", "Write Property"] ||
+      safe(log.winlog.event_data.AccessMask, "") in ["0x20000", "0x40000", "0x80000"] ||
+      safe(log.action, "") =~ ".*Permissions.*changed.*"
+    ) &&
+    safe(log.winlogEventDataSubjectUserName, "") != "SYSTEM"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.winlogEventDataSubjectUserName.keyword
+          operator: filter_term
+          value: '{{log.winlogEventDataSubjectUserName}}'
+      within: now-24h
+      count: 1
+  deduplicateBy:
+    - log.winlogEventDataSubjectUserName
+    - log.winlog.event_data.ObjectName

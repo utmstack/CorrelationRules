@@ -1,0 +1,41 @@
+- id: 1010
+  dataTypes:
+    - vmware-esxi
+  name: Resource Pool Abuse Detection
+  impact:
+    confidentiality: 2
+    integrity: 2
+    availability: 4
+  category: Impact
+  technique: Resource Hijacking
+  adversary: origin
+  references:
+    - https://www.site24x7.com/help/virtualization-metrics/vmware-resourcepool-monitor.html
+    - https://www.datadoghq.com/blog/vsphere-metrics/
+    - https://attack.mitre.org/techniques/T1496/
+  description: Detects potential abuse of VMware resource pools including unauthorized modifications, excessive resource consumption, and attempts to monopolize computing resources. Monitors for abnormal resource allocation patterns and policy violations.
+  where: |
+    (safe(log.message, "") contains("Resource pool") ||
+     safe(log.message, "") contains("CPU limit exceeded") ||
+     safe(log.message, "") contains("Memory limit exceeded") ||
+     safe(log.message, "") contains("Resource reservation") ||
+     safe(log.message, "") contains("Resource shares modified") ||
+     safe(log.message, "") contains("Resource pool created") ||
+     safe(log.message, "") contains("Resource pool deleted") ||
+     safe(log.message, "") contains("Resource allocation failed") ||
+     safe(log.message, "") contains("Resource contention") ||
+     safe(log.message, "") contains("overuse resources") ||
+     (safe(log.process, "") == "hostd" && safe(log.message, "") contains("ResourcePool")) ||
+     (safe(log.process, "") == "vpxa" && safe(log.message, "") contains("Resource"))) &&
+    safe(origin.hostname, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-1h
+      count: 15
+  deduplicateBy:
+    - origin.hostname
+    - log.eventInfo

@@ -1,0 +1,33 @@
+- id: 1031
+  dataTypes:
+    - wineventlog
+  name: RDP Brute Force Attack
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Brute Force
+  technique: Brute Force
+  adversary: origin
+  references:
+    - https://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventID=4625
+    - https://attack.mitre.org/techniques/T1110/001/
+  description: Detects multiple failed RDP login attempts from the same source IP address, indicating a potential brute force attack. This rule monitors Windows Event ID 4625 (failed logon) with focus on network logon types (type 3) which are commonly used for RDP connections.
+  where: safe(log.eventCode, "") == "4625" && safe(log.winlogEventDataLogonType, "") == "3" && safe(log.winlogEventDataIpAddress, "") != "" && safe(log.winlogEventDataIpAddress, "") != "-" && safe(log.winlogEventDataIpAddress, "") != "::1" && safe(log.winlogEventDataIpAddress, "") != "127.0.0.1"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.winlogEventDataIpAddress.keyword
+          operator: filter_term
+          value: '{{log.winlogEventDataIpAddress}}'
+        - field: log.eventCode.keyword
+          operator: filter_term
+          value: '4625'
+        - field: log.winlogEventDataLogonType.keyword
+          operator: filter_term
+          value: '3'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - log.winlogEventDataIpAddress
+    - origin.host

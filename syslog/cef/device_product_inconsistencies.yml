@@ -1,0 +1,38 @@
+- id: 1006
+  dataTypes:
+    - cef
+  name: CEF Device Product Inconsistencies
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 1
+  category: Data Integrity
+  technique: T1036 - Masquerading
+  adversary: origin
+  references:
+    - https://www.microfocus.com/documentation/arcsight/arcsight-cef-23/
+    - https://attack.mitre.org/techniques/T1036/
+  description: Detects inconsistencies in CEF device product fields that may indicate log tampering or spoofing attempts
+  where: |
+    safe(log.deviceProduct, "") != "" && 
+    safe(log.deviceVendor, "") != "" &&
+    (
+      (safe(log.deviceVendor, "") == "ArcSight" && !safe(log.deviceProduct, "").contains("Logger")) ||
+      (safe(log.deviceVendor, "") == "Check Point" && !safe(log.deviceProduct, "").matches("(SmartDefense|Firewall|VPN)")) ||
+      (safe(log.deviceVendor, "") == "Cisco" && !safe(log.deviceProduct, "").matches("(ASA|IDS|IPS|ISE)")) ||
+      (safe(log.deviceProduct, "").contains("Unknown") || safe(log.deviceProduct, "").contains("N/A"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.deviceVendor.keyword
+          operator: filter_term
+          value: '{{log.deviceVendor}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.deviceVendor

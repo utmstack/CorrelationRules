@@ -1,0 +1,37 @@
+- id: 1003
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Facility and Severity Mismatches
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 1
+  category: Anomaly Detection
+  technique: Masquerading
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-6.2.1
+    - https://attack.mitre.org/techniques/T1036/
+  description: Detects unusual combinations of facility and severity values that may indicate log manipulation or system compromise. For example, kernel messages (facility 0) with debug severity, or security messages with inconsistent severity levels.
+  where: |
+    (safe(log.facility, -1) == 0 && safe(log.severity, -1) == 7) ||
+    (safe(log.facility, -1) == 4 && safe(log.severity, -1) > 5) ||
+    (safe(log.facility, -1) == 10 && safe(log.severity, -1) > 5) ||
+    (safe(log.facility, -1) == 13 && safe(log.severity, -1) == 7) ||
+    (safe(log.facility, -1) == 14 && safe(log.severity, -1) > 3) ||
+    (safe(log.severity, -1) == 0 && safe(log.facility, -1) > 15)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.facility
+          operator: filter_term
+          value: '{{log.facility}}'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - log.facility
+    - log.severity

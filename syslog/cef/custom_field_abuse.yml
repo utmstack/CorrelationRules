@@ -1,0 +1,38 @@
+- id: 1011
+  dataTypes:
+    - cef
+  name: CEF Custom Field Abuse Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Security Monitoring
+  technique: Protocol Manipulation
+  adversary: origin
+  references:
+    - https://www.microfocus.com/documentation/arcsight/arcsight-smartconnectors-8.3/cef-implementation-standard/Content/CEF/Chapter%202%20ArcSight%20Extension.htm
+    - https://attack.mitre.org/techniques/T1036/
+  description: Detects potential abuse of CEF custom fields (cn, cs, flexString) where attackers may hide malicious content or bypass security controls by using custom fields inappropriately
+  where: |
+    (
+      (safe(log.cs1, "").contains("<script") || safe(log.cs2, "").contains("<script") || 
+       safe(log.cs3, "").contains("<script") || safe(log.cs4, "").contains("<script") ||
+       safe(log.cs5, "").contains("<script") || safe(log.cs6, "").contains("<script")) ||
+      (safe(log.flexString1, "").contains("eval(") || safe(log.flexString2, "").contains("eval(")) ||
+      (safe(log.cs1, "").matches(".*\\\\x[0-9a-fA-F]{2}.*") || safe(log.cs2, "").matches(".*\\\\x[0-9a-fA-F]{2}.*")) ||
+      (safe(log.cn1Label, "").contains("password") || safe(log.cn2Label, "").contains("password") ||
+       safe(log.cs1Label, "").contains("password") || safe(log.cs2Label, "").contains("password")) ||
+      (safe(log.cs1, "").size() > 1000 || safe(log.cs2, "").size() > 1000 || 
+       safe(log.flexString1, "").size() > 1000 || safe(log.flexString2, "").size() > 1000)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.deviceVendor

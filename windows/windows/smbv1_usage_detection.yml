@@ -1,0 +1,27 @@
+- id: 1030
+  dataTypes:
+    - wineventlog
+  name: SMBv1 Usage Detection
+  impact:
+    confidentiality: 3
+    integrity: 2
+    availability: 2
+  category: Vulnerable Service
+  technique: Exploitation of Remote Services
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/windows-server/storage/file-server/troubleshoot/detect-enable-and-disable-smbv1-v2-v3
+    - https://attack.mitre.org/techniques/T1210/
+  description: Detects usage of the deprecated and vulnerable SMBv1 protocol which could be exploited for lateral movement or ransomware propagation
+  where: safe(log.winlogEventId, "") == "3000" && safe(log.winlogProviderName, "") == "Microsoft-Windows-SMBServer" && contains(safe(log.message, ""), "SMB1")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.winlogEventDataIpAddress.keyword
+          operator: filter_term
+          value: '{{log.winlogEventDataIpAddress}}'
+      within: now-24h
+      count: 5
+  deduplicateBy:
+    - log.winlogEventDataIpAddress
+    - origin.host

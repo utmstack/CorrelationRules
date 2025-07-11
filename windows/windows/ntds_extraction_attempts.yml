@@ -1,0 +1,36 @@
+- id: 1022
+  dataTypes:
+    - wineventlog
+  name: NTDS.dit Extraction Attempt
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 1
+  category: Credential Access
+  technique: OS Credential Dumping: NTDS
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1003/003/
+    - https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4663
+  description: Detects attempts to access or copy the Active Directory domain database (NTDS.dit) which contains password hashes for all domain users. This is a critical indicator of credential theft.
+  where: |
+    safe(log.eventCode, "") in ["4663", "4656"] && 
+    safe(log.winlogChannel, "") == "Security" &&
+    (
+      safe(log.winlog.event_data.ObjectName, "") =~ ".*\\\\ntds\\.dit" ||
+      safe(log.winlog.event_data.ObjectName, "") =~ ".*\\\\NTDS\\\\.*" ||
+      safe(log.winlogEventDataProcessName, "") =~ ".*\\\\ntdsutil\\.exe" ||
+      safe(log.winlogEventDataProcessName, "") =~ ".*\\\\vssadmin\\.exe"
+    ) &&
+    safe(log.winlog.event_data.AccessMask, "") != "0x0"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-30m
+      count: 2
+  deduplicateBy:
+    - origin.host
+    - log.winlogEventDataProcessName

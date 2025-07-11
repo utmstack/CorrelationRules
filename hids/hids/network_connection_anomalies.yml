@@ -1,0 +1,40 @@
+- id: 1012
+  dataTypes:
+  - hids
+  name: Network Connection Anomalies
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Network Activity
+  technique: T1071 - Application Layer Protocol
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1071/
+  - https://documentation.wazuh.com/current/user-manual/capabilities/network-ids/index.html
+  description: Identifies unusual network connections from monitored hosts including
+    connections to suspicious IPs, uncommon ports, or protocols that deviate from
+    baseline behavior indicating potential command and control activity
+  where: "safe(log.eventType, \"\") == \"network_connection\" &&\n(\n  safe(destination.port,\
+    \ 0) in [1337, 4444, 5555, 6666, 7777, 8888, 9999, 31337] ||\n  safe(destination.ip,\
+    \ \"\") matches \"^(10\\\\.10\\\\.10\\\\.|192\\\\.168\\\\.100\\\\.|172\\\\.16\\\
+    \\.100\\\\.)\" ||\n  safe(log.protocol, \"\") in [\"tor\", \"ssh\", \"rdp\"] &&\
+    \ safe(log.direction, \"\") == \"outbound\" ||\n  safe(log.bytesTransferred, 0)\
+    \ > 100000000 ||\n  safe(log.connectionDuration, 0) > 3600 ||\n  safe(log.geoLocation,\
+    \ \"\") not in [\"US\", \"CA\", \"GB\", \"AU\", \"DE\", \"FR\", \"JP\"] && safe(log.direction,\
+    \ \"\") == \"outbound\"\n)\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: destination.ip.keyword
+      operator: filter_term
+      value: '{{destination.ip}}'
+    within: now-1h
+    count: 5
+  deduplicateBy:
+  - origin.ip
+  - destination.ip
+  - destination.port

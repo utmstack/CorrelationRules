@@ -1,0 +1,33 @@
+- id: 1011
+  dataTypes:
+    - rfc-5425
+  name: Heartbleed Vulnerability Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Vulnerability Exploitation
+  technique: Heartbleed Attack (CVE-2014-0160)
+  adversary: origin
+  references:
+    - https://heartbleed.com/
+    - https://attack.mitre.org/techniques/T1190/
+    - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-0160
+  description: Detects potential Heartbleed vulnerability exploitation attempts through TLS heartbeat extension abuse. This vulnerability allows attackers to read memory contents including private keys, passwords, and sensitive data.
+  where: |
+    (safe(log.tls_version, "") == "1.0" || safe(log.tls_version, "") == "1.1" || safe(log.tls_version, "") == "1.2") &&
+    safe(log.tls_extension, "") contains "heartbeat" &&
+    (safe(log.heartbeat_length, 0) > 16384 || 
+     safe(log.payload_size, 0) > safe(log.declared_length, 0) ||
+     safe(log.message, "") contains "heartbeat" && safe(log.message, "") contains "malformed")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - destination.ip

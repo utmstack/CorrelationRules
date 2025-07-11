@@ -1,0 +1,41 @@
+- id: 1014
+  dataTypes:
+    - cef
+  name: CEF Header Malformation Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 3
+  category: Security Monitoring
+  technique: Protocol Anomaly
+  adversary: origin
+  references:
+    - https://www.microfocus.com/documentation/arcsight/arcsight-smartconnectors-8.4/pdfdoc/cef-implementation-standard/cef-implementation-standard.pdf
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects malformed CEF headers that may indicate attacks attempting to bypass security monitoring, cause parsing failures, or hide malicious activity
+  where: |
+    (
+      (!safe(log.message, "").startsWith("CEF:") && safe(log.dataType, "") == "cef") ||
+      (safe(log.message, "").startsWith("CEF:") && 
+       !safe(log.message, "").matches("^CEF:[0-9]\\|[^|]+\\|[^|]+\\|[^|]+\\|[^|]+\\|[^|]+\\|[0-9]{1,2}\\|.*")) ||
+      (safe(log.severity, -1) > 10 || safe(log.severity, -1) < 0) ||
+      (safe(log.cef_version, "") != "" && safe(log.cef_version, "").toInt() > 1) ||
+      (safe(log.deviceVendor, "") == "" || safe(log.deviceProduct, "") == "" || 
+       safe(log.deviceVersion, "") == "" || safe(log.name, "") == "") ||
+      (safe(log.message, "").matches(".*CEF:[0-9]\\|{8,}.*")) ||
+      (safe(log.message, "").contains("CEF:") && 
+       safe(log.message.split("|"), []).size() < 7) ||
+      (safe(log.deviceEventClassId, "") == "" || safe(log.deviceEventClassId, "").size() > 1024) ||
+      safe(log.message, "").matches(".*CEF:[^0-9].*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.deviceVendor

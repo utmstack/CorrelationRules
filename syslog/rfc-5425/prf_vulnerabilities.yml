@@ -1,0 +1,38 @@
+- id: 1020
+  dataTypes:
+    - rfc-5425
+  name: PRF Vulnerability Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Cryptographic Attack
+  technique: Pseudo-Random Function Attack
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5246
+    - https://attack.mitre.org/techniques/T1040/
+  description: Detects potential vulnerabilities in the Pseudo-Random Function (PRF) implementation including weak PRF algorithms, PRF computation errors, or attempts to exploit known PRF weaknesses
+  where: |
+    safe(log.tls_prf_algorithm, "").contains("MD5") ||
+    safe(log.tls_prf_error, "") != "" ||
+    (safe(log.tls_version, "") == "TLS1.0" && 
+     safe(log.tls_prf_algorithm, "") != "TLS_PRF_SHA256") ||
+    safe(log.tls_master_secret_error, "") != "" ||
+    safe(log.tls_key_derivation_error, "") != "" ||
+    (safe(log.tls_extended_master_secret, "false") == "false" &&
+     safe(log.tls_version, "").contains("TLS1.2"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.event_type.keyword
+          operator: filter_term
+          value: 'tls_error'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.tls_prf_algorithm

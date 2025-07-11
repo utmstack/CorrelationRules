@@ -1,0 +1,42 @@
+- id: 1023
+  dataTypes:
+  - rfc-5425
+  name: RFC-5425 TLS Handshake Protocol Violations
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: TLS Security
+  technique: Handshake Manipulation
+  adversary: origin
+  references:
+  - https://datatracker.ietf.org/doc/html/rfc5425
+  - https://attack.mitre.org/techniques/T1190/
+  description: Detects violations and anomalies in TLS handshake protocol that may
+    indicate MITM attacks, downgrade attacks, or handshake manipulation in RFC-5425
+    syslog communications
+  where: "(safe(log.tls_alert_code, 0) == 40 ||\n safe(log.tls_alert_description,\
+    \ \"\") == \"handshake_failure\" ||\n safe(log.tls_handshake_type, \"\") in [\"\
+    invalid\", \"unknown\"] ||\n safe(log.message, \"\") =~ \".*handshake.*fail.*\"\
+    \ ||\n safe(log.tls_error, \"\") =~ \".*illegal.*parameter.*\" ||\n safe(log.tls_version,\
+    \ \"\") in [\"SSLv2\", \"SSLv3\", \"TLS1.0\"] ||\n safe(log.tls_random_bytes,\
+    \ \"\") =~ \".*444F574E475244.*\" ||\n safe(log.tls_cipher_suite, \"\") =~ \"\
+    .*(NULL|EXPORT|DES|RC4|MD5).*\" ||\n safe(log.certificate_fingerprint, \"\") ==\
+    \ \"\" ||\n safe(log.tls_error, \"\") =~ \".*renegotiation.*\" ||\n safe(log.message,\
+    \ \"\") =~ \".*downgrade.*detect.*\") &&\nsafe(log.protocol, \"\") == \"syslog-tls\"\
+    \n"
+  afterEvents:
+  - indexPattern: v11-log-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.tls_alert_description.keyword
+      operator: filter_term
+      value: handshake_failure
+    within: now-15m
+    count: 3
+  deduplicateBy:
+  - origin.ip
+  - destination.ip
+  - log.tls_version

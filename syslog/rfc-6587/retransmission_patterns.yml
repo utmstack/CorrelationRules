@@ -1,0 +1,37 @@
+- id: 1021
+  dataTypes:
+    - rfc-6587
+  name: Suspicious TCP Retransmission Patterns
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: Network Security
+  technique: TCP Retransmission Attack
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc6587
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects abnormal TCP retransmission patterns that may indicate network manipulation, man-in-the-middle attacks, or attempts to exhaust resources through forced retransmissions
+  where: |
+    (safe(log.tcp_retransmission, false) == true &&
+     safe(log.tcp_retransmission_count, 0) > 10) ||
+    (safe(log.tcp_fast_retransmit, false) == true &&
+     safe(log.tcp_duplicate_ack_count, 0) > 3) ||
+    (safe(log.tcp_spurious_retransmission, false) == true) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-5m
+      count: 50
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.tcp_stream

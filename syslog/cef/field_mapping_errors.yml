@@ -1,0 +1,35 @@
+- id: 1002
+  dataTypes:
+    - cef
+  name: CEF Field Mapping Errors
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 1
+  category: Configuration Error
+  technique: Data Obfuscation
+  adversary: system
+  references:
+    - https://docs.nxlog.co/integrate/cef-logging.html
+    - https://attack.mitre.org/techniques/T1001/
+  description: Detects CEF field mapping errors where required fields are missing or have incorrect values. This could indicate misconfigured log sources, tampering attempts, or data quality issues.
+  where: |
+    safe(log.cef_device_vendor, "") == "" &&
+    safe(log.cef_device_product, "") == "" &&
+    safe(log.message, "") contains "CEF:" ||
+    (safe(log.cef_severity, -1) < 0 || safe(log.cef_severity, -1) > 10) ||
+    (safe(log.cef_device_event_class_id, "") == "" && 
+     safe(log.message, "") contains "|") ||
+    (safe(log.field_mapping_error, false) == true ||
+     safe(log.tags, []) contains "field_mapping_error")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.source.keyword
+          operator: filter_term
+          value: '{{log.source}}'
+      within: now-30m
+      count: 5
+  deduplicateBy:
+    - log.source
+    - log.cef_device_vendor

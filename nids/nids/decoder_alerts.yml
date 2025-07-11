@@ -1,0 +1,38 @@
+- id: 1024
+  dataTypes:
+    - nids
+  name: Decoder Alert - Protocol Violation
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Protocol Anomaly
+  technique: Protocol Tunneling
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1572/
+    - https://suricata.readthedocs.io/en/latest/rules/app-layer.html
+  description: Detects protocol violations and decoding errors that may indicate obfuscation attempts, protocol tunneling, or malformed packets
+  where: |
+    safe(log.event_type, "") == "decoder" &&
+    safe(origin.ip, "") != "" &&
+    (safe(log.decoder_event, "") in ["invalid_header", "malformed_packet", "protocol_violation", "truncated_packet"]) &&
+    (safe(log.alert_msg, "") contains "decode" || 
+     safe(log.alert_msg, "") contains "invalid" ||
+     safe(log.alert_msg, "") contains "malformed" ||
+     safe(log.alert_msg, "") contains "violation")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.decoder_event

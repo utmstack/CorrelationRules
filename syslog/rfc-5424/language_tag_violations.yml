@@ -1,0 +1,34 @@
+- id: 1023
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Language Tag Violations
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 1
+  category: Protocol Compliance
+  technique: T1036.005 - Match Legitimate Name or Location
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-6.2.5
+    - https://datatracker.ietf.org/doc/html/rfc5646
+    - https://attack.mitre.org/techniques/T1036/005/
+  description: Detects violations in RFC-5424 language tag formatting within structured data. Language tags must follow RFC-5646 format (e.g., en-US, fr-CA). Invalid language tags may indicate message crafting tools, protocol implementation errors, or attempts to bypass content filtering systems that rely on language detection.
+  where: |
+    safe(log.structured_data, "") contains "language=" &&
+    (safe(log.structured_data, "") matches ".*language=\"[^a-zA-Z\\-].*\".*" ||
+     safe(log.structured_data, "") matches ".*language=\"[a-zA-Z]{3,}.*\".*" ||
+     safe(log.structured_data, "") matches ".*language=\".*[\\x00-\\x1F\\x7F].*\".*" ||
+     safe(log.structured_data, "") matches ".*language=\".*--.*\".*" ||
+     !safe(log.structured_data, "") matches ".*language=\"[a-z]{2,3}(-[A-Z]{2})?(-[a-zA-Z]{1,8})*\".*")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - log.app_name

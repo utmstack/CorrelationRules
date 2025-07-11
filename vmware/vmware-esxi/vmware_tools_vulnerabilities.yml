@@ -1,0 +1,36 @@
+- id: 1023
+  dataTypes:
+    - vmware-esxi
+  name: VMware Tools Vulnerability Exploitation
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 3
+  category: Initial Access
+  technique: Exploit Public-Facing Application
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1190/
+    - https://docs.vmware.com/en/VMware-vSphere/8.0/vsphere-security/GUID-F35D7005-58EB-48AC-99D5-B9942EB2A8EF.html
+  description: Detects potential exploitation of VMware Tools vulnerabilities by monitoring for suspicious authentication events, command execution patterns, and error messages related to VMware Tools operations
+  where: |
+    (safe(log.message, "") =~ "(?i)vmware tools" && safe(severity, "") == "error") ||
+    (safe(log.message, "") =~ "(?i)authentication of user" && safe(log.message, "") =~ "(?i)failed") ||
+    (safe(log.message, "") =~ "(?i)LW_ERROR_PASSWORD_MISMATCH") ||
+    (safe(log.message, "") =~ "(?i)Cannot login" && safe(log.process, "") =~ "(?i)vmtoolsd") ||
+    (safe(log.message, "") =~ "(?i)rejected password for user") ||
+    (safe(log.message, "") =~ "(?i)vmtoolsd" && safe(log.message, "") =~ "(?i)exploit")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+        - field: severity.keyword
+          operator: filter_term
+          value: 'error'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.hostname
+    - log.process

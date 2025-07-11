@@ -1,0 +1,43 @@
+- id: 1019
+  dataTypes:
+  - hids
+  name: Custom Security Rule Match Detected
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Custom Detection
+  technique: Match Legitimate Name or Location
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1036/005/
+  - https://www.manageengine.com/products/eventlog/cyber-security/ioc-threat-hunting.html
+  description: Detects when custom-defined security rules trigger in the HIDS, indicating
+    organization-specific threat patterns, policy violations, or environment-specific
+    anomalies
+  where: 'safe(log.rule_type, "") == "custom" ||
+
+    safe(log.eventType, "") == "custom_rule_match" ||
+
+    (safe(log.custom_rule_id, "") != "" && safe(log.rule_severity, "") in ["critical",
+    "high", "medium"]) ||
+
+    (safe(log.detection_source, "") == "custom_signature" && safe(log.match_confidence,
+    0) >= 70)
+
+    '
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.custom_rule_id.keyword
+      operator: filter_term
+      value: '{{log.custom_rule_id}}'
+    within: now-2h
+    count: 5
+  deduplicateBy:
+  - origin.hostname
+  - log.custom_rule_id
+  - log.rule_name

@@ -1,0 +1,36 @@
+- id: 1003
+  dataTypes:
+  - hids
+  name: Critical System File Modification Detected
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: File Integrity Monitoring
+  technique: Indicator Removal on Host
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1070/
+  - https://www.ossec.net/docs/manual/syscheck/
+  description: Detects unauthorized modifications to critical system files monitored
+    by HIDS file integrity monitoring (FIM/syscheck), indicating potential compromise
+    or tampering
+  where: "safe(log.module, \"\") == \"syscheck\" ||\nsafe(log.module, \"\") == \"\
+    fim\" ||\nsafe(log.eventType, \"\") == \"file_modified\" ||\nsafe(log.eventType,\
+    \ \"\") == \"integrity_checksum_changed\" ||\n(safe(log.message, \"\") contains\
+    \ \"file integrity\" && \n (safe(log.message, \"\") contains \"modified\" || \n\
+    \  safe(log.message, \"\") contains \"changed\")) ||\n(safe(log.file_path, \"\"\
+    ) contains \"/etc/\" || \n safe(log.file_path, \"\") contains \"/bin/\" ||\n safe(log.file_path,\
+    \ \"\") contains \"/sbin/\" ||\n safe(log.file_path, \"\") contains \"system32\"\
+    \ ||\n safe(log.file_path, \"\") contains \"syswow64\")\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    within: now-1h
+    count: 5
+  deduplicateBy:
+  - origin.ip
+  - log.file_path

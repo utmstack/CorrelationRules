@@ -1,0 +1,36 @@
+- id: 1022
+  dataTypes:
+    - rfc-6587
+  name: TCP Connection Hijacking Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Network Security
+  technique: Session Hijacking
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc6587
+    - https://attack.mitre.org/techniques/T1563/001/
+  description: Detects potential TCP connection hijacking attempts through sequence number prediction, unexpected RST packets, or mid-stream IP address changes that could indicate session takeover
+  where: |
+    (safe(log.tcp_seq_anomaly, false) == true &&
+     safe(log.tcp_flags, "") =~ "PSH|ACK") ||
+    (safe(log.tcp_unexpected_rst, false) == true &&
+     safe(log.tcp_established_conn, false) == true) ||
+    (safe(log.tcp_mid_stream_syn, false) == true) ||
+    (safe(log.tcp_seq_jump, 0) > 1000000 &&
+     safe(log.tcp_flags, "") !~ "SYN") &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.tcp_stream.keyword
+          operator: filter_term
+          value: '{{log.tcp_stream}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.tcp_stream

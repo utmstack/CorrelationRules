@@ -1,0 +1,34 @@
+- id: 1006
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Hostname Spoofing Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Security Monitoring
+  technique: Spoofing
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424
+    - https://attack.mitre.org/techniques/T1036/
+  description: Detects potential hostname spoofing attempts in RFC-5424 syslog messages where the hostname field doesn't match the source IP or contains suspicious patterns like localhost references from external sources
+  where: |
+    safe(log.hostname, "") != "" && 
+    safe(origin.ip, "") != "" &&
+    (
+      (safe(log.hostname, "") == "localhost" && !safe(origin.ip, "").matches("^(127\\.0\\.0\\.1|::1)$")) ||
+      (safe(log.hostname, "").matches("^(127\\.0\\.0\\.1|localhost|::1)$") && !safe(origin.ip, "").matches("^(127\\.0\\.0\\.1|::1|10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.)")) ||
+      (safe(log.hostname, "").matches("^(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.)") && !safe(origin.ip, "").matches("^(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.)"))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.hostname

@@ -1,0 +1,36 @@
+- id: 1017
+  dataTypes:
+    - nids
+  name: ICMP Tunneling Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Command and Control
+  technique: Protocol Tunneling
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1572/
+    - https://www.sans.org/reading-room/whitepapers/covert/icmp-tunneling-is-is-secure-1857
+  description: Detects potential ICMP tunneling activity based on abnormal ICMP packet patterns, including oversized ICMP packets, unusual ICMP types, or high frequency of ICMP traffic
+  where: |
+    safe(log.protocol, "") == "ICMP" && (
+      safe(log.packet_size, 0) > 128 ||
+      safe(log.icmp_type, -1) !in [0, 3, 8, 11] ||
+      safe(log.payload_entropy, 0.0) > 6.0 ||
+      safe(log.icmp_code, -1) > 15
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.protocol.keyword
+          operator: filter_term
+          value: 'ICMP'
+      within: now-10m
+      count: 100
+  deduplicateBy:
+    - origin.ip
+    - destination.ip

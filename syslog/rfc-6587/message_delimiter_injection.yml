@@ -1,0 +1,38 @@
+- id: 1003
+  dataTypes:
+    - syslog
+  name: RFC-6587 Message Delimiter Injection
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Injection Attack
+  technique: Log Injection
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc6587#section-3.4
+    - https://attack.mitre.org/techniques/T1027/
+    - https://owasp.org/www-community/attacks/Log_Injection
+  description: Detects attempts to inject message delimiters (LF characters or octet count sequences) within syslog messages to manipulate message boundaries and potentially hide malicious activity or corrupt log parsing
+  where: |
+    safe(log.transport, "") == "tcp" &&
+    (
+      (safe(log.message, "").contains("\n") && safe(log.framing, "") == "octet-counting") ||
+      safe(log.embedded_delimiter, false) == true ||
+      safe(log.message, "").matches(".*\\d+\\s<\\d+>.*") ||
+      safe(log.delimiter_count, 0) > 1
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.app_name.keyword
+          operator: filter_term
+          value: '{{log.app_name}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.message_id

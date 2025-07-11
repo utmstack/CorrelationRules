@@ -1,0 +1,34 @@
+- id: 1006
+  dataTypes:
+    - rfc-6587
+  name: TCP Connection State Attack Detection
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 5
+  category: Network Security
+  technique: Connection State Manipulation
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc6587
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects anomalous TCP connection state transitions that may indicate connection hijacking, state exhaustion attacks, or protocol manipulation attempts
+  where: |
+    safe(log.tcp_state, "") in ["INVALID", "UNESTABLISHED", "TIME_WAIT_REUSE"] && 
+    safe(log.syn_flag, false) == true && 
+    safe(log.ack_flag, false) == false &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.tcp_state.keyword
+          operator: filter_term
+          value: 'INVALID'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - destination.port

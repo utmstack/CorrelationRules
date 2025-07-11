@@ -1,0 +1,37 @@
+- id: 1012
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Parameter Value Overflow Detection
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 4
+  category: Buffer Overflow
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-6.3.3
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects attempts to overflow RFC-5424 structured data parameter values which could cause denial of service or memory corruption
+  where: |
+    (safe(log.structured_data, "") != "" && log.structured_data.length() > 2048) ||
+    (safe(log.structured_data, "") != "" && (
+      log.structured_data.matches(".*\\[\\w+\\s+\\w+=\"[^\"]{1024,}\"\\].*") ||
+      log.structured_data.matches(".*\\[\\w+\\s+\\w+='[^']{1024,}'\\].*") ||
+      log.structured_data.matches(".*\\[\\w+\\s+[^\\]]{2048,}\\].*")
+    )) ||
+    (safe(log.message_length, 0) > 8192) ||
+    (safe(log.app_name, "").length() > 48) ||
+    (safe(log.proc_id, "").length() > 128) ||
+    (safe(log.msg_id, "").length() > 32)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-5m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.app_name

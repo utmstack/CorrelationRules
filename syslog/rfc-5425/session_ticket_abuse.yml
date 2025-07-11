@@ -1,0 +1,36 @@
+- id: 1018
+  dataTypes:
+  - rfc-5425
+  name: TLS Session Ticket Abuse Detection
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Authentication Bypass
+  technique: Session Hijacking
+  adversary: origin
+  references:
+  - https://datatracker.ietf.org/doc/html/rfc5077
+  - https://attack.mitre.org/techniques/T1550/
+  description: Detects potential abuse of TLS session tickets including reuse across
+    different zones, expired ticket usage, or rapid session resumption attempts that
+    may indicate session hijacking
+  where: "(safe(log.tls_session_resumed, \"false\") == \"true\" &&\n safe(log.tls_session_ticket_age,\
+    \ 0) > 86400) ||\n(safe(log.tls_session_resumed, \"false\") == \"true\" &&\n safe(log.tls_session_ticket_zone,\
+    \ \"\") != \"\" &&\n safe(log.tls_current_zone, \"\") != \"\" &&\n safe(log.tls_session_ticket_zone,\
+    \ \"\") != safe(log.tls_current_zone, \"\")) ||\n(safe(log.tls_session_ticket_error,\
+    \ \"\") != \"\")\n"
+  afterEvents:
+  - indexPattern: v11-log-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    - field: log.tls_session_resumed.keyword
+      operator: filter_term
+      value: 'true'
+    within: now-1m
+    count: 10
+  deduplicateBy:
+  - origin.ip
+  - log.tls_session_id

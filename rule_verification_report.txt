@@ -1,0 +1,36 @@
+CORRELATION RULES VERIFICATION REPORT (Claude Code SDK Enhanced)
+Generated: 2025-07-08 16:42:41
+================================================================================
+
+AI ASSISTANCE: Disabled (local verification only)
+
+
+VERIFICATION RULES SUMMARY:
+=========================
+1. afterEvents Usage: Ensures immediate alerts (malware, threats) don't use afterEvents, 
+   while pattern-based alerts (brute force, anomalies) do use afterEvents.
+
+2. CIA Scores: Validates confidentiality, integrity, and availability scores are in range 1-3.
+
+3. Log Patterns: Checks that index patterns match the technology (e.g., v11-log-azure-* for Azure).
+
+4. Deduplication Logic: Ensures deduplication fields include entity-identifying fields 
+   (user, host, IP) appropriate for the alert type.
+
+5. CEL Compliance: Validates CEL expressions use safe() function and correct operators.
+
+================================================================================
+
+FILES FIXED BY CLAUDE:
+----------------------------------------
+  - macos/macos/application_firewall_modifications.yml
+
+REMAINING ISSUES:
+----------------------------------------
+
+
+WARNINGS TO REVIEW:
+----------------------------------------
+
+macos/macos/application_firewall_modifications.yml:
+  - Rule uses generic index pattern 'v11-log-*' but technology suggests 'v11-log-macos-*'

@@ -1,0 +1,30 @@
+- id: 1034
+  dataTypes:
+    - wineventlog
+  name: Named Pipe Impersonation Attack
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Privilege Escalation
+  technique: Access Token Manipulation
+  adversary: origin
+  references:
+    - https://bherunda.medium.com/hunting-named-pipe-token-impersonation-abuse-573dcca36ae0
+    - https://attack.mitre.org/techniques/T1134/001/
+  description: Detects potential named pipe impersonation attacks used for privilege escalation. Monitors for suspicious process creation patterns including cmd.exe or powershell.exe with pipe-related commands, and processes creating named pipes with suspicious naming patterns commonly used by attack tools like Meterpreter and Cobalt Strike.
+  where: safe(log.eventCode, "") == "4688" && (safe(log.winlogEventDataProcessName, "") != "" && (contains(safe(log.winlogEventDataProcessName, ""), "cmd.exe") || contains(safe(log.winlogEventDataProcessName, ""), "powershell.exe"))) && safe(log.winlogEventDataProcessCommandLine, "") != "" && (contains(safe(log.winlogEventDataProcessCommandLine, ""), "\\\\.\\pipe\\") || contains(safe(log.winlogEventDataProcessCommandLine, ""), "echo") && contains(safe(log.winlogEventDataProcessCommandLine, ""), "pipe") || contains(safe(log.winlogEventDataProcessCommandLine, ""), "CreateNamedPipe") || contains(safe(log.winlogEventDataProcessCommandLine, ""), "ImpersonateNamedPipeClient"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.eventCode.keyword
+          operator: filter_term
+          value: '4672'
+      within: now-5m
+      count: 1
+  deduplicateBy:
+    - origin.host
+    - log.winlogEventDataProcessId

@@ -1,0 +1,39 @@
+- id: 1010
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Structured Data ID Violation Detection
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 1
+  category: Security Monitoring
+  technique: Data Manipulation
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-6.3
+    - https://attack.mitre.org/techniques/T1565/001/
+  description: Detects violations in RFC-5424 structured data ID fields including invalid IANA enterprise numbers, malformed SD-IDs, injection attempts, or suspicious patterns that could indicate log manipulation or forged structured data elements
+  where: |
+    safe(log.structured_data, "") != "" && 
+    safe(log.structured_data, "") != "-" &&
+    (
+      safe(log.structured_data, "").matches(".*\\[(?![a-zA-Z0-9@._-]+\\s).*\\].*") ||
+      safe(log.structured_data, "").matches(".*\\[@[0-9]+(?!\\.[a-zA-Z0-9._-]+).*\\].*") ||
+      safe(log.structured_data, "").matches(".*\\[@0+\\s.*\\].*") ||
+      safe(log.structured_data, "").matches(".*\\[[^\\]]*[;|&`$()<>][^\\]]*\\].*") ||
+      safe(log.structured_data, "").matches(".*\\[[^\\]]{129,}\\].*") ||
+      safe(log.structured_data, "").matches(".*\\[@[0-9]{10,}.*\\].*") ||
+      safe(log.structured_data, "").matches(".*\\[[^\\]]*\\\\x[0-9a-fA-F]{2}[^\\]]*\\].*") ||
+      safe(log.structured_data, "").matches(".*\\[[^\\]]*[\\r\\n\\t][^\\]]*\\].*")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.structured_data

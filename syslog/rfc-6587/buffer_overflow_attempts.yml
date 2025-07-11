@@ -1,0 +1,40 @@
+- id: 1024
+  dataTypes:
+    - rfc-6587
+  name: TCP Buffer Overflow Attempt Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Application Security
+  technique: Buffer Overflow
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc6587
+    - https://attack.mitre.org/techniques/T1055/001/
+  description: Detects potential buffer overflow attempts in TCP syslog streams including oversized messages, malformed length fields, and attempts to exploit fixed-size buffers in syslog receivers
+  where: |
+    (safe(log.syslog_message_length, 0) > 8192 &&
+     safe(log.tcp_payload_size, 0) > 8192) ||
+    (safe(log.tcp_segment_data_length, 0) > safe(log.tcp_declared_length, 0) &&
+     safe(log.tcp_declared_length, 0) > 0) ||
+    (safe(log.syslog_octet_count, 0) > 65535) ||
+    (safe(log.tcp_payload, "") =~ "\\x90{50,}|\\x00{100,}") ||
+    (safe(log.syslog_delimiter_missing, false) == true &&
+     safe(log.tcp_payload_size, 0) > 4096) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-5m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.tcp_stream

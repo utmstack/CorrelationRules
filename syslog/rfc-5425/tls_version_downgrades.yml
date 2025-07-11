@@ -1,0 +1,40 @@
+- id: 1009
+  dataTypes:
+    - rfc-5425
+  name: RFC-5425 TLS Version Downgrade Attacks
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 1
+  category: Cryptographic Attacks
+  technique: Protocol Downgrade
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5425#section-5
+    - https://attack.mitre.org/techniques/T1557/
+    - https://attack.mitre.org/techniques/T1040/
+  description: Detects attempts to downgrade TLS version in RFC-5425 syslog connections, which could allow attackers to exploit vulnerabilities in older TLS versions or perform man-in-the-middle attacks on syslog traffic.
+  where: |
+    safe(log.protocol, "") == "rfc-5425" && (
+      (safe(log.tls_version, "") == "TLSv1.0" || safe(log.tls_version, "") == "TLSv1.1") ||
+      (safe(log.tls_version_offered, "") != safe(log.tls_version_negotiated, "") && 
+       safe(log.tls_version_negotiated, "") < safe(log.tls_version_offered, "")) ||
+      safe(log.tls_downgrade_detected, false) == true ||
+      safe(log.ssl_fallback, false) == true ||
+      (safe(log.cipher_strength, "") == "weak" && safe(destination.port, 0) == 6514)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.port
+          operator: filter_term
+          value: '6514'
+      within: now-1h
+      count: 2
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.tls_version_negotiated

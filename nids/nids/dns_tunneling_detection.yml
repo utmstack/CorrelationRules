@@ -1,0 +1,36 @@
+- id: 1016
+  dataTypes:
+    - nids
+  name: DNS Tunneling Detection
+  impact:
+    confidentiality: 5
+    integrity: 3
+    availability: 2
+  category: Command and Control
+  technique: DNS Tunneling
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1071/004/
+    - https://www.sans.org/reading-room/whitepapers/dns/detecting-dns-tunneling-34152
+  description: Detects potential DNS tunneling activity based on abnormal DNS query patterns, including unusually long domain names, high frequency of DNS requests, or suspicious TXT record queries
+  where: |
+    safe(log.protocol, "") == "DNS" && (
+      safe(log.query_length, 0) > 50 ||
+      safe(log.query_type, "") == "TXT" ||
+      safe(log.subdomain_levels, 0) > 4 ||
+      safe(log.entropy, 0.0) > 4.5
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.protocol.keyword
+          operator: filter_term
+          value: 'DNS'
+      within: now-5m
+      count: 50
+  deduplicateBy:
+    - origin.ip
+    - log.query_domain

@@ -1,0 +1,40 @@
+- id: 1023
+  dataTypes:
+    - rfc-6587
+  name: TCP Stream Reassembly Attack Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 4
+  category: Network Security
+  technique: Stream Fragmentation Attack
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc6587
+    - https://attack.mitre.org/techniques/T1499/002/
+  description: Detects attacks targeting TCP stream reassembly mechanisms including overlapping segments, out-of-order fragments designed to evade IDS/IPS, and reassembly buffer exhaustion attempts
+  where: |
+    (safe(log.tcp_overlap_conflict, false) == true &&
+     safe(log.tcp_overlap_bytes, 0) > 100) ||
+    (safe(log.tcp_out_of_order_count, 0) > 20 &&
+     safe(log.tcp_segment_size, 0) < 100) ||
+    (safe(log.tcp_reassembly_gap, false) == true &&
+     safe(log.tcp_reassembly_gap_size, 0) > 1000) ||
+    (safe(log.tcp_fragment_overlap, false) == true &&
+     safe(log.tcp_fragment_count, 0) > 50) &&
+    safe(origin.ip, "") != ""
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.port.keyword
+          operator: filter_term
+          value: '{{destination.port}}'
+      within: now-15m
+      count: 30
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.tcp_stream

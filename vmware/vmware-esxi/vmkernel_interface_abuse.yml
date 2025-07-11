@@ -1,0 +1,41 @@
+- id: 1013
+  dataTypes:
+    - vmware-esxi
+  name: VMkernel Interface Abuse Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: System Security
+  technique: Exploitation of Remote Services
+  adversary: origin
+  references:
+    - https://docs.vmware.com/en/VMware-vSphere/8.0/vsphere-security/GUID-F35D7005-58EB-48AC-99D5-B9942EB2A8EF.html
+    - https://attack.mitre.org/techniques/T1210/
+  description: Detects suspicious activities on VMkernel interfaces including unauthorized configuration changes, abnormal traffic patterns, or attempts to abuse management, vMotion, or vSAN interfaces
+  where: |
+    safe(log.message, "") != "" && 
+    (
+      (safe(log.message, "") =~ "(?i)vmk[0-9]+.*config.*change" ||
+       safe(log.message, "") =~ "(?i)vmkernel.*interface.*add" ||
+       safe(log.message, "") =~ "(?i)vmkernel.*interface.*remove" ||
+       safe(log.message, "") =~ "(?i)vmk.*ip.*address.*change" ||
+       safe(log.message, "") =~ "(?i)vmkernel.*port.*fail" ||
+       safe(log.message, "") =~ "(?i)vmk.*unauthorized.*access" ||
+       safe(log.message, "") =~ "(?i)management.*traffic.*vmk" ||
+       safe(log.message, "") =~ "(?i)vmotion.*interface.*abuse" ||
+       safe(log.message, "") =~ "(?i)vsan.*interface.*tamper") &&
+      safe(log.process, "") == "vmkernel"
+    ) ||
+    (safe(log.eventInfo, "") =~ "(?i)vmk.*security.*violation")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-30m
+      count: 3
+  deduplicateBy:
+    - origin.hostname
+    - log.message

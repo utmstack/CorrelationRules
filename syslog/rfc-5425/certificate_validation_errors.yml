@@ -1,0 +1,41 @@
+- id: 1002
+  dataTypes:
+    - rfc-5425
+  name: Certificate Validation Error Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Network Security
+  technique: Invalid Digital Certificate
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5425
+    - https://attack.mitre.org/techniques/T1553/004/
+  description: Detects certificate validation errors in RFC-5425 syslog transport including expired certificates, untrusted CAs, and subject name mismatches which could indicate security threats
+  where: |
+    (safe(log.message, "") contains "certificate verify failed" ||
+     safe(log.message, "") contains "certificate verification failed" ||
+     safe(log.message, "") contains "unknown ca" ||
+     safe(log.message, "") contains "certificate expired" ||
+     safe(log.message, "") contains "certificate not yet valid" ||
+     safe(log.message, "") contains "self signed certificate" ||
+     safe(log.message, "") contains "Certificate subject does not match" ||
+     safe(log.message, "") contains "unable to verify the first certificate" ||
+     safe(log.message, "") contains "unable to get local issuer certificate") &&
+    safe(log.app_name, "") contains "syslog"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.hostname

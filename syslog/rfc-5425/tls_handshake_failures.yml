@@ -1,0 +1,34 @@
+- id: 1001
+  dataTypes:
+  - rfc-5425
+  name: TLS Handshake Failure Detection
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Network Security
+  technique: Protocol Impersonation
+  adversary: origin
+  references:
+  - https://datatracker.ietf.org/doc/html/rfc5425
+  - https://attack.mitre.org/techniques/T1190/
+  description: Detects TLS handshake failures in RFC-5425 syslog transport which may
+    indicate certificate issues, protocol mismatches, or potential man-in-the-middle
+    attacks
+  where: "(safe(log.message, \"\") contains \"handshake failure\" ||\n safe(log.message,\
+    \ \"\") contains \"handshake failed\" ||\n safe(log.message, \"\") contains \"\
+    SSL handshake error\" ||\n safe(log.message, \"\") contains \"TLS handshake error\"\
+    \ ||\n safe(log.message, \"\") contains \"ssl3_get_server_hello\" ||\n safe(log.message,\
+    \ \"\") contains \"ssl3_get_client_hello\") &&\n(safe(log.severity, 10) <= 3 ||\
+    \ safe(log.priority, 10) <= 3)\n"
+  afterEvents:
+  - indexPattern: v11-log-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    within: now-5m
+    count: 3
+  deduplicateBy:
+  - origin.ip
+  - destination.ip

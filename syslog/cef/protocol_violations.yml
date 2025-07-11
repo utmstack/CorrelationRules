@@ -1,0 +1,43 @@
+- id: 1018
+  dataTypes:
+    - cef
+  name: CEF Protocol Violations and Anomalies
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Protocol Anomaly
+  technique: Protocol Impersonation
+  adversary: origin
+  references:
+    - https://www.elastic.co/guide/en/beats/filebeat/current/exported-fields-cef.html
+    - https://attack.mitre.org/techniques/T1048/
+  description: Detects protocol violations and anomalies in CEF logs including mismatched ports for protocols, unusual protocol combinations, or invalid protocol usage that may indicate attack attempts or misconfiguration
+  where: |
+    (
+      (safe(log.proto, "").lowerAscii() == "tcp" && safe(log.dpt, "") == "53") ||
+      (safe(log.proto, "").lowerAscii() == "udp" && (safe(log.dpt, "") == "80" || safe(log.dpt, "") == "443")) ||
+      (safe(log.proto, "").lowerAscii() == "icmp" && (safe(log.spt, "") != "" || safe(log.dpt, "") != "")) ||
+      (safe(log.transportProtocol, "").lowerAscii() == "tcp" && safe(log.app, "").lowerAscii().contains("dns")) ||
+      (safe(log.transportProtocol, "").lowerAscii() == "udp" && safe(log.app, "").lowerAscii().contains("ssh")) ||
+      (safe(log.proto, "") != "" && safe(log.proto, "").lowerAscii() != "tcp" && safe(log.proto, "").lowerAscii() != "udp" && 
+       safe(log.proto, "").lowerAscii() != "icmp" && safe(log.proto, "").lowerAscii() != "gre" && 
+       safe(log.proto, "").lowerAscii() != "esp" && safe(log.proto, "").lowerAscii() != "ah") ||
+      (safe(log.spt, "") == "0" || safe(log.dpt, "") == "0") ||
+      (int(safe(log.spt, "0")) > 65535 || int(safe(log.dpt, "0")) > 65535)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.proto.keyword
+          operator: filter_term
+          value: '{{log.proto}}'
+      within: now-1h
+      count: 20
+  deduplicateBy:
+    - origin.ip
+    - log.proto
+    - log.dpt

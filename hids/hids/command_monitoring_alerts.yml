@@ -1,0 +1,40 @@
+- id: 1008
+  dataTypes:
+  - hids
+  name: Suspicious Command Execution Detected
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 2
+  category: Process Monitoring
+  technique: Command and Scripting Interpreter
+  adversary: origin
+  references:
+  - https://attack.mitre.org/techniques/T1059/
+  - https://documentation.wazuh.com/current/user-manual/capabilities/command-monitoring/index.html
+  description: Detects execution of suspicious or potentially malicious commands monitored
+    by HIDS. This includes commands commonly used for reconnaissance, privilege escalation,
+    or data exfiltration.
+  where: "safe(log.module, \"\") == \"command\" && safe(log.command, \"\") != \"\"\
+    \ && (safe(log.command, \"\") =~ \".*(whoami|id|uname|hostname|ifconfig|netstat|ps|lsof|find|locate|grep|awk|sed|curl|wget|nc|ncat|base64|openssl|ssh|scp|rsync).*\"\
+    \ ||\n safe(log.command, \"\") =~ \".*(chmod\\\\s+[0-7]{3,4}|chown|sudo|su\\\\\
+    s|doas|runas|net\\\\s+user|net\\\\s+localgroup).*\" ||\n safe(log.command, \"\"\
+    ) =~ \".*(reg\\\\s+query|reg\\\\s+add|schtasks|at\\\\s|crontab|systemctl|service).*\"\
+    \ ||\n safe(log.command, \"\") =~ \".*(rm\\\\s+-rf|del\\\\s+/f|format\\\\s|dd\\\
+    \\s+if=).*\") &&\nsafe(origin.user, \"\") != \"\" && safe(origin.hostname, \"\"\
+    ) != \"\"\n"
+  afterEvents:
+  - indexPattern: v11-log-hids-*
+    with:
+    - field: origin.user.keyword
+      operator: filter_term
+      value: '{{origin.user}}'
+    - field: origin.hostname.keyword
+      operator: filter_term
+      value: '{{origin.hostname}}'
+    within: now-5m
+    count: 10
+  deduplicateBy:
+  - origin.user
+  - origin.hostname
+  - log.command

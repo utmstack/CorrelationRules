@@ -1,0 +1,34 @@
+- id: 1032
+  dataTypes:
+    - wineventlog
+  name: Windows Remote Management (WinRM) Abuse
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Lateral Movement
+  technique: Remote Services
+  adversary: origin
+  references:
+    - https://jpcertcc.github.io/ToolAnalysisResultSheet/details/WinRM.htm
+    - https://attack.mitre.org/techniques/T1021/006/
+  description: Detects potential abuse of Windows Remote Management (WinRM) for lateral movement. Monitors for successful logon events (4624) with network logon type 3 combined with privilege escalation (4672) and WinRM-related process activity, indicating remote command execution via WinRM.
+  where: safe(log.eventCode, "") == "4624" && safe(log.winlogEventDataLogonType, "") == "3" && safe(log.winlogEventDataProcessName, "") != "" && (contains(safe(log.winlogEventDataProcessName, ""), "wsmprovhost.exe") || contains(safe(log.winlogEventDataProcessName, ""), "winrshost.exe") || contains(safe(log.winlogEventDataProcessName, ""), "powershell.exe"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.eventCode.keyword
+          operator: filter_term
+          value: '4672'
+        - field: log.winlogEventDataTargetUserName.keyword
+          operator: filter_term
+          value: '{{log.winlogEventDataTargetUserName}}'
+      within: now-5m
+      count: 1
+  deduplicateBy:
+    - log.winlogEventDataIpAddress
+    - log.winlogEventDataTargetUserName
+    - origin.host

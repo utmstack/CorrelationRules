@@ -1,0 +1,38 @@
+- id: 1021
+  dataTypes:
+    - wineventlog
+  name: SAM Database Access Attempt
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 2
+  category: Credential Access
+  technique: OS Credential Dumping
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1003/002/
+    - https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4661
+  description: Detects attempts to access the Security Account Manager (SAM) database, which contains local user account hashes. This activity may indicate credential dumping attempts.
+  where: |
+    safe(log.eventCode, "") == "4663" && 
+    safe(log.winlogChannel, "") == "Security" &&
+    (
+      safe(log.winlog.event_data.ObjectName, "") =~ ".*\\\\SAM$" ||
+      safe(log.winlog.event_data.ObjectName, "") =~ ".*\\\\SECURITY$" ||
+      safe(log.winlog.event_data.ObjectName, "") =~ ".*\\\\SYSTEM$"
+    ) &&
+    safe(log.winlog.event_data.AccessMask, "") in ["0x20019", "0x1f01ff", "0x40", "0x20", "0x1"]
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+        - field: log.winlogEventDataSubjectUserName.keyword
+          operator: filter_term
+          value: '{{log.winlogEventDataSubjectUserName}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.winlogEventDataSubjectUserName

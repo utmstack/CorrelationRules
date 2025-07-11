@@ -1,0 +1,37 @@
+- id: 1022
+  dataTypes:
+    - rfc-5424
+  name: Syslog Sequence ID Gap Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 3
+  category: Message Loss Detection
+  technique: T1070.002 - Clear Linux or Mac System Logs
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-7.3.1
+    - https://datatracker.ietf.org/doc/html/rfc5848#section-4.2.2
+    - https://attack.mitre.org/techniques/T1070/002/
+  description: Detects gaps in RFC-5424 syslog sequence IDs which may indicate message loss, deletion, or tampering. The sequenceId parameter must increment by 1 for each message from the same source. Gaps suggest either network issues, deliberate message deletion, or an attacker attempting to hide their activities.
+  where: |
+    safe(log.sequence_id, 0) > 0 &&
+    safe(log.previous_sequence_id, 0) > 0 &&
+    (safe(log.sequence_id, 0) - safe(log.previous_sequence_id, 0) > 1 ||
+     (safe(log.sequence_id, 0) == 1 && safe(log.previous_sequence_id, 0) < 2147483647) ||
+     safe(log.sequence_id, 0) < safe(log.previous_sequence_id, 0))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.hostname.keyword
+          operator: filter_term
+          value: '{{log.hostname}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.hostname
+    - log.app_name

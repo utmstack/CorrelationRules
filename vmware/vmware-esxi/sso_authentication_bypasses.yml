@@ -1,0 +1,33 @@
+- id: 1030
+  dataTypes:
+    - vmware-esxi
+  name: SSO Authentication Bypass Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 3
+  category: Authentication Bypass
+  technique: Authentication Bypass
+  adversary: origin
+  references:
+    - https://docs.vmware.com/en/VMware-vSphere/8.0/vsphere-authentication/GUID-8B25F241-E123-4342-B34A-0F86104D3866.html
+    - https://attack.mitre.org/techniques/T1078/003/
+  description: Detects potential SSO (Single Sign-On) authentication bypass attempts, failed SSO operations, or suspicious authentication patterns that could indicate unauthorized access attempts
+  where: |
+    safe(log.message, "") != "" && 
+    (log.message.contains("SSO") || log.message.contains("Single Sign-On") || 
+     log.message.contains("authentication") || log.message.contains("identity")) &&
+    (log.message.contains("bypass") || log.message.contains("failed") || log.message.contains("denied") || 
+     log.message.contains("unauthorized") || log.message.contains("invalid") || log.message.contains("error") ||
+     log.message.contains("attempt") || log.message.contains("violation"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-5m
+      count: 3
+  deduplicateBy:
+    - origin.hostname
+    - log.eventInfo

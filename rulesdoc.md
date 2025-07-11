@@ -174,7 +174,7 @@ This searches for events with the same user but a different IP address.
     - auth_logs
   name: Brute Force Attack Detection
   impact:
-    confidentiality: 4
+    confidentiality: 3
     integrity: 3
     availability: 2
   category: Authentication
@@ -209,7 +209,7 @@ This rule generates an alert if there are at least 5 failed authentication attem
     - network_logs
   name: Data Exfiltration Detection
   impact:
-    confidentiality: 5
+    confidentiality: 3
     integrity: 2
     availability: 1
   category: Exfiltration
@@ -246,7 +246,7 @@ This rule generates an alert if there is a data transfer larger than 10MB to a d
   name: Unusual User Activity
   impact:
     confidentiality: 3
-    integrity: 4
+    integrity: 3
     availability: 2
   category: Insider Threat
   technique: Unusual Activity
@@ -321,3 +321,15 @@ This rule generates an alert if a user performs sensitive actions outside normal
 
 Important: The "safe" function should be used whenever the key evaluated is not from coming from a filer.
 Important: When the field evaluated is not coming from a filter it should always start with "log."
+
+Important clarifications:
+Correlation rules should not use afterEvents if the rules does not requiere looking at the past for previous events that match the where condition. For example an alert for user locked down is an event that sh=loud be alerted as soon s it happens and does not need to look at the past, another xample is an antivirus notifying a malware was found.
+Some examples of alerts that need to look at the past would be brute force detection (it has to look if there were previous failed logon attempts), or ransomware detection if looking for any file being encrypted or changed very quickly in short time.
+
+Also, confidentiality, integrity and availability scores range from 1 to 3 being 3 the highest.
+
+Log patters must be accurate created describing the correct technology: some examples of index patterns are: v11-log-azure-* v11-log-o365-*  v11-log-iis-*  v11-log-firewall-meraki-* v11-log-wineventlog-* v11-log-macos-*.  v11-log-antivirus-sentinel-one-*. v11-log-antivirus-esmc-eset-*. v11-log-linux-*.  v11-log-firewall-paloalto-* v11-log-firewall-sonicwall-*. v11-log-cisco-switch-* v11-log-syslog-* v11-log-ibm-aix-* v11-log-google-*
+
+Make sure de-duplicate by makes sense. It should only deduplicate by that fields which identifies the entity around which the alert occurs. For example a brute force alert must deduplicate based on the user name that is target of the attack. A denial of service around the IP, a malware around the host name where it was detected and maybe also the user, a connection to blacklisted IP the hostname that connected and the destination IP.
+
+overload should not be used on objects [] its only supported foroverload (string, float, bool)

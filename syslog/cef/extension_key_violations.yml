@@ -1,0 +1,44 @@
+- id: 1010
+  dataTypes:
+    - cef
+  name: CEF Extension Key Violations
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 1
+  category: Protocol Violation
+  technique: T1036.004 - Masquerade Task or Service
+  adversary: origin
+  references:
+    - https://www.microfocus.com/documentation/arcsight/arcsight-cef-23/
+    - https://attack.mitre.org/techniques/T1036/004/
+  description: Detects violations in CEF extension key naming conventions that may indicate malformed logs or evasion attempts
+  where: |
+    safe(log.extensions, "") != "" &&
+    (
+      safe(log.extensions, "").matches(".*[^a-zA-Z0-9=\\s]+=.*") ||
+      safe(log.extensions, "").matches(".*=[^=]*=.*") ||
+      safe(log.extensions, "").matches(".*\\s{2,}=.*") ||
+      safe(log.extensions, "").contains("cs1Label=cs1Label") ||
+      safe(log.extensions, "").contains("cn1Label=cn1Label") ||
+      safe(log.extensions, "").matches(".*(cs[1-6]|cn[1-3]|cfp[1-4])=[^\\s]*\\s+(?!\\1Label=).*") ||
+      safe(log.extensions, "").matches(".*Label=[^=]*Label=.*") ||
+      safe(log.extensions, "").contains("deviceCustom") && !safe(log.extensions, "").contains("Label=") ||
+      safe(log.extensions, "").matches(".*[A-Z]{10,}=.*") ||
+      safe(log.extensions, "").contains("=\\x") ||
+      safe(log.extensions, "").contains("=\\u")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.deviceProduct.keyword
+          operator: filter_term
+          value: '{{log.deviceProduct}}'
+      within: now-20m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.extensions

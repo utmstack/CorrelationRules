@@ -1,0 +1,32 @@
+- id: 1004
+  dataTypes:
+    - vmware-esxi
+  name: Storage vMotion Anomalies Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 4
+  category: Virtualization Security
+  technique: Storage Migration Tampering
+  adversary: origin
+  references:
+    - https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.vsphere.vcenterhost.doc/GUID-AB266895-BAA4-4BF3-894E-47F99DC7B77F.html
+    - https://www.nakivo.com/blog/vmware-logs-analysis-for-troubleshooting/
+  description: Detects anomalous Storage vMotion operations including unauthorized datastore migrations, suspicious disk movements, or storage migration failures that could indicate data exfiltration attempts
+  where: |
+    (safe(log.message, "") =~ "(?i)storage.*vmotion" && safe(log.message, "") =~ "(?i)(failed|error|abort|timeout)") ||
+    (safe(log.message, "") =~ "(?i)(vmdk|datastore)" && safe(log.message, "") =~ "(?i)(move|migrate|copy)" && safe(log.message, "") =~ "(?i)(unauthorized|denied|invalid)") ||
+    (safe(log.message, "") =~ "(?i)storage.*migration" && safe(log.message, "") =~ "(?i)(corrupt|integrity|checksum|mismatch)") ||
+    (safe(log.process, "") =~ "(?i)(vmkfstools|esxcli)" && safe(log.message, "") =~ "(?i)storage" && safe(log.message, "") =~ "(?i)(error|failed|violation)") ||
+    (safe(log.eventInfo, "") =~ "(?i)(relocate|storage.*move)" && safe(severity, "") =~ "(?i)(error|critical)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-1h
+      count: 5
+  deduplicateBy:
+    - origin.hostname
+    - log.message

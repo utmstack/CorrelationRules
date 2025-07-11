@@ -1,0 +1,48 @@
+- id: 1020
+  dataTypes:
+    - cef
+  name: CEF Outcome Field Inconsistencies
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 2
+  category: Log Tampering
+  technique: Indicator Removal
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/azure/sentinel/cef-name-mapping
+    - https://attack.mitre.org/techniques/T1070/001/
+  description: Detects inconsistencies and anomalies in CEF outcome fields that may indicate log tampering, result manipulation, or attempts to hide malicious activities by modifying event outcomes
+  where: |
+    (
+      (safe(log.outcome, "").lowerAscii() == "success" && safe(log.act, "").lowerAscii().contains("block")) ||
+      (safe(log.outcome, "").lowerAscii() == "failure" && safe(log.act, "").lowerAscii().contains("allow")) ||
+      (safe(log.outcome, "").lowerAscii() == "success" && safe(log.msg, "").lowerAscii().contains("failed")) ||
+      (safe(log.outcome, "").lowerAscii() == "failure" && safe(log.msg, "").lowerAscii().contains("successful")) ||
+      (safe(log.outcome, "").lowerAscii() == "success" && safe(log.severity, "") matches "^(8|9|10)$") ||
+      (safe(log.outcome, "").lowerAscii() == "failure" && safe(log.severity, "") matches "^(0|1|2)$") ||
+      (safe(log.outcome, "") != "" && 
+       safe(log.outcome, "").lowerAscii() != "success" && 
+       safe(log.outcome, "").lowerAscii() != "failure" && 
+       safe(log.outcome, "").lowerAscii() != "unknown" &&
+       safe(log.outcome, "").lowerAscii() != "partial" &&
+       safe(log.outcome, "").lowerAscii() != "pending") ||
+      (safe(log.outcome, "").contains(" ") || safe(log.outcome, "").contains("\t")) ||
+      (safe(log.outcome, "").length() > 20) ||
+      (safe(log.outcome, "").matches("^[0-9]+$") && safe(log.outcome, "") != "0" && safe(log.outcome, "") != "1")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.deviceVendor.keyword
+          operator: filter_term
+          value: '{{log.deviceVendor}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.outcome
+    - log.act

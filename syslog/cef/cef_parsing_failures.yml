@@ -1,0 +1,34 @@
+- id: 1001
+  dataTypes:
+    - cef
+  name: CEF Parsing Failures Detection
+  impact:
+    confidentiality: 1
+    integrity: 3
+    availability: 2
+  category: Data Processing Error
+  technique: Log Injection
+  adversary: system
+  references:
+    - https://www.microfocus.com/documentation/arcsight/arcsight-smartconnectors-8.4/pdfdoc/cef-implementation-standard/cef-implementation-standard.pdf
+    - https://attack.mitre.org/techniques/T1070/
+  description: Detects CEF parsing failures which may indicate malformed logs, log injection attempts, or configuration issues. Failed parsing can hide malicious activities or indicate system problems.
+  where: |
+    (safe(log.cef_version, "") == "" || 
+     safe(log.cef_version, "") != "0") &&
+    safe(log.message, "") contains "CEF:" &&
+    (safe(log.parse_error, "") != "" ||
+     safe(log.error, "") contains "CEF" ||
+     safe(log.tags, []) contains "cef_parse_failure" ||
+     !safe(log.message, "") matches "^.*CEF:\\d+\\|[^|]+\\|[^|]+\\|[^|]+\\|[^|]+\\|[^|]+\\|[^|]+\\|.*$")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.source

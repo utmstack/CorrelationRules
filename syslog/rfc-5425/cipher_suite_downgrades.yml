@@ -1,0 +1,36 @@
+- id: 1003
+  dataTypes:
+  - rfc-5425
+  name: Cipher Suite Downgrade Attack Detection
+  impact:
+    confidentiality: 3
+    integrity: 3
+    availability: 1
+  category: Network Security
+  technique: Downgrade Attack
+  adversary: origin
+  references:
+  - https://datatracker.ietf.org/doc/html/rfc5425
+  - https://attack.mitre.org/techniques/T1562/010/
+  description: Detects attempts to downgrade TLS cipher suites in RFC-5425 syslog
+    connections which could enable cryptographic attacks and data interception
+  where: "(safe(log.message, \"\") contains \"no shared cipher\" ||\n safe(log.message,\
+    \ \"\") contains \"cipher mismatch\" ||\n safe(log.message, \"\") contains \"\
+    weak cipher\" ||\n safe(log.message, \"\") contains \"insecure cipher\" ||\n safe(log.message,\
+    \ \"\") contains \"export cipher\" ||\n safe(log.message, \"\") contains \"NULL\
+    \ cipher\" ||\n safe(log.message, \"\") contains \"anonymous cipher\" ||\n safe(log.structured_data,\
+    \ \"\") contains \"tls_version=TLSv1.0\" ||\n safe(log.structured_data, \"\")\
+    \ contains \"tls_version=SSLv3\" ||\n safe(log.message, \"\") matches \".*cipher.*[0-9]{1,2}\\\
+    \\s*bit.*\") &&\n(safe(log.facility, 100) == 16 || safe(log.app_name, \"\") contains\
+    \ \"syslog\")\n"
+  afterEvents:
+  - indexPattern: v11-log-*
+    with:
+    - field: origin.ip.keyword
+      operator: filter_term
+      value: '{{origin.ip}}'
+    within: now-15m
+    count: 2
+  deduplicateBy:
+  - origin.ip
+  - destination.port

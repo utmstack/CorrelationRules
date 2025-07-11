@@ -1,0 +1,32 @@
+- id: 1001
+  dataTypes:
+    - vmware-esxi
+  name: VMware ESXi Hypervisor Escape Attempt Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 5
+  category: Virtualization Security
+  technique: Escape to Host
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1611/
+    - https://www.usenix.org/system/files/woot19-paper_zhao.pdf
+    - https://docs.vmware.com/en/VMware-vSphere/8.0/vsphere-security/GUID-F35D7005-58EB-48AC-99D5-B9942EB2A8EF.html
+  description: Detects potential hypervisor escape attempts through suspicious VMX process activity, abnormal privilege escalation, or unauthorized access to host resources from guest VMs
+  where: |
+    (safe(log.message, "") =~ "(?i)(vmx|vmware-vmx)" && safe(log.message, "") =~ "(?i)(escape|breakout|privilege|escalat|host access|unauthorized)") ||
+    (safe(log.process, "") =~ "(?i)vmx" && safe(severity, "") == "error") ||
+    (safe(log.message, "") =~ "(?i)vpxuser" && safe(log.message, "") =~ "(?i)(failed|denied|unauthorized)") ||
+    (safe(log.message, "") =~ "(?i)CVE-2024-37085") ||
+    (safe(log.message, "") =~ "(?i)VMCI" && safe(log.message, "") =~ "(?i)(backdoor|socket|unauthorized)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.hostname

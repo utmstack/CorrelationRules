@@ -1,0 +1,39 @@
+- id: 1002
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Priority Calculation Errors
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Data Integrity
+  technique: System Information Discovery
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-6.2.1
+    - https://attack.mitre.org/techniques/T1082/
+  description: Detects incorrect priority calculations in RFC-5424 syslog messages. Priority should be facility * 8 + severity, with valid ranges for facility (0-23) and severity (0-7). Invalid calculations may indicate log forgery or system compromise.
+  where: |
+    safe(log.priority, -1) >= 0 &&
+    safe(log.facility, -1) >= 0 &&
+    safe(log.severity, -1) >= 0 &&
+    (safe(log.priority, 0) != (safe(log.facility, 0) * 8 + safe(log.severity, 0)) ||
+     safe(log.facility, 0) > 23 ||
+     safe(log.facility, 0) < 0 ||
+     safe(log.severity, 0) > 7 ||
+     safe(log.severity, 0) < 0 ||
+     safe(log.priority, 0) > 191)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.appName.keyword
+          operator: filter_term
+          value: '{{log.appName}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - log.appName

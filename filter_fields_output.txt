@@ -1,0 +1,933 @@
+
+================================================================================
+File: antivirus/bitdefender_gz.yml
+================================================================================
+Fields created:
+  - log.0trash
+  - log.1trash
+  - log.2trash
+  - log.deviceIps
+  - log.dvcToParse
+  - log.eventType
+  - log.hostId
+  - log.irrelevant
+  - log.notDefined
+  - log.processPid
+  - log.product
+  - log.productVendor
+  - log.productVersion
+  - log.requestToParse
+  - log.requested
+  - log.restData
+  - log.severity
+  - log.signatureID
+  - log.syslogDeviceTime
+  - log.syslogHostIP
+  - log.syslogPriority
+  - log.syslogVersion
+
+
+================================================================================
+File: antivirus/esmc-eset.yml
+================================================================================
+Fields created:
+  - log.deviceTime
+  - log.headHostname
+  - log.jsonMessage
+  - log.msgType
+  - log.pid
+  - log.priority
+  - log.restHead
+  - log.serviceName
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from log.jsonMessage*
+
+
+================================================================================
+File: antivirus/kaspersky.yml
+================================================================================
+Fields created:
+  - log.cat
+  - log.cef
+  - log.cefDeviceSeverity
+  - log.cefMsg
+  - log.cefMsgAll
+  - log.cefVersion
+  - log.cn1
+  - log.cn10
+  - log.cn10Label
+  - log.cn1Label
+  - log.cn2
+  - log.cn2Label
+  - log.cn3
+  - log.cn3Label
+  - log.cn4
+  - log.cn4Label
+  - log.cn5
+  - log.cn5Label
+  - log.cn6
+  - log.cn6Label
+  - log.cn7
+  - log.cn7Label
+  - log.cn8
+  - log.cn8Label
+  - log.cn9
+  - log.cn9Label
+  - log.cs1
+  - log.cs10
+  - log.cs10Label
+  - log.cs1Label
+  - log.cs2
+  - log.cs2Label
+  - log.cs3
+  - log.cs3Label
+  - log.cs4
+  - log.cs4Label
+  - log.cs5
+  - log.cs5Label
+  - log.cs6
+  - log.cs6Label
+  - log.cs7
+  - log.cs7Label
+  - log.cs8
+  - log.cs8Label
+  - log.cs9
+  - log.cs9Label
+  - log.customerURI
+  - log.descMsg
+  - log.destinationZoneExternalID
+  - log.destinationZoneURI
+  - log.deviceTime
+  - log.deviceVersion
+  - log.embDeviceProduct
+  - log.embDeviceVendor
+  - log.flexString1
+  - log.irrelevant
+  - log.msg
+  - log.notDefined
+  - log.originalAgentZoneURI
+  - log.priority
+  - log.signatureID
+  - log.syslogHost
+  - log.syslogIpHost
+  - log.syslogVersion
+
+
+================================================================================
+File: antivirus/sentinel-one.yml
+================================================================================
+Fields created:
+  - log.0trash
+  - log.1trash
+  - log.2trash
+  - log.3trash
+  - log.accName
+  - log.accountNameToParse
+  - log.destinationUser
+  - log.duserToParse
+  - log.endpointDeviceControlDeviceNameToParse
+  - log.endpointDeviceName
+  - log.eventDescToParse
+  - log.eventDescription
+  - log.irrelevant
+  - log.restData
+  - log.ruleTime
+  - log.sourceGpName
+  - log.sourceGroupNameToParse
+  - log.sourceIpAddressesToParse
+  - log.sourceIps
+  - log.sourceMacAddressesToParse
+  - log.sourceMacs
+  - log.sourceUser
+  - log.suserToParse
+  - log.syslogDeviceTime
+  - log.syslogHost
+  - log.syslogHostIP
+  - log.syslogPriority
+  - log.syslogVersion
+
+
+================================================================================
+File: aws/aws.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: azure/azure-eventhub.yml
+================================================================================
+Fields created:
+  - origin.ip
+  - origin.port
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/apache_module.yml
+================================================================================
+Fields created:
+  - deviceTime
+  - log.method
+  - log.protoVersion
+  - log.referer
+  - log.request
+  - log.rest
+  - log.statusCode
+  - log.userAgent
+  - log.userIdent
+  - origin.bytesReceived
+  - origin.ip
+  - origin.path
+  - origin.user
+  - protocol
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/auditd_module.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/elasticsearch_module.yml
+================================================================================
+Fields created:
+  - deviceTime
+  - log.component
+  - log.level
+  - log.msg
+  - log.nodeName
+  - log.origin.address
+  - origin.port
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from log.message*
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/haproxy_module.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/iis_module.yml
+================================================================================
+Fields created:
+  - log.deviceTime
+  - log.localIpv6
+  - log.method
+  - log.referrer
+  - log.responseTime
+  - log.statusCode
+  - log.subStatusCode
+  - log.userAgent
+  - log.userIdent
+  - log.win32Status
+  - target.ip
+  - target.path
+  - target.port
+  - target.user
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/kafka_module.yml
+================================================================================
+Fields created:
+  - log.class
+  - log.component
+  - log.deviceTime
+  - log.msg
+  - log.restData
+  - log.severity
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/kibana_module.yml
+================================================================================
+Fields created:
+  - log.actionMessage
+  - log.component
+  - log.deviceTime
+  - log.severityLabel
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/logstash_module.yml
+================================================================================
+Fields created:
+  - deviceTime
+  - log.component
+  - log.level
+  - log.msg
+  - log.pipelineName
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/mongodb_module.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from log.message*
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/mysql_module.yml
+================================================================================
+Fields created:
+  - deviceTime
+  - log.errorCode
+  - log.level
+  - log.msg
+  - log.subsystem
+  - log.thread
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/nats_module.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/nginx_module.yml
+================================================================================
+Fields created:
+  - log.deviceTime
+  - log.message
+  - log.method
+  - log.processPidThreadId
+  - log.quest
+  - log.referrer
+  - log.request
+  - log.requestId
+  - log.restdata
+  - log.severityLabel
+  - log.statusCode
+  - log.userAgent
+  - log.userIdent
+  - origin.bytesReceived
+  - origin.ip
+  - origin.path
+  - origin.user
+  - protocol
+  - target.ip
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/osquery_module.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/postgresql_module.yml
+================================================================================
+Fields created:
+  - log.deviceTime
+  - log.errorCode
+  - log.groupId
+  - log.irrelevant
+  - log.messageType
+  - log.msg
+  - log.processId
+  - log.sessionId
+  - target.host
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/redis_module.yml
+================================================================================
+Fields created:
+  - log.deviceTime
+  - log.levelEnc
+  - log.msg
+  - log.pid
+  - log.roleEnc
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/system_linux_module.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: filebeat/traefik_module.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: fortinet/fortinet.yml
+================================================================================
+Fields created:
+  - log.irrelevant
+  - log.kvMessage
+  - log.msg
+  - log.priority
+
+
+================================================================================
+File: fortinet/fortiweb.yml
+================================================================================
+Fields created:
+  - log.irrelevant
+  - log.kvMessage
+  - log.msg
+  - log.priority
+
+
+================================================================================
+File: generic/generic.yml
+================================================================================
+Fields created:
+  - log.message
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from log.message*
+
+
+================================================================================
+File: github/github.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: google/gcp.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from log.jsonPayloadStructuredRdata*
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: ibm/ibm_aix.yml
+================================================================================
+Fields created:
+  - action
+  - from.host
+  - log.commandType
+  - log.deviceTime
+  - log.entryID
+  - log.eventType
+  - log.irrelevant
+  - log.length
+  - log.msg
+  - log.msgAll
+  - log.msgInit
+  - log.msgWithTTY
+  - log.objCreator
+  - log.objName
+  - log.osUserID
+  - log.pid
+  - log.priority
+  - log.pwd
+  - log.restMsg
+  - log.returnCode
+  - log.sessionID
+  - log.sshKey
+  - log.statement
+  - log.tty
+  - log.userHost
+  - log.userID
+  - origin.command
+  - origin.ip
+  - origin.port
+  - origin.sha256
+  - origin.user
+  - protocol
+
+
+================================================================================
+File: ibm/ibm_as_400.yml
+================================================================================
+Fields created:
+  - log.message
+
+
+================================================================================
+File: json/json-input.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: macos/macos.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: mikrotik/mikrotik-fw.yml
+================================================================================
+Fields created:
+  - log.chain
+  - log.deviceTime
+  - log.dstIp
+  - log.dstPort
+  - log.kvMessage
+  - log.len
+  - log.priority
+  - log.proto
+  - log.restData
+  - log.srcIp
+  - log.srcMac
+  - log.srcPort
+  - log.topics
+  - log.trash
+  - log.trash2
+  - log.trash3
+  - log.trash4
+  - log.trash5
+
+
+================================================================================
+File: netflow/netflow.yml
+================================================================================
+Fields created:
+  - log.irrelevant
+  - log.msg
+
+
+================================================================================
+File: office365/o365.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: paloalto/pa_firewall.yml
+================================================================================
+Fields created:
+  - log.act
+  - log.anOSTimeGeneratedHighResolution
+  - log.app
+  - log.c6a2
+  - log.c6a2Label
+  - log.cat
+  - log.cefOrLeefMsg
+  - log.cefOrLeefMsgAll
+  - log.cfp1
+  - log.cfp1Label
+  - log.cfp2
+  - log.cfp2Label
+  - log.cfp3
+  - log.cfp3Label
+  - log.cfp4
+  - log.cfp4Label
+  - log.cn1
+  - log.cn2
+  - log.cn2Label
+  - log.cn3
+  - log.cn3Label
+  - log.cn4
+  - log.cn4Label
+  - log.cn5
+  - log.cn5Label
+  - log.cn6
+  - log.cnt
+  - log.cs1
+  - log.cs1Label
+  - log.cs2
+  - log.cs2Label
+  - log.cs3
+  - log.cs3Label
+  - log.cs4
+  - log.cs5
+  - log.cs5Label
+  - log.cs6
+  - log.cs6Label
+  - log.destinationServiceName
+  - log.destinationTranslatedAddress
+  - log.destinationTranslatedPort
+  - log.deviceExternalId
+  - log.deviceInboundInterface
+  - log.deviceOutboundInterface
+  - log.deviceTime
+  - log.dpt
+  - log.dst
+  - log.duid
+  - log.duser
+  - log.dvchost
+  - log.embDeviceProduct
+  - log.embDeviceVendor
+  - log.end
+  - log.externalId
+  - log.fileHash
+  - log.fileId
+  - log.filePath
+  - log.fileType
+  - log.flags
+  - log.flexNumber1
+  - log.flexNumber1Label
+  - log.flexNumber2
+  - log.flexNumber2Label
+  - log.flexString1
+  - log.flexString1Label
+  - log.flexString2
+  - log.flexString2Label
+  - log.fname
+  - log.formatType
+  - log.formatVersion
+  - log.in
+  - log.irrelevant
+  - log.msg
+  - log.oldFileId
+  - log.paSenderSwVersion
+  - log.paSubtype
+  - log.paType
+  - log.panASServiceDiff
+  - log.panASServiceType
+  - log.panContainerName
+  - log.panDomainEDL
+  - log.panDstDAG
+  - log.panDstDeviceCat
+  - log.panDstDeviceModel
+  - log.panDstDeviceOS
+  - log.panDstDeviceOSv
+  - log.panDstDeviceProf
+  - log.panDstDeviceVendor
+  - log.panDstEDL
+  - log.panDstHostname
+  - log.panDstMac
+  - log.panDynamicUsrgrp
+  - log.panEPSerial
+  - log.panGPHostID
+  - log.panHASessionOwner
+  - log.panJustification
+  - log.panLinkChange
+  - log.panLinkDetail
+  - log.panOSAPName
+  - log.panOSActionFlags
+  - log.panOSAreaCode
+  - log.panOSAssocID
+  - log.panOSAttemptedGateways
+  - log.panOSAuthMethod
+  - log.panOSCellID
+  - log.panOSCertificateFlags
+  - log.panOSCertificateSerial
+  - log.panOSCertificateSize
+  - log.panOSCertificateVersion
+  - log.panOSChainStatus
+  - log.panOSChunkType
+  - log.panOSClientToFirewall
+  - log.panOSCommonName
+  - log.panOSCommonNameLength
+  - log.panOSConfigVersion
+  - log.panOSConnectionError
+  - log.panOSConnectionErrorID
+  - log.panOSConnectionMethod
+  - log.panOSContainerID
+  - log.panOSContainerName
+  - log.priority
+  - log.severityLabel
+  - log.syslogHost
+  - log.syslogVersion
+
+
+================================================================================
+File: pfsense/pfsense_fw.yml
+================================================================================
+Fields created:
+  - log.ackNumber
+  - log.action
+  - log.anchor
+  - log.csvMsg
+  - log.dataLength
+  - log.deviceTime
+  - log.direction
+  - log.dstIp
+  - log.dstPort
+  - log.eventType
+  - log.icmpData1
+  - log.icmpData2
+  - log.icmpData3
+  - log.icmpData4
+  - log.icmpData5
+  - log.icmpType
+  - log.ipLength
+  - log.ipVersion
+  - log.ipv4Ecn
+  - log.ipv4Flags
+  - log.ipv4Id
+  - log.ipv4Offset
+  - log.ipv4ProtocolId
+  - log.ipv4Tos
+  - log.ipv4Ttl
+  - log.ipv6Class
+  - log.ipv6FlowLabel
+  - log.ipv6HopLimit
+  - log.ipv6ProtocolId
+  - log.msgAll
+  - log.pid
+  - log.priority
+  - log.proto
+  - log.realInterface
+  - log.reason
+  - log.ruleNumber
+  - log.sequenceNumber
+  - log.srcIp
+  - log.srcPort
+  - log.subRuleNumber
+  - log.syslogHost
+  - log.syslogVersion
+  - log.tcpFlags
+  - log.tcpOptions
+  - log.tcpWindow
+  - log.tracker
+  - log.urg
+
+
+================================================================================
+File: sonicwall/sonic_wall.yml
+================================================================================
+Fields created:
+  - log.af_action
+  - log.af_object
+  - log.af_policy
+  - log.af_polid
+  - log.af_service
+  - log.af_type
+  - log.afaction
+  - log.afobject
+  - log.afpolicy
+  - log.afpolid
+  - log.afservice
+  - log.aftype
+  - log.ai
+  - log.app
+  - log.appName
+  - log.appcat
+  - log.appid
+  - log.arg
+  - log.bcastRx
+  - log.bcastTx
+  - log.bid
+  - log.bytesRx
+  - log.bytesTx
+  - log.c
+  - log.category
+  - log.catid
+  - log.cdur
+  - log.cefMsgAll
+  - log.change
+  - log.code
+  - log.conns
+  - log.contentObject
+  - log.deviceTime
+  - log.dpi
+  - log.dst
+  - log.dstMac
+  - log.dstV6
+  - log.dstZone
+  - log.dstname
+  - log.dur
+  - log.dvcProduct
+  - log.dvcVendor
+  - log.dvcVersion
+  - log.dyn
+  - log.eventId
+  - log.eventName
+  - log.f
+  - log.fileid
+  - log.filetxstatus
+  - log.formatType
+  - log.formatVersion
+  - log.fw
+  - log.fw_action
+  - log.fwaction
+  - log.fwlan
+  - log.gcat
+  - log.goodRxBytes
+  - log.goodTxBytes
+  - log.i
+  - log.icmpCode
+  - log.id
+  - log.if
+  - log.ipscat
+  - log.ipspri
+  - log.irrelevant
+  - log.lic
+  - log.m
+  - log.mailFrom
+  - log.mgmtip
+  - log.msg
+  - log.msgAll
+  - log.n
+  - log.natDst
+  - log.natDstV6
+  - log.natSrc
+  - log.natSrcV6
+  - log.note
+  - log.npcs
+  - log.op
+  - log.packetdatEnc
+  - log.packetdatId
+  - log.packetdatNum
+  - log.pri
+  - log.priority
+  - log.proto
+  - log.pt
+  - log.radio
+  - log.rcptTo
+  - log.rcvd
+  - log.referer
+  - log.result
+  - log.rpkt
+  - log.rule
+  - log.sent
+  - log.sess
+  - log.severity
+  - log.sid
+  - log.sn
+  - log.spkt
+  - log.spycat
+  - log.spypri
+  - log.src
+  - log.srcMac
+  - log.srcZone
+  - log.station
+  - log.syslogHost
+  - log.syslogVersion
+  - log.time
+  - log.type
+  - log.ucastRx
+  - log.ucastTx
+  - log.unsynched
+  - log.user
+  - log.usestandbysa
+  - log.vpnpolicy
+  - log.vpnpolicyDst
+
+
+================================================================================
+File: sophos/sophos_central.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+
+
+================================================================================
+File: sophos/sophos_xg_firewall.yml
+================================================================================
+Fields created:
+  - log.0trash
+  - log.1trash
+  - log.2trash
+  - log.3trash
+  - log.4trash
+  - log.5trash
+  - log.6trash
+  - log.7trash
+  - log.8trash
+  - log.applicationCategory
+  - log.applicationName
+  - log.applicationTech
+  - log.authClient
+  - log.category
+  - log.component
+  - log.downloadfilename
+  - log.etherType
+  - log.irrelevant
+  - log.logMessage
+  - log.notDefined
+  - log.rawData
+  - log.restData
+  - log.subType
+  - log.syslogDeviceTime
+  - log.syslogHostIP
+  - log.syslogPriority
+  - log.syslogVersion
+  - log.type
+  - log.uploadfilename
+  - log.userAgent
+  - log.userGroupName
+
+
+================================================================================
+File: syslog/syslog-generic.yml
+================================================================================
+Fields created:
+  - log.message
+
+
+================================================================================
+File: vmware/vmware-esxi.yml
+================================================================================
+Fields created:
+  - log.deviceTime
+  - log.eventInfo
+  - log.message
+  - log.pid
+  - log.priority
+  - log.process
+  - log.processName
+  - origin.hostname
+  - severity
+
+
+================================================================================
+File: windows/windows-events.yml
+================================================================================
+
+Dynamic fields from JSON parsing:
+  - *JSON fields from raw input*
+

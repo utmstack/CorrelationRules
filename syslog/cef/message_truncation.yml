@@ -1,0 +1,40 @@
+- id: 1024
+  dataTypes:
+    - cef
+  name: CEF Message Truncation Detection
+  impact:
+    confidentiality: 2
+    integrity: 3
+    availability: 2
+  category: Log Integrity
+  technique: T1070.001 - Indicator Removal: Clear Windows Event Logs
+  adversary: system
+  references:
+    - https://attack.mitre.org/techniques/T1070/001/
+    - https://www.elastic.co/guide/en/integrations/current/cef.html
+  description: Detects truncated CEF messages that may indicate log tampering, transmission errors, or attempts to hide malicious activity by truncating log entries. Monitors for incomplete CEF headers or extensions.
+  where: |
+    safe(log.dataType, "") == "cef" &&
+    (
+      (safe(log.raw, "") != "" && !contains(safe(log.raw, ""), "|") && size(safe(log.raw, "")) > 0) ||
+      (safe(log.raw, "") != "" && size(split(safe(log.raw, ""), "|")) < 7) ||
+      (safe(log.msg, "") != "" && endsWith(safe(log.msg, ""), "...")) ||
+      (safe(log.msg, "") != "" && endsWith(safe(log.msg, ""), "[truncated]")) ||
+      (safe(log.msg, "") != "" && contains(safe(log.msg, ""), "message too long")) ||
+      (safe(log.deviceVendor, "") == "" && safe(log.deviceProduct, "") == "") ||
+      (safe(log.raw, "") != "" && size(safe(log.raw, "")) == 1024) ||
+      (safe(log.raw, "") != "" && size(safe(log.raw, "")) == 2048) ||
+      (safe(log.raw, "") != "" && size(safe(log.raw, "")) == 4096) ||
+      (safe(log.extension, "") != "" && !contains(safe(log.extension, ""), "="))
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-1h
+      count: 10
+  deduplicateBy:
+    - origin.hostname
+    - log.deviceProduct

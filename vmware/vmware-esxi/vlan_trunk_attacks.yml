@@ -1,0 +1,40 @@
+- id: 1012
+  dataTypes:
+    - vmware-esxi
+  name: VLAN Trunk Attack Detection
+  impact:
+    confidentiality: 5
+    integrity: 4
+    availability: 3
+  category: Network Security
+  technique: VLAN Manipulation
+  adversary: origin
+  references:
+    - https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.vsphere.security.doc/GUID-A7E76D9B-92B4-4AD9-BB77-C3C59BDE37C1.html
+    - https://attack.mitre.org/techniques/T1599/001/
+  description: Detects potential VLAN trunk attacks including attempts to configure trunk mode (VLAN 4095), unexpected VLAN tagging changes, or double-tagging attempts that could lead to VLAN hopping
+  where: |
+    safe(log.message, "") != "" && 
+    (
+      (safe(log.message, "") =~ "(?i)vlan.*4095" ||
+       safe(log.message, "") =~ "(?i)trunk.*mode.*set" ||
+       safe(log.message, "") =~ "(?i)vlan.*tag.*mismatch" ||
+       safe(log.message, "") =~ "(?i)double.*tag" ||
+       safe(log.message, "") =~ "(?i)unexpected.*tagged.*frame" ||
+       safe(log.message, "") =~ "(?i)vlan.*hopping" ||
+       safe(log.message, "") =~ "(?i)native.*vlan.*change" ||
+       safe(log.message, "") =~ "(?i)port.*group.*vlan.*modified") &&
+      (safe(log.process, "") =~ "(?i)vmkernel" ||
+       safe(log.process, "") =~ "(?i)netcpa" ||
+       safe(log.process, "") =~ "(?i)hostd")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-10m
+      count: 5
+  deduplicateBy:
+    - origin.hostname

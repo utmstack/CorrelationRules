@@ -1,0 +1,32 @@
+- id: 1013
+  dataTypes:
+    - wineventlog
+  name: AMSI Bypass Detection
+  impact:
+    confidentiality: 4
+    integrity: 5
+    availability: 2
+  category: Defense Evasion
+  technique: Disable or Modify System Firewall
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1562/001/
+    - https://docs.microsoft.com/en-us/windows/win32/amsi/antimalware-scan-interface-portal
+  description: Detects attempts to bypass the Antimalware Scan Interface (AMSI) through PowerShell commands, DLL hijacking, or memory patching techniques
+  where: |
+    (safe(log.winlogEventId, "") == "4104" &&
+     (safe(log.winlogEventDataScriptBlockText, "").contains("[Ref].Assembly.GetType") &&
+      safe(log.winlogEventDataScriptBlockText, "").contains("amsi") &&
+      safe(log.winlogEventDataScriptBlockText, "").contains("SetValue")) ||
+     safe(log.winlogEventDataScriptBlockText, "").contains("AmsiUtils") ||
+     safe(log.winlogEventDataScriptBlockText, "").contains("amsiInitFailed") ||
+     safe(log.winlogEventDataScriptBlockText, "").contains("Bypass.AMSI") ||
+     safe(log.winlogEventDataScriptBlockText, "").contains("AmsiScanBuffer")) ||
+    (safe(log.winlogEventId, "") == "4688" &&
+     safe(log.winlogEventDataCommandLine, "").contains("powershell") &&
+     (safe(log.winlogEventDataCommandLine, "").contains("amsi.dll") ||
+      safe(log.winlogEventDataCommandLine, "").contains("AmsiScanBuffer") ||
+      safe(log.winlogEventDataCommandLine, "").contains("amsiInitFailed")))
+  deduplicateBy:
+    - origin.host
+    - log.winlogEventDataSubjectUserName

@@ -1,0 +1,32 @@
+- id: 1005
+  dataTypes:
+    - vmware-esxi
+  name: DRS (Distributed Resource Scheduler) Manipulation Detection
+  impact:
+    confidentiality: 3
+    integrity: 4
+    availability: 5
+  category: Virtualization Security
+  technique: Resource Scheduling Manipulation
+  adversary: origin
+  references:
+    - https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.vsphere.resmgmt.doc/GUID-8ACF3502-5314-469F-8CC9-4A9BD5925BC2.html
+    - https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.vsphere.monitoring.doc/GUID-9272E3B2-6A7F-427B-994C-B15FF8CADC25.html
+  description: Detects unauthorized or suspicious manipulation of DRS settings, abnormal resource allocation changes, or attempts to bypass DRS policies that could lead to resource exhaustion or performance degradation
+  where: |
+    (safe(log.message, "") =~ "(?i)DRS" && safe(log.message, "") =~ "(?i)(disable|override|bypass|manipulat|tamper)") ||
+    (safe(log.message, "") =~ "(?i)(resource.*pool|cluster)" && safe(log.message, "") =~ "(?i)(modify|change|alter)" && safe(log.message, "") =~ "(?i)(unauthorized|denied|failed)") ||
+    (safe(log.message, "") =~ "(?i)distributed.*resource.*scheduler" && safe(log.message, "") =~ "(?i)(error|violation|conflict|anomaly)") ||
+    (safe(log.eventInfo, "") =~ "(?i)(ClusterReconfigured|DrsVmPoweredOn)" && safe(log.message, "") =~ "(?i)(unauthorized|suspicious|abnormal)") ||
+    (safe(log.message, "") =~ "(?i)(affinity|anti-affinity)" && safe(log.message, "") =~ "(?i)(rule|policy)" && safe(log.message, "") =~ "(?i)(violat|breach|bypass)")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-2h
+      count: 3
+  deduplicateBy:
+    - origin.hostname
+    - log.eventInfo

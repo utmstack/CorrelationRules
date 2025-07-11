@@ -1,0 +1,30 @@
+- id: 1028
+  dataTypes:
+    - vmware-esxi
+  name: License Compliance Violation Detection
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 3
+  category: License Violation
+  technique: Software Licensing Bypass
+  adversary: origin
+  references:
+    - https://docs.vmware.com/en/VMware-vSphere/8.0/vsphere-vcenter-server-installation/GUID-8C9D2587-E9FC-4276-B4BC-48F620A3048B.html
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects license compliance violations, expired licenses, or attempts to bypass licensing restrictions which could indicate unauthorized system usage or tampering
+  where: |
+    safe(log.message, "") != "" && 
+    (log.message.contains("license") || log.message.contains("License")) &&
+    (log.message.contains("expired") || log.message.contains("invalid") || log.message.contains("violation") || 
+     log.message.contains("exceeded") || log.message.contains("compliance") || log.message.contains("unauthorized"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.hostname

@@ -1,0 +1,39 @@
+- id: 1020
+  dataTypes:
+    - rfc-6587
+  name: TCP Congestion Control Abuse
+  impact:
+    confidentiality: 0
+    integrity: 2
+    availability: 5
+  category: Network Security
+  technique: Resource Exhaustion
+  adversary: origin
+  references:
+    - https://www.researchgate.net/publication/2384706_TCP_Congestion_Control_with_a_Misbehaving_Receiver
+    - https://attack.mitre.org/techniques/T1499/
+  description: Detects TCP congestion control abuse where attackers exploit congestion control mechanisms to generate non-responsive traffic, cause denial of service, or suppress legitimate traffic. Monitors for ECN violations, optimistic ACKing, and malicious burst patterns.
+  where: |
+    safe(origin.ip, "") != "" &&
+    (
+      (safe(log.tcp_ecn_flags, "") != "" && safe(log.tcp_ecn_cwr, false) == true && safe(log.tcp_ecn_ece, false) == false) ||
+      (safe(log.tcp_ack_rate, 0) > 1000 && safe(log.tcp_data_rate, 0) < 100) ||
+      (safe(log.tcp_retransmission_rate, 0) > 0.3) ||
+      (safe(log.tcp_congestion_window, 0) > 0 && safe(log.tcp_congestion_window_delta, 0) > 65535) ||
+      (safe(log.tcp_duplicate_acks, 0) > 50 && safe(log.tcp_segment_lost, 0) == 0)
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-3m
+      count: 25
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - destination.port

@@ -1,0 +1,31 @@
+- id: 1021
+  dataTypes:
+    - vmware-esxi
+  name: PowerCLI Script Execution Detection
+  impact:
+    confidentiality: 4
+    integrity: 3
+    availability: 2
+  category: Execution
+  technique: Command and Scripting Interpreter
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1059/
+    - https://blogs.vmware.com/vsphere/2013/07/capturing-logins-to-esxi-by-a-root-account.html
+  description: Detects PowerCLI script execution on VMware ESXi hosts by monitoring for authentication events and command execution patterns associated with MS Web Services Client Protocol, which is unique to PowerCLI connections
+  where: |
+    safe(log.message, "") =~ "(?i)MS Web Services Client Protocol" ||
+    (safe(log.message, "") =~ "(?i)authentication of user" && safe(log.message, "") =~ "(?i)PowerCLI") ||
+    (safe(log.process, "") =~ "(?i)vimsvc" && safe(log.message, "") =~ "(?i)Auth" && safe(log.message, "") =~ "(?i)User") ||
+    (safe(log.message, "") =~ "(?i)Syslog\\.global\\.log" && safe(log.message, "") =~ "(?i)Set-VMHost") ||
+    safe(log.message, "") =~ "(?i)Get-VMHostSysLogServer"
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.hostname.keyword
+          operator: filter_term
+          value: '{{origin.hostname}}'
+      within: now-15m
+      count: 3
+  deduplicateBy:
+    - origin.hostname

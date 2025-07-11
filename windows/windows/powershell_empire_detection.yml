@@ -1,0 +1,43 @@
+- id: 1006
+  dataTypes:
+    - windows
+    - wineventlog
+  name: PowerShell Empire Detection
+  impact:
+    confidentiality: 5
+    integrity: 5
+    availability: 4
+  category: Command and Control
+  technique: T1059.001
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1059/001/
+    - https://www.powershellempire.com/
+    - https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_logging
+  description: Detects potential PowerShell Empire framework usage based on characteristic command patterns, obfuscation techniques, and encoded payloads commonly used by this post-exploitation framework
+  where: |
+    (safe(log.eventCode, "") == "4104" || safe(log.winlogEventId, 0) == 4104) &&
+    safe(log.winlogProviderName, "") == "Microsoft-Windows-PowerShell" &&
+    (
+      safe(log.winlog.event_data.ScriptBlockText, "").contains("System.Management.Automation.AmsiUtils") ||
+      safe(log.winlog.event_data.ScriptBlockText, "").matches("(?i)(empire|invoke-empire|invoke-psempire)") ||
+      safe(log.winlog.event_data.ScriptBlockText, "").matches("(?i)\\[System\\.Convert\\]::FromBase64String") ||
+      safe(log.winlog.event_data.ScriptBlockText, "").matches("(?i)IEX\\s*\\(\\s*New-Object") ||
+      safe(log.winlog.event_data.ScriptBlockText, "").matches("(?i)-enc\\s+[A-Za-z0-9+/=]{100,}") ||
+      safe(log.winlog.event_data.ScriptBlockText, "").matches("(?i)\\$DoIt\\s*=\\s*@") ||
+      safe(log.winlog.event_data.ScriptBlockText, "").matches("(?i)\\[System\\.Text\\.Encoding\\]::Unicode\\.GetString") ||
+      safe(log.winlog.event_data.ScriptBlockText, "").contains("Invoke-Shellcode") ||
+      safe(log.winlog.event_data.ScriptBlockText, "").contains("Invoke-ReflectivePEInjection") ||
+      safe(log.winlog.event_data.ScriptBlockText, "").contains("Invoke-Mimikatz")
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.host.keyword
+          operator: filter_term
+          value: '{{origin.host}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.host
+    - log.winlogEventDataSubjectUserName

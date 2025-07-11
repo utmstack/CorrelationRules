@@ -1,0 +1,27 @@
+- id: 1027
+  dataTypes:
+    - wineventlog
+  name: ADFS Authentication Anomalies
+  impact:
+    confidentiality: 4
+    integrity: 2
+    availability: 2
+  category: Authentication
+  technique: Valid Accounts
+  adversary: origin
+  references:
+    - https://learn.microsoft.com/en-us/windows-server/identity/ad-fs/troubleshooting/ad-fs-tshoot-logging
+    - https://attack.mitre.org/techniques/T1078/
+  description: Detects anomalous authentication attempts against ADFS including multiple failed attempts that could indicate password spraying or brute force attacks
+  where: safe(log.winlogProviderName, "") == "AD FS" && (safe(log.winlogEventId, "") == "411" || safe(log.winlogEventId, "") == "342" || safe(log.winlogEventId, "") == "516") && contains(safe(log.message, ""), "token validation failed")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: log.winlogEventDataIpAddress.keyword
+          operator: filter_term
+          value: '{{log.winlogEventDataIpAddress}}'
+      within: now-10m
+      count: 10
+  deduplicateBy:
+    - log.winlogEventDataIpAddress
+    - log.winlogEventDataTargetUserName

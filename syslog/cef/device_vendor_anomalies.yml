@@ -1,0 +1,42 @@
+- id: 1005
+  dataTypes:
+    - cef
+  name: CEF Device Vendor Anomalies
+  impact:
+    confidentiality: 3
+    integrity: 5
+    availability: 2
+  category: Spoofing Detection
+  technique: Log Spoofing
+  adversary: origin
+  references:
+    - https://docs.paloaltonetworks.com/resources/cef
+    - https://attack.mitre.org/techniques/T1070/002/
+  description: Detects anomalies in CEF device vendor information including unknown vendors, sudden vendor changes, or mismatched vendor-product combinations that could indicate log spoofing or unauthorized log sources.
+  where: |
+    (safe(log.cef_device_vendor, "") != "" &&
+     safe(log.previous_vendor, "") != "" &&
+     safe(log.cef_device_vendor, "") != safe(log.previous_vendor, "") &&
+     safe(origin.ip, "") == safe(log.previous_source_ip, "")) ||
+    (safe(log.cef_device_vendor, "") in ["test", "unknown", "demo", "example", "sample"] &&
+     safe(log.cef_severity, 0) >= 5) ||
+    (safe(log.cef_device_vendor, "") == "Cisco" && 
+     !safe(log.cef_device_product, "") contains_any ["ASA", "IOS", "Firepower", "ISE", "AMP", "Umbrella"]) ||
+    (safe(log.cef_device_vendor, "") == "Palo Alto Networks" && 
+     !safe(log.cef_device_product, "") contains_any ["PAN-OS", "Traps", "Cortex", "Prisma"]) ||
+    (safe(log.cef_device_vendor, "") matches "^[^a-zA-Z].*" ||
+     safe(log.cef_device_vendor, "") contains_any ["<", ">", "&", "\"", "'", "\\", "//"]) ||
+    (length(safe(log.cef_device_vendor, "")) > 64 ||
+     length(safe(log.cef_device_product, "")) > 64)
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-24h
+      count: 1
+  deduplicateBy:
+    - origin.ip
+    - log.cef_device_vendor
+    - log.cef_device_product

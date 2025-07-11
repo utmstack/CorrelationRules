@@ -1,0 +1,33 @@
+- id: 1001
+  dataTypes:
+    - rfc-5424
+  name: RFC-5424 Structured Data Format Violations
+  impact:
+    confidentiality: 2
+    integrity: 4
+    availability: 1
+  category: Protocol Violation
+  technique: Indicator Manipulation
+  adversary: origin
+  references:
+    - https://datatracker.ietf.org/doc/html/rfc5424#section-6.3
+    - https://attack.mitre.org/techniques/T1565/
+  description: Detects violations in RFC-5424 structured data format, which may indicate log tampering, parsing evasion attempts, or misconfigured systems. Structured data must follow specific syntax rules including proper SD-ELEMENT formatting.
+  where: |
+    safe(log.structuredData, "") != "" && 
+    safe(log.structuredData, "") != "-" &&
+    (!safe(log.structuredData, "").startsWith("[") || 
+     !safe(log.structuredData, "").endsWith("]") ||
+     safe(log.structuredData, "").contains("[]") ||
+     !safe(log.structuredData, "").matches("^(\\[[^\\]]+\\])+$"))
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+      within: now-15m
+      count: 5
+  deduplicateBy:
+    - origin.ip
+    - log.hostname

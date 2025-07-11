@@ -1,0 +1,33 @@
+- id: 1011
+  dataTypes:
+    - rfc-6587
+  name: RST Injection Attack
+  impact:
+    confidentiality: 0
+    integrity: 3
+    availability: 5
+  category: Network Attack
+  technique: Connection Disruption
+  adversary: origin
+  references:
+    - https://www.wallarm.com/what/what-is-syn-spoofing-or-tcp-reset-attack
+    - https://attack.mitre.org/techniques/T1498/
+  description: Detects potential RST injection attacks where an attacker sends forged TCP RST packets to disrupt established connections between devices. This can cause denial of service by forcing connection terminations.
+  where: |
+    safe(log.tcp_flags, "") contains "RST" && 
+    safe(log.rst_count, 0) > 50 &&
+    safe(log.time_window, 0) <= 60
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.tcp_flags.keyword
+          operator: filter_term
+          value: RST
+      within: now-5m
+      count: 100
+  deduplicateBy:
+    - origin.ip
+    - destination.ip

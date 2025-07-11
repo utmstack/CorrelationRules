@@ -1,0 +1,37 @@
+- id: 1022
+  dataTypes:
+    - nids
+  name: Custom Signature Match Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 2
+  category: Intrusion Detection
+  technique: Exploitation for Client Execution
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1203/
+    - https://suricata.io/features/custom-rules/
+  description: Detects network traffic matching custom-defined signatures for known attack patterns, exploits, or malicious payloads
+  where: |
+    safe(log.signature_type, "") == "custom" && 
+    safe(log.signature_id, "") != "" &&
+    safe(origin.ip, "") != "" &&
+    safe(log.severity, "") in ["high", "critical"] &&
+    (safe(log.alert_msg, "") contains "EXPLOIT" || 
+     safe(log.alert_msg, "") contains "MALWARE" ||
+     safe(log.alert_msg, "") contains "ATTACK")
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: log.signature_id.keyword
+          operator: filter_term
+          value: '{{log.signature_id}}'
+      within: now-1h
+      count: 3
+  deduplicateBy:
+    - origin.ip
+    - log.signature_id

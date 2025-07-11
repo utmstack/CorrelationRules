@@ -1,0 +1,39 @@
+- id: 1018
+  dataTypes:
+    - nids
+  name: SSL/TLS Anomalies Detection
+  impact:
+    confidentiality: 4
+    integrity: 4
+    availability: 1
+  category: Network Security
+  technique: Encrypted Channel
+  adversary: origin
+  references:
+    - https://attack.mitre.org/techniques/T1573/
+    - https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-52r2.pdf
+  description: Detects SSL/TLS anomalies including weak cipher suites, protocol downgrade attempts, self-signed certificates, expired certificates, or unusual TLS versions
+  where: |
+    safe(log.protocol, "") in ["SSL", "TLS"] && (
+      safe(log.tls_version, "") in ["SSLv2", "SSLv3", "TLSv1.0"] ||
+      safe(log.cipher_strength, 256) < 128 ||
+      safe(log.certificate_expired, false) == true ||
+      safe(log.self_signed, false) == true ||
+      safe(log.cipher_suite, "") in ["NULL", "EXPORT", "DES", "RC4"] ||
+      safe(log.handshake_failure, false) == true
+    )
+  afterEvents:
+    - indexPattern: v11-log-*
+      with:
+        - field: origin.ip.keyword
+          operator: filter_term
+          value: '{{origin.ip}}'
+        - field: destination.ip.keyword
+          operator: filter_term
+          value: '{{destination.ip}}'
+      within: now-30m
+      count: 10
+  deduplicateBy:
+    - origin.ip
+    - destination.ip
+    - log.certificate_fingerprint
